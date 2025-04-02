@@ -55,6 +55,8 @@ type Query {
 
   allSerials(subsidiaryId: Int): [SerialAssignedType]
 
+  operationsApp(date: Date, userId: Int): [OperationType]
+
   allWarehouses(subsidiaryId: Int, category: String): [WarehouseType]
 
   allUnits: [UnitType]

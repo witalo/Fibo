@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 import androidx.lifecycle.ViewModel
+import com.example.fibo.datastore.PreferencesManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import com.example.fibo.model.IOperation
@@ -16,7 +17,8 @@ import java.text.SimpleDateFormat
 import java.util.*
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val operationRepository: OperationRepository
+    private val operationRepository: OperationRepository,
+    private val preferencesManager: PreferencesManager
 ) : ViewModel() {
     private val _selectedDate = MutableStateFlow(
         SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
@@ -40,9 +42,15 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             _invoiceState.value = InvoiceState.Loading
             try {
-                val invoices = operationRepository.getOperationByDate(date)
-                Log.d("italo", "Lista: $invoices")
-                _invoiceState.value = InvoiceState.Success(invoices)
+                val userId = preferencesManager.userData.value?.id
+                Log.d("italo", "userId: $userId")
+                if (userId != null) {
+                    val invoices = operationRepository.getOperationByDate(date, 1)
+                    Log.d("italo", "Lista: $invoices")
+                    _invoiceState.value = InvoiceState.Success(invoices)
+                } else {
+                    _invoiceState.value = InvoiceState.Error("User ID no disponible.")
+                }
             } catch (e: Exception) {
                 _invoiceState.value = InvoiceState.Error(
                     e.message ?: "Error al cargar las operaciones"

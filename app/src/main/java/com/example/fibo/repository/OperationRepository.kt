@@ -2,7 +2,7 @@ package com.example.fibo.repository
 
 import com.example.fibo.model.IOperation
 import com.apollographql.apollo3.ApolloClient
-import com.example.fibo.GetInvoicesByDateQuery
+import com.example.fibo.GetOperationByDateAndUserIdQuery
 import com.example.fibo.model.IPerson
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -12,12 +12,12 @@ import javax.inject.Singleton
 class OperationRepository @Inject constructor(
     private val apolloClient: ApolloClient
 ) {
-    suspend fun getOperationByDate(date: String): List<IOperation> {
+    suspend fun getOperationByDate(date: String, userId: Int): List<IOperation> {
         val response = apolloClient.query(
-            GetInvoicesByDateQuery(date = date)
+            GetOperationByDateAndUserIdQuery(date = date, userId = userId)
         ).execute()
 
-        return response.data?.operations?.filterNotNull()?.mapNotNull  { o ->
+        return response.data?.operationsApp?.filterNotNull()?.mapNotNull  { o ->
             o?.let {
                 IOperation(
                     id = o.id.toInt(),
