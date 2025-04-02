@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.util.Date
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import java.text.SimpleDateFormat
 import java.util.*
 @HiltViewModel
@@ -29,28 +30,29 @@ class HomeViewModel @Inject constructor(
     val invoiceState: StateFlow<InvoiceState> = _invoiceState.asStateFlow()
 
     init {
-        loadInvoices(_selectedDate.value)
+        viewModelScope.launch {
+            preferencesManager.userData.collectLatest { user ->
+                if (user != null) {
+                    loadInvoices(_selectedDate.value, user.id)
+                }
+            }
+        }
     }
 
     fun updateSelectedDate(date: String) {
         Log.d("italo", "Fecha: $date")
         _selectedDate.value = date
-        loadInvoices(date)
+//        loadInvoices(date)
     }
 
-    fun loadInvoices(date: String) {
+    fun loadInvoices(date: String, userId: Int) {
         viewModelScope.launch {
             _invoiceState.value = InvoiceState.Loading
             try {
-                val userId = preferencesManager.userData.value?.id
                 Log.d("italo", "userId: $userId")
-                if (userId != null) {
-                    val invoices = operationRepository.getOperationByDate(date, 1)
-                    Log.d("italo", "Lista: $invoices")
-                    _invoiceState.value = InvoiceState.Success(invoices)
-                } else {
-                    _invoiceState.value = InvoiceState.Error("User ID no disponible.")
-                }
+                val invoices = operationRepository.getOperationByDate(date, userId)
+                Log.d("italo", "Lista: $invoices")
+                _invoiceState.value = InvoiceState.Success(invoices)
             } catch (e: Exception) {
                 _invoiceState.value = InvoiceState.Error(
                     e.message ?: "Error al cargar las operaciones"
