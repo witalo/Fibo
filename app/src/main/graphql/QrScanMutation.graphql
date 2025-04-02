@@ -1,0 +1,21 @@
+#mutation QrScan($token: String!, $username: String!, $description: String!) {
+#    qrScan(token: $token, username: $username, description: $description) {
+#        success
+#        message
+#        company {
+#            id
+#            doc
+#            businessName
+#        }
+#        subsidiary {
+#            id
+#            serial
+#            name
+#            address
+#            token
+#        }
+#        user {
+#            id
+#        }
+#    }
+#}

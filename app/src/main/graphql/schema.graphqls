@@ -1,0 +1,8 @@
+type Query {
+    launches: [Launch]
+}
+
+type Launch {
+    id: ID!
+    site: String
+}

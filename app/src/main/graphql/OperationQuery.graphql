@@ -1,0 +1,41 @@
+#query GetOperationByDateAndUserId($date: Date!, $userId: Int!) {
+#    operationsApp(date: $date, userId: $userId) {
+#        id
+#        emitDate
+#        operationDate
+#        operationType
+#        currencyType
+#        documentType
+#        serial
+#        correlative
+#        totalAmount
+#        totalTaxed
+#        totalDiscount
+#        totalExonerated
+#        totalUnaffected
+#        totalFree
+#        totalIgv
+#        totalToPay
+#        totalPayed
+#        operationStatus
+#        operationStatusReadable
+#        sendWhatsapp
+#        linkXml
+#        linkXmlLow
+#        linkCdr
+#        linkCdrLow
+#        sunatStatus
+#        sendSunat
+#        sunatDescription
+#        sunatDescriptionLow
+#        codeHash
+#        client {
+#            id
+#            names
+#            documentNumber
+#            phone
+#            email
+#        }
+#    }
+#
+#}
