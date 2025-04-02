@@ -29,11 +29,17 @@ class HomeViewModel @Inject constructor(
     private val _invoiceState = MutableStateFlow<InvoiceState>(InvoiceState.Loading)
     val invoiceState: StateFlow<InvoiceState> = _invoiceState.asStateFlow()
 
+    // Store the userId when available
+    private var currentUserId: Int? = null
+
     init {
+        // Set up user data collection
         viewModelScope.launch {
-            preferencesManager.userData.collectLatest { user ->
-                if (user != null) {
-                    loadInvoices(_selectedDate.value, user.id)
+            preferencesManager.userData.collect { user ->
+                currentUserId = user?.id
+                // Load invoices whenever we get a valid user ID
+                if (currentUserId != null) {
+                    loadInvoices(_selectedDate.value)
                 }
             }
         }
@@ -42,18 +48,26 @@ class HomeViewModel @Inject constructor(
     fun updateSelectedDate(date: String) {
         Log.d("italo", "Fecha: $date")
         _selectedDate.value = date
-//        loadInvoices(date)
+        loadInvoices(date)
     }
 
-    fun loadInvoices(date: String, userId: Int) {
+    fun loadInvoices(date: String) {
         viewModelScope.launch {
             _invoiceState.value = InvoiceState.Loading
+
+            val userId = currentUserId
+            if (userId == null) {
+                _invoiceState.value = InvoiceState.Error("Usuario no autenticado")
+                return@launch
+            }
+
             try {
-                Log.d("italo", "userId: $userId")
+                Log.d("italo", "Cargando operaciones para userId: $userId y fecha: $date")
                 val invoices = operationRepository.getOperationByDate(date, userId)
-                Log.d("italo", "Lista: $invoices")
+                Log.d("italo", "Operaciones cargadas: $invoices")
                 _invoiceState.value = InvoiceState.Success(invoices)
             } catch (e: Exception) {
+                Log.e("italo", "Error al cargar operaciones", e)
                 _invoiceState.value = InvoiceState.Error(
                     e.message ?: "Error al cargar las operaciones"
                 )

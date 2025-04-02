@@ -1,5 +1,6 @@
 package com.example.fibo.repository
 
+import android.util.Log
 import com.example.fibo.model.IOperation
 import com.apollographql.apollo3.ApolloClient
 import com.example.fibo.GetOperationByDateAndUserIdQuery
@@ -16,6 +17,7 @@ class OperationRepository @Inject constructor(
         val response = apolloClient.query(
             GetOperationByDateAndUserIdQuery(date = date, userId = userId)
         ).execute()
+        Log.d("italo", "Response: ${response.data?.operationsApp}")
 
         return response.data?.operationsApp?.filterNotNull()?.mapNotNull  { o ->
             o?.let {
