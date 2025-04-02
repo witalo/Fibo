@@ -1,8 +1,4405 @@
 type Query {
-    launches: [Launch]
+  cashesByAccountType(accountType: String): [CashType]
+
+  allWayPays: [ChoiceWithNumericCodeType]
+
+  operations(date: Date): [OperationType]
+
+  searchGeographicLocationCode(search: String): [LocationType]
+
+  searchClientByParameter(search: String, documentType: String): [PersonType]
+
+  districtsByProvinceId(provinceId: String): [DistrictType]
+
+  provincesByDepartmentId(departmentId: String): [ProvinceType]
+
+  departments: [DepartmentType]
+
+  allCountries: [ChoiceWithStringCodeType]
+
+  allDocumentTypes: [ChoiceWithStringCodeType]
+
+  allCreditNoteTypes: [ChoiceWithStringCodeType]
+
+  allEconomicActivities: [ChoiceWithStringCodeType]
+
+  allOperationTypes: [ChoiceWithStringCodeType]
+
+  allGuideReasons: [ChoiceWithStringCodeType]
+
+  allGuideModes: [ChoiceWithStringCodeType]
+
+  allDetractionTypes: [ChoiceWithNumericCodeType]
+
+  allDetractionPaymentMethods: [ChoiceWithNumericCodeType]
+
+  allPerceptionTypes: [ChoiceWithNumericCodeType]
+
+  allRetentionTypes: [ChoiceWithNumericCodeType]
+
+  allClients: [PersonType]
+
+  allSuppliers: [PersonType]
+
+  cpeShippingQuery(operationId: Int, status: String): CpeType
+
+  allSales(subsidiaryId: Int, clientId: Int, startDate: Date, endDate: Date, documentType: String, page: Int, pageSize: Int): SalesSummaryType
+
+  getSaleByParameters(doc: String, documentType: String, serial: String, correlative: String, totalToPay: String): OperationType
+
+  getSaleById(pk: ID): OperationType
+
+  allGuides(subsidiaryId: Int, startDate: Date, endDate: Date, documentType: String, page: Int, pageSize: Int): GuidesSummaryType
+
+  allRetentions(subsidiaryId: Int, startDate: Date, endDate: Date, documentType: String, page: Int, pageSize: Int): RetentionsSummaryType
+
+  allSerials(subsidiaryId: Int): [SerialAssignedType]
+
+  allWarehouses(subsidiaryId: Int, category: String): [WarehouseType]
+
+  allUnits: [UnitType]
+
+  allProducts(subsidiaryId: Int, available: Boolean): [ProductType]
+
+  allProductTariffs(productId: Int): [ProductTariffType]
+
+  allTypeAffectations: [TypeAffectationType]
+
+  warehouseById(pk: ID): WarehouseType
+
+  unitById(pk: ID): UnitType
+
+  productById(pk: ID): ProductType
+
+  productTariffById(pk: ID): ProductTariffType
+
+  productDetailByProductId(productId: Int): ProductDetailType
+
+  allPurchases(supplierId: Int, startDate: Date, endDate: Date): [OperationType]
+
+  myProfile: UserType
+
+  userById(pk: ID): UserType
+
+  users: [UserType]
+
+  searchUsers(search: String): [UserType]
+
+  companies: [CompanyType]
+
+  companyById(pk: ID): CompanyType
+
+  searchCompanies(search: String): [CompanyType]
+
+  subsidiaries: [SubsidiaryType]
+
+  subsidiaryById(pk: ID): SubsidiaryType
+
+  subsidiariesByCompanyId(companyId: ID): [SubsidiaryType]
+
+  searchSubsidiaries(search: String): [SubsidiaryType]
+
+  companiesByUser: [CompanyType]
+
+  devicesBySubsidiaryId(pk: ID): [UserType]
 }
 
-type Launch {
-    id: ID!
-    site: String
+type CashType {
+  id: Int
+
+  subsidiary: SubsidiaryType
+
+  employee: UserType
+
+  supplier: PersonType
+
+  client: PersonType
+
+  name: String
+
+  accountNumber: String
+
+  accountType: AccountingCashAccountTypeChoices!
+
+  currencyType: AccountingCashCurrencyTypeChoices!
+
+  createdAt: DateTime
+
+  isEnabled: Boolean!
+
+  cashflowSet: [CashFlowType!]!
+
+  currencyTypeReadable: String
+}
+
+"""
+The `Int` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1.
+"""
+scalar Int
+
+type SubsidiaryType {
+  id: ID!
+
+  serial: String
+
+  name: String
+
+  address: String
+
+  phone: String
+
+  company: CompanyType
+
+  district: DistrictType
+
+  createdAt: DateTime!
+
+  updatedAt: DateTime!
+
+  token: String
+
+  pdfFormatForInvoices: Int
+
+  pdfFormatForReceiptInvoices: Int
+
+  pdfFormatForGuides: Int
+
+  userSet: [UserType!]!
+
+  warehouseSet: [WarehouseType!]!
+
+  productSet: [ProductType!]!
+
+  documentemittedSet: [DocumentEmittedType!]!
+
+  serialassignedSet: [SerialAssignedType!]!
+
+  operationSet: [OperationType!]!
+
+  cashSet: [CashType!]!
+
+  companyId: Int
+
+  companyName: String
+
+  districtId: String
+
+  districtName: String
+}
+
+"""
+The `ID` scalar type represents a unique identifier, often used to refetch an object or as key for a cache. The ID type appears in a JSON response as a String; however, it is not intended to be human-readable. When expected as an input type, any string (such as `"4"`) or integer (such as `4`) input value will be accepted as an ID.
+"""
+scalar ID
+
+"""
+The `String` scalar type represents textual data, represented as UTF-8 character sequences. The String type is most often used by GraphQL to represent free-form human-readable text.
+"""
+scalar String
+
+type CompanyType {
+  id: Int
+
+  typeDoc: String
+
+  doc: String
+
+  businessName: String
+
+  shortName: String
+
+  address: String
+
+  email: String
+
+  phone: String
+
+  logo: String
+
+  country: String!
+
+  userSol: String
+
+  keySol: String
+
+  limit: Int!
+
+  emissionInvoiceWithPreviousDate: Int
+
+  emissionReceiptWithPreviousDate: Int
+
+  includeIgv: Boolean!
+
+  percentageIgv: Int
+
+  isEnabled: Boolean!
+
+  isProduction: Boolean!
+
+  guideClientId: String
+
+  guideClientSecret: String
+
+  withStock: Boolean!
+
+  invoiceF: Boolean!
+
+  invoiceB: Boolean!
+
+  guide: Boolean!
+
+  app: Boolean!
+
+  catalog: Boolean!
+
+  ose: Boolean!
+
+  productionDate: Date
+
+  certification: String
+
+  certificationExpirationDate: Date
+
+  certificationKey: String
+
+  deductionAccount: String
+
+  disabledDate: Date
+
+  createdAt: DateTime!
+
+  updatedAt: DateTime!
+
+  subsidiarySet: [SubsidiaryType!]!
+}
+
+"""
+The `Boolean` scalar type represents `true` or `false`.
+"""
+scalar Boolean
+
+"""
+The `Date` scalar type represents a Date
+value as specified by
+[iso8601](https://en.wikipedia.org/wiki/ISO_8601).
+"""
+scalar Date
+
+"""
+The `DateTime` scalar type represents a DateTime
+value as specified by
+[iso8601](https://en.wikipedia.org/wiki/ISO_8601).
+"""
+scalar DateTime
+
+type DistrictType {
+  id: String!
+
+  description: String
+
+  subsidiarySet: [SubsidiaryType!]!
+
+  personSet: [PersonType!]!
+}
+
+type PersonType {
+  id: ID!
+
+  code: String
+
+  economicActivityMain: OperationsPersonEconomicActivityMainChoices!
+
+  documentType: OperationsPersonDocumentTypeChoices!
+
+  documentNumber: String
+
+  driverLicense: String
+
+  names: String
+
+  phone: String
+
+  email: String
+
+  isEnabled: Boolean!
+
+  isClient: Boolean!
+
+  isSupplier: Boolean!
+
+  isDriver: Boolean!
+
+  isReceiver: Boolean!
+
+  country: OperationsPersonCountryChoices!
+
+  shortName: String
+
+  address: String
+
+  district: DistrictType
+
+  observation: String
+
+  mtcRegistrationNumber: String
+
+  clients: [OperationType!]!
+
+  suppliers: [OperationType!]!
+
+  operationSet: [OperationType!]!
+
+  transportations: [OperationType!]!
+
+  drivers: [OperationType!]!
+
+  receivers: [OperationType!]!
+
+  supplierAccount: [CashType!]!
+
+  clientAccount: [CashType!]!
+
+  cashflowSet: [CashFlowType!]!
+}
+
+"""
+An enumeration.
+"""
+enum OperationsPersonEconomicActivityMainChoices {
+  """
+  NO APLICA
+  """
+  A_0
+
+  """
+  MANTENIMIENTO Y REPARACIÓN DE VEHÍCULOS AUTOMOTORES
+  """
+  A_4520
+
+  """
+  VENTA AL POR MAYOR A CAMBIO DE UNA RETRIBUCIÓN O POR CONTRATA
+  """
+  A_4610
+
+  """
+  VENTA AL POR MAYOR DE ALIMENTOS, BEBIDAS Y TABACO
+  """
+  A_4630
+
+  """
+  VENTA AL POR MAYOR NO ESPECIALIZADA
+  """
+  A_4690
+
+  """
+  TRANSPORTE DE CARGA POR CARRETERA
+  """
+  A_4923
+}
+
+"""
+An enumeration.
+"""
+enum OperationsPersonDocumentTypeChoices {
+  """
+  SIN DOCUMENTO
+  """
+  A_0
+
+  """
+  DNI
+  """
+  A_1
+
+  """
+  RUC
+  """
+  A_6
+
+  """
+  CARNET DE EXTRANJERIA
+  """
+  A_4
+
+  """
+  PASAPORTE
+  """
+  A_7
+
+  """
+  CED.DIPLOMÁTICA DE IDENTIDAD
+  """
+  A
+
+  """
+  DOCUMENTO IDENTIDAD PAÍS RESIDENCIA-NO.D
+  """
+  B
+
+  """
+  TAX IDENTIFICACIÓN NUMBER - TIN DOC TRIB PP.NN
+  """
+  C
+
+  """
+  IDENTIFICATION NUMBER - IN DOC TRIB PP.JJ
+  """
+  D
+
+  """
+  TAM- TARJETA ANDINA DE MIGRACIÓN
+  """
+  E
+
+  """
+  PERMISO TEMPORAL DE PERMANENCIA PTP
+  """
+  F
+}
+
+"""
+An enumeration.
+"""
+enum OperationsPersonCountryChoices {
+  """
+  AFGANISTÁN
+  """
+  AF
+
+  """
+  ALBANIA
+  """
+  AL
+
+  """
+  ALEMANIA
+  """
+  DE
+
+  """
+  ANDORRA
+  """
+  AD
+
+  """
+  ANGOLA
+  """
+  AO
+
+  """
+  ANGUILLA
+  """
+  AI
+
+  """
+  ANTÁRTIDA
+  """
+  AQ
+
+  """
+  ANTIGUA Y BARBUDA
+  """
+  AG
+
+  """
+  ANTILLAS HOLANDESAS
+  """
+  AN
+
+  """
+  ARABIA SAUDÍ
+  """
+  SA
+
+  """
+  ARGELIA
+  """
+  DZ
+
+  """
+  ARGENTINA
+  """
+  AR
+
+  """
+  ARMENIA
+  """
+  AM
+
+  """
+  ARUBA
+  """
+  AW
+
+  """
+  ARY MACEDONIA
+  """
+  MK
+
+  """
+  AUSTRALIA
+  """
+  AU
+
+  """
+  AUSTRIA
+  """
+  AT
+
+  """
+  AZERBAIYÁN
+  """
+  AZ
+
+  """
+  BAHAMAS
+  """
+  BS
+
+  """
+  BAHRÉIN
+  """
+  BH
+
+  """
+  BANGLADESH
+  """
+  BD
+
+  """
+  BARBADOS
+  """
+  BB
+
+  """
+  BÉLGICA
+  """
+  BE
+
+  """
+  BELICE
+  """
+  BZ
+
+  """
+  BENIN
+  """
+  BJ
+
+  """
+  BERMUDAS
+  """
+  BM
+
+  """
+  BHUTÁN
+  """
+  BT
+
+  """
+  BIELORRUSIA
+  """
+  BY
+
+  """
+  BOLIVIA
+  """
+  BO
+
+  """
+  BOSNIA Y HERZEGOVINA
+  """
+  BA
+
+  """
+  BOTSUANA
+  """
+  BW
+
+  """
+  BRASIL
+  """
+  BR
+
+  """
+  BRUNÉI
+  """
+  BN
+
+  """
+  BULGARIA
+  """
+  BG
+
+  """
+  BURKINA FASO
+  """
+  BF
+
+  """
+  BURUNDI
+  """
+  BI
+
+  """
+  CABO VERDE
+  """
+  CV
+
+  """
+  CAMBOYA
+  """
+  KH
+
+  """
+  CAMERÚN
+  """
+  CM
+
+  """
+  CANADÁ
+  """
+  CA
+
+  """
+  CHAD
+  """
+  TD
+
+  """
+  CHILE
+  """
+  CL
+
+  """
+  CHINA
+  """
+  CN
+
+  """
+  CHIPRE
+  """
+  CY
+
+  """
+  CIUDAD DEL VATICANO
+  """
+  VA
+
+  """
+  COLOMBIA
+  """
+  CO
+
+  """
+  COMORAS
+  """
+  KM
+
+  """
+  CONGO
+  """
+  CG
+
+  """
+  COREA DEL NORTE
+  """
+  KP
+
+  """
+  COREA DEL SUR
+  """
+  KR
+
+  """
+  COSTA DE MARFIL
+  """
+  CI
+
+  """
+  COSTA RICA
+  """
+  CR
+
+  """
+  CROACIA
+  """
+  HR
+
+  """
+  CUBA
+  """
+  CU
+
+  """
+  DINAMARCA
+  """
+  DK
+
+  """
+  DOMINICA
+  """
+  DM
+
+  """
+  ECUADOR
+  """
+  EC
+
+  """
+  EGIPTO
+  """
+  EG
+
+  """
+  EL SALVADOR
+  """
+  SV
+
+  """
+  EMIRATOS ÁRABES UNIDOS
+  """
+  AE
+
+  """
+  ERITREA
+  """
+  ER
+
+  """
+  ESLOVAQUIA
+  """
+  SK
+
+  """
+  ESLOVENIA
+  """
+  SI
+
+  """
+  ESPAÑA
+  """
+  ES
+
+  """
+  ESTADOS UNIDOS
+  """
+  US
+
+  """
+  ESTONIA
+  """
+  EE
+
+  """
+  ETIOPÍA
+  """
+  ET
+
+  """
+  FILIPINAS
+  """
+  PH
+
+  """
+  FINLANDIA
+  """
+  FI
+
+  """
+  FIYI
+  """
+  FJ
+
+  """
+  FRANCIA
+  """
+  FR
+
+  """
+  GABÓN
+  """
+  GA
+
+  """
+  GAMBIA
+  """
+  GM
+
+  """
+  GEORGIA
+  """
+  GE
+
+  """
+  GHANA
+  """
+  GH
+
+  """
+  GIBRALTAR
+  """
+  GI
+
+  """
+  GRANADA
+  """
+  GD
+
+  """
+  GRECIA
+  """
+  GR
+
+  """
+  GROENLANDIA
+  """
+  GL
+
+  """
+  GUADALUPE
+  """
+  GP
+
+  """
+  GUAM
+  """
+  GU
+
+  """
+  GUATEMALA
+  """
+  GT
+
+  """
+  GUAYANA FRANCESA
+  """
+  GF
+
+  """
+  GUERNESEY
+  """
+  GG
+
+  """
+  GUINEA
+  """
+  GN
+
+  """
+  GUINEA ECUATORIAL
+  """
+  GQ
+
+  """
+  GUINEA-BISSAU
+  """
+  GW
+
+  """
+  GUYANA
+  """
+  GY
+
+  """
+  HAITÍ
+  """
+  HT
+
+  """
+  HOLANDA O PAÍSES BAJOS
+  """
+  NL
+
+  """
+  HONDURAS
+  """
+  HN
+
+  """
+  HONG KONG
+  """
+  HK
+
+  """
+  HUNGRÍA
+  """
+  HU
+
+  """
+  INDIA
+  """
+  IN
+
+  """
+  INDONESIA
+  """
+  ID
+
+  """
+  IRÁN
+  """
+  IR
+
+  """
+  IRAQ
+  """
+  IQ
+
+  """
+  IRLANDA
+  """
+  IE
+
+  """
+  ISLA BOUVET
+  """
+  BV
+
+  """
+  ISLA DE MAN
+  """
+  IM
+
+  """
+  ISLA DE NAVIDAD
+  """
+  CX
+
+  """
+  ISLA NORFOLK
+  """
+  NF
+
+  """
+  ISLANDIA
+  """
+  IS
+
+  """
+  ISLAS ALAND
+  """
+  AX
+
+  """
+  ISLAS CAIMÁN
+  """
+  KY
+
+  """
+  ISLAS COCOS
+  """
+  CC
+
+  """
+  ISLAS COOK
+  """
+  CK
+
+  """
+  ISLAS FEROE
+  """
+  FO
+
+  """
+  ISLAS GEORGIAS DEL SUR Y SANDWICH DEL SUR
+  """
+  GS
+
+  """
+  ISLAS HEARD Y MCDONALD
+  """
+  HM
+
+  """
+  ISLAS MALVINAS
+  """
+  FK
+
+  """
+  ISLAS MARIANAS DEL NORTE
+  """
+  MP
+
+  """
+  ISLAS MARSHALL
+  """
+  MH
+
+  """
+  ISLAS PITCAIRN
+  """
+  PN
+
+  """
+  ISLAS SALOMÓN
+  """
+  SB
+
+  """
+  ISLAS TURCAS Y CAICOS
+  """
+  TC
+
+  """
+  ISLAS ULTRAMARINAS DE ESTADOS UNIDOS
+  """
+  UM
+
+  """
+  ISLAS VÍRGENES BRITÁNICAS
+  """
+  VG
+
+  """
+  ISLAS VÍRGENES DE LOS ESTADOS UNIDOS
+  """
+  VI
+
+  """
+  ISRAEL
+  """
+  IL
+
+  """
+  ITALIA
+  """
+  IT
+
+  """
+  JAMAICA
+  """
+  JM
+
+  """
+  JAPÓN
+  """
+  JP
+
+  """
+  JERSEY
+  """
+  JE
+
+  """
+  JORDANIA
+  """
+  JO
+
+  """
+  KAZAJSTÁN
+  """
+  KZ
+
+  """
+  KENIA
+  """
+  KE
+
+  """
+  KIRGUISTÁN
+  """
+  KG
+
+  """
+  KIRIBATI
+  """
+  KI
+
+  """
+  KUWAIT
+  """
+  KW
+
+  """
+  LAOS
+  """
+  LA
+
+  """
+  LESOTHO
+  """
+  LS
+
+  """
+  LETONIA
+  """
+  LV
+
+  """
+  LÍBANO
+  """
+  LB
+
+  """
+  LIBERIA
+  """
+  LR
+
+  """
+  LIBIA
+  """
+  LY
+
+  """
+  LIECHTENSTEIN
+  """
+  LI
+
+  """
+  LITUANIA
+  """
+  LT
+
+  """
+  LUXEMBURGO
+  """
+  LU
+
+  """
+  MACAO
+  """
+  MO
+
+  """
+  MADAGASCAR
+  """
+  MG
+
+  """
+  MALASIA
+  """
+  MY
+
+  """
+  MALAWI
+  """
+  MW
+
+  """
+  MALDIVAS
+  """
+  MV
+
+  """
+  MALÍ
+  """
+  ML
+
+  """
+  MALTA
+  """
+  MT
+
+  """
+  MARRUECOS
+  """
+  MA
+
+  """
+  MARTINICA
+  """
+  MQ
+
+  """
+  MAURICIO
+  """
+  MU
+
+  """
+  MAURITANIA
+  """
+  MR
+
+  """
+  MAYOTTE
+  """
+  YT
+
+  """
+  MÉXICO
+  """
+  MX
+
+  """
+  MICRONESIA
+  """
+  FM
+
+  """
+  MOLDAVIA
+  """
+  MD
+
+  """
+  MÓNACO
+  """
+  MC
+
+  """
+  MONGOLIA
+  """
+  MN
+
+  """
+  MONTSERRAT
+  """
+  MS
+
+  """
+  MOZAMBIQUE
+  """
+  MZ
+
+  """
+  MYANMAR
+  """
+  MM
+
+  """
+  NAMIBIA
+  """
+  NA
+
+  """
+  NAURU
+  """
+  NR
+
+  """
+  NEPAL
+  """
+  NP
+
+  """
+  NICARAGUA
+  """
+  NI
+
+  """
+  NÍGER
+  """
+  NE
+
+  """
+  NIGERIA
+  """
+  NG
+
+  """
+  NIUE
+  """
+  NU
+
+  """
+  NORUEGA
+  """
+  NO
+
+  """
+  NUEVA CALEDONIA
+  """
+  NC
+
+  """
+  NUEVA ZELANDA
+  """
+  NZ
+
+  """
+  OMÁN
+  """
+  OM
+
+  """
+  PAKISTÁN
+  """
+  PK
+
+  """
+  PALAU
+  """
+  PW
+
+  """
+  PALESTINA
+  """
+  PS
+
+  """
+  PANAMÁ
+  """
+  PA
+
+  """
+  PAPÚA NUEVA GUINEA
+  """
+  PG
+
+  """
+  PARAGUAY
+  """
+  PY
+
+  """
+  PERÚ
+  """
+  PE
+
+  """
+  POLINESIA FRANCESA
+  """
+  PF
+
+  """
+  POLONIA
+  """
+  PL
+
+  """
+  PORTUGAL
+  """
+  PT
+
+  """
+  PUERTO RICO
+  """
+  PR
+
+  """
+  QATAR
+  """
+  QA
+
+  """
+  REINO UNIDO
+  """
+  GB
+
+  """
+  REPÚBLICA CENTROAFRICANA
+  """
+  CF
+
+  """
+  REPÚBLICA CHECA
+  """
+  CZ
+
+  """
+  REPÚBLICA DEMOCRÁTICA DEL CONGO
+  """
+  CD
+
+  """
+  REPÚBLICA DOMINICANA
+  """
+  DO
+
+  """
+  REUNIÓN
+  """
+  RE
+
+  """
+  RUANDA
+  """
+  RW
+
+  """
+  RUMANIA
+  """
+  RO
+
+  """
+  RUSIA
+  """
+  RU
+
+  """
+  SAHARA OCCIDENTAL
+  """
+  EH
+
+  """
+  SAMOA
+  """
+  WS
+
+  """
+  SAMOA AMERICANA
+  """
+  AS
+
+  """
+  SAN CRISTÓBAL Y NEVIS
+  """
+  KN
+
+  """
+  SAN MARINO
+  """
+  SM
+
+  """
+  SAN PEDRO Y MIQUELÓN
+  """
+  PM
+
+  """
+  SAN VICENTE Y LAS GRANADINAS
+  """
+  VC
+
+  """
+  SANTA HELENA
+  """
+  SH
+
+  """
+  SANTA LUCÍA
+  """
+  LC
+
+  """
+  SANTO TOMÉ Y PRÍNCIPE
+  """
+  ST
+
+  """
+  SENEGAL
+  """
+  SN
+
+  """
+  SERBIA Y MONTENEGRO
+  """
+  CS
+
+  """
+  SEYCHELLES
+  """
+  SC
+
+  """
+  SIERRA LEONA
+  """
+  SL
+
+  """
+  SINGAPUR
+  """
+  SG
+
+  """
+  SIRIA
+  """
+  SY
+
+  """
+  SOMALIA
+  """
+  SO
+
+  """
+  SRI LANKA
+  """
+  LK
+
+  """
+  SUAZILANDIA
+  """
+  SZ
+
+  """
+  SUDÁFRICA
+  """
+  ZA
+
+  """
+  SUDÁN
+  """
+  SD
+
+  """
+  SUECIA
+  """
+  SE
+
+  """
+  SUIZA
+  """
+  CH
+
+  """
+  SURINAM
+  """
+  SR
+
+  """
+  SVALBARD Y JAN MAYEN
+  """
+  SJ
+
+  """
+  TAILANDIA
+  """
+  TH
+
+  """
+  TAIWÁN
+  """
+  TW
+
+  """
+  TANZANIA
+  """
+  TZ
+
+  """
+  TAYIKISTÁN
+  """
+  TJ
+
+  """
+  TERRITORIO BRITÁNICO DEL OCÉANO ÍNDICO
+  """
+  IO
+
+  """
+  TERRITORIOS AUSTRALES FRANCESES
+  """
+  TF
+
+  """
+  TIMOR ORIENTAL
+  """
+  TL
+
+  """
+  TOGO
+  """
+  TG
+
+  """
+  TOKELAU
+  """
+  TK
+
+  """
+  TONGA
+  """
+  TO
+
+  """
+  TRINIDAD Y TOBAGO
+  """
+  TT
+
+  """
+  TÚNEZ
+  """
+  TN
+
+  """
+  TURKMENISTÁN
+  """
+  TM
+
+  """
+  TURQUÍA
+  """
+  TR
+
+  """
+  TUVALU
+  """
+  TV
+
+  """
+  UCRANIA
+  """
+  UA
+
+  """
+  UGANDA
+  """
+  UG
+
+  """
+  URUGUAY
+  """
+  UY
+
+  """
+  UZBEKISTÁN
+  """
+  UZ
+
+  """
+  VANUATU
+  """
+  VU
+
+  """
+  VENEZUELA
+  """
+  VE
+
+  """
+  VIETNAM
+  """
+  VN
+
+  """
+  WALLIS Y FUTUNA
+  """
+  WF
+
+  """
+  YEMEN
+  """
+  YE
+
+  """
+  YIBUTI
+  """
+  DJ
+
+  """
+  ZAMBIA
+  """
+  ZM
+
+  """
+  ZIMBAWE
+  """
+  ZW
+}
+
+type OperationType {
+  id: ID!
+
+  documentType: OperationsOperationDocumentTypeChoices!
+
+  operationType: OperationsOperationOperationTypeChoices!
+
+  operationStatus: OperationsOperationOperationStatusChoices!
+
+  operationAction: OperationsOperationOperationActionChoices!
+
+  creditNoteType: OperationsOperationCreditNoteTypeChoices!
+
+  debitNoteType: OperationsOperationDebitNoteTypeChoices!
+
+  perceptionType: OperationsOperationPerceptionTypeChoices!
+
+  retentionType: OperationsOperationRetentionTypeChoices!
+
+  detractionType: OperationsOperationDetractionTypeChoices!
+
+  detractionPaymentMethod: OperationsOperationDetractionPaymentMethodChoices!
+
+  serial: String
+
+  correlative: Int
+
+  currencyType: OperationsOperationCurrencyTypeChoices!
+
+  saleExchangeRate: Decimal!
+
+  purchaseExchangeRate: Decimal!
+
+  operationDate: Date
+
+  emitDate: Date
+
+  emitTime: Time
+
+  dueDate: Date
+
+  lowDate: Date
+
+  createAt: DateTime!
+
+  updateAt: DateTime!
+
+  user: UserType
+
+  client: PersonType
+
+  supplier: PersonType
+
+  subsidiary: SubsidiaryType
+
+  warehouse: WarehouseType
+
+  discountForItem: Decimal!
+
+  discountGlobal: Decimal!
+
+  discountPercentageGlobal: Decimal!
+
+  igvType: OperationsOperationIgvTypeChoices!
+
+  igvPercentage: Decimal!
+
+  perceptionPercentage: Decimal!
+
+  retentionPercentage: Decimal!
+
+  detractionPercentage: Decimal!
+
+  totalDiscount: Decimal!
+
+  totalAdvance: Decimal!
+
+  totalTaxed: Decimal!
+
+  totalUnaffected: Decimal!
+
+  totalExonerated: Decimal!
+
+  totalIgv: Decimal!
+
+  totalFree: Decimal!
+
+  totalAmount: Decimal!
+
+  totalPerception: Decimal!
+
+  totalRetention: Decimal!
+
+  totalDetraction: Decimal!
+
+  totalToPay: Decimal!
+
+  totalPayed: Decimal!
+
+  totalTurned: Decimal!
+
+  observation: String
+
+  sendWhatsapp: Boolean!
+
+  sendSunat: Boolean!
+
+  sendClient: Boolean!
+
+  sunatDescription: String
+
+  sunatDescriptionLow: String
+
+  sunatStatus: Boolean!
+
+  parentOperation: OperationType
+
+  relatedSeries: String
+
+  relatedNumber: Int
+
+  relatedDocType: String
+
+  relatedReasonCode: String
+
+  linkXml: String
+
+  linkCdr: String
+
+  lowCorrelative: Int
+
+  summaryCorrelative: Int
+
+  lowTicket: String
+
+  linkXmlLow: String
+
+  linkCdrLow: String
+
+  codeHash: String
+
+  transferDate: Date
+
+  guideReasonTransfer: OperationsOperationGuideReasonTransferChoices!
+
+  guideModeTransfer: OperationsOperationGuideModeTransferChoices!
+
+  othersDrivers: [PersonType!]!
+
+  relatedDocuments: [DocumentEmittedType!]!
+
+  guideTicket: String
+
+  guideToken: String
+
+  totalWeight: Decimal!
+
+  quantityPackages: Decimal!
+
+  weightMeasurementUnit: UnitType
+
+  transportationCompany: PersonType
+
+  mainDriver: PersonType
+
+  receiver: PersonType
+
+  hasPerception: Boolean!
+
+  hasRetention: Boolean!
+
+  hasDetraction: Boolean!
+
+  operationSet: [OperationType!]!
+
+  operationdetailSet: [OperationDetailType!]!
+
+  cashflowSet: [CashFlowType!]!
+
+  documentPerson: String
+
+  namesPerson: String
+
+  operationStatusReadable: String
+
+  documentTypeReadable: String
+
+  creditNoteReferences: String
+}
+
+"""
+An enumeration.
+"""
+enum OperationsOperationDocumentTypeChoices {
+  """
+  FACTURA
+  """
+  A_01
+
+  """
+  BOLETA
+  """
+  A_03
+
+  """
+  NOTA DE CREDITO
+  """
+  A_07
+
+  """
+  NOTA DE DEBITO
+  """
+  A_08
+
+  """
+  GUIA DE REMISION REMITENTE
+  """
+  A_09
+
+  """
+  GUÍA DE REMISIÓN TRANSPORTISTA
+  """
+  A_31
+
+  """
+  COMPROBANTE DE RETENCIÓN
+  """
+  A_20
+
+  """
+  COMPROBANTE DE PERCEPCIÓN
+  """
+  A_40
+
+  """
+  NO APLICA
+  """
+  NA
+}
+
+"""
+An enumeration.
+"""
+enum OperationsOperationOperationTypeChoices {
+  """
+  Venta interna
+  """
+  A_0101
+
+  """
+  Venta Interna - Sustenta Gastos Deducibles Persona Natural
+  """
+  A_0112
+
+  """
+  Venta Interna-NRUS
+  """
+  A_0113
+
+  """
+  Exportación de Bienes
+  """
+  A_0200
+
+  """
+  Exportación de Servicios – Prestación servicios realizados íntegramente en el país
+  """
+  A_0201
+
+  """
+  Exportación de Servicios – Prestación de servicios de hospedaje No Domiciliado
+  """
+  A_0202
+
+  """
+  Exportación de Servicios – Transporte de navieras
+  """
+  A_0203
+
+  """
+  Exportación de Servicios – Servicios a naves y aeronaves de bandera extranjera
+  """
+  A_0204
+
+  """
+  Exportación de Servicios - Servicios que conformen un Paquete Turístico
+  """
+  A_0205
+
+  """
+  Exportación de Servicios – Servicios complementarios al transporte de carga
+  """
+  A_0206
+
+  """
+  Exportación de Servicios – Suministro de energía eléctrica a favor de sujetos domiciliados en ZED
+  """
+  A_0207
+
+  """
+  Exportación de Servicios – Prestación servicios realizados parcialmente en el extranjero
+  """
+  A_0208
+
+  """
+  Operaciones con Carta de porte aéreo (emitidas en el ámbito nacional)
+  """
+  A_0301
+
+  """
+  Operaciones de Transporte ferroviario de pasajeros
+  """
+  A_0302
+
+  """
+  Ventas no domiciliados que no califican como exportación
+  """
+  A_0401
+
+  """
+  Compra interna
+  """
+  A_0501
+
+  """
+  Anticipos
+  """
+  A_0502
+
+  """
+  Compra de oro
+  """
+  A_0503
+
+  """
+  Operación Sujeta a Detracción
+  """
+  A_1001
+
+  """
+  Operación Sujeta a Detracción- Recursos Hidrobiológicos
+  """
+  A_1002
+
+  """
+  Operación Sujeta a Detracción- Servicios de Transporte Pasajeros
+  """
+  A_1003
+
+  """
+  Operación Sujeta a Detracción- Servicios de Transporte Carga
+  """
+  A_1004
+
+  """
+  Operación Sujeta a Percepción
+  """
+  A_2001
+
+  """
+  Créditos a empresas
+  """
+  A_2100
+
+  """
+  Créditos de consumo revolvente
+  """
+  A_2101
+
+  """
+  Créditos de consumo no revolvente
+  """
+  A_2102
+
+  """
+  Otras operaciones no gravadas - Empresas del sistema financiero y cooperativas de ahorro y crédito no autorizadas a captar recursos del público
+  """
+  A_2103
+
+  """
+  Otras operaciones no gravadas - Empresas del sistema de seguros
+  """
+  A_2104
+
+  """
+  NO APLICA
+  """
+  NA
+}
+
+"""
+An enumeration.
+"""
+enum OperationsOperationOperationStatusChoices {
+  """
+  REGISTRADO
+  """
+  A_01
+
+  """
+  AUTORIZADO
+  """
+  A_02
+
+  """
+  PENDIENTE
+  """
+  A_03
+
+  """
+  PENDIENTE DE BAJA
+  """
+  A_04
+
+  """
+  EN PROCESO DE BAJA
+  """
+  A_05
+
+  """
+  DADO DE BAJA
+  """
+  A_06
+
+  """
+  RECHAZADO
+  """
+  A_07
+
+  """
+  NO APLICA
+  """
+  NA
+}
+
+"""
+An enumeration.
+"""
+enum OperationsOperationOperationActionChoices {
+  """
+  ENTRADA
+  """
+  E
+
+  """
+  SALIDA
+  """
+  S
+
+  """
+  NO APLICA
+  """
+  NA
+}
+
+"""
+An enumeration.
+"""
+enum OperationsOperationCreditNoteTypeChoices {
+  """
+  Anulación de la operación
+  """
+  A_01
+
+  """
+  Anulación por error en el RUC
+  """
+  A_02
+
+  """
+  Corrección por error en la descripción o atención de reclamo respecto de bienes adquiridos o servicios prestados
+  """
+  A_03
+
+  """
+  Descuento global
+  """
+  A_04
+
+  """
+  Descuento por ítem
+  """
+  A_05
+
+  """
+  Devolución total
+  """
+  A_06
+
+  """
+  Devolución por ítem
+  """
+  A_07
+
+  """
+  Bonificación
+  """
+  A_08
+
+  """
+  Disminución en el valor
+  """
+  A_09
+
+  """
+  Otros Conceptos
+  """
+  A_10
+
+  """
+  Ajustes de operaciones de exportación
+  """
+  A_11
+
+  """
+  Ajustes afectos al IVAP
+  """
+  A_12
+
+  """
+  Corrección o modificación del monto neto pendiente de pago y/o la(s) fechas(s) de vencimiento del pago único o de las cuotas y/o los montos correspondientes a cada cuota, de ser el caso
+  """
+  A_13
+
+  """
+  NO APLICA
+  """
+  NA
+}
+
+"""
+An enumeration.
+"""
+enum OperationsOperationDebitNoteTypeChoices {
+  """
+  Intereses por mora
+  """
+  A_01
+
+  """
+  Aumento en el valor
+  """
+  A_02
+
+  """
+  Penalidades/ otros conceptos
+  """
+  A_03
+
+  """
+  Ajustes de operaciones de exportación
+  """
+  A_10
+
+  """
+  Ajustes afectos al IVAP
+  """
+  A_11
+
+  """
+  NO APLICA
+  """
+  NA
+}
+
+"""
+An enumeration.
+"""
+enum OperationsOperationPerceptionTypeChoices {
+  """
+  2.0% PERCEPCIÓN VENTA INTERNA - TASA 2%
+  """
+  A_1
+
+  """
+  1.0% PERCEPCIÓN A LA ADQUISICIÓN DE COMBUSTIBLE - TASA 1%
+  """
+  A_2
+
+  """
+  0.5% PERCEPCIÓN REALIZADA AL AGENTE DE PERCEPCIÓN CON TASA ESPECIAL - TASA 0.5%
+  """
+  A_3
+
+  """
+  NO APLICA
+  """
+  A_0
+}
+
+"""
+An enumeration.
+"""
+enum OperationsOperationRetentionTypeChoices {
+  """
+  TASA 3%
+  """
+  A_1
+
+  """
+  TASA 6%
+  """
+  A_2
+
+  """
+  NO APLICA
+  """
+  A_0
+}
+
+"""
+An enumeration.
+"""
+enum OperationsOperationDetractionTypeChoices {
+  """
+  [001] AZÚCAR
+  """
+  A_1
+
+  """
+  [002] ARROZ PILADO
+  """
+  A_2
+
+  """
+  [003] ALCOHOL ETÍLICO
+  """
+  A_3
+
+  """
+  [004] RECURSOS HIDROBIOLÓGICOS
+  """
+  A_4
+
+  """
+  [005] MAÍZ AMARILLO DURO
+  """
+  A_5
+
+  """
+  [007] CAÑA DE AZÚCAR
+  """
+  A_7
+
+  """
+  [008] MADERA
+  """
+  A_8
+
+  """
+  [009] ARENA Y PIEDRA
+  """
+  A_9
+
+  """
+  [010] RESIDUOS, SUBPRODUCTOS, DESECHOS, RECORTES, DESPERDICIOS Y FORMAS PRIMARIAS DERIVADAS DE LOS MISMOS
+  """
+  A_10
+
+  """
+  [011] BIENES GRAVADOS CON EL IGV, POR RENUNCIA A LA EXONERACIÓN
+  """
+  A_11
+
+  """
+  [012] INTERMEDIACIÓN LABORAL Y TERCERIZACIÓN
+  """
+  A_12
+
+  """
+  [014] CARNES Y DESPOJOS COMESTIBLES
+  """
+  A_13
+
+  """
+  [016] ACEITE DE PESCADO
+  """
+  A_14
+
+  """
+  [017] HARINA, POLVO Y PELLETS DE PESCADO, CRUSTÁCEOS, MOLUSCOS Y DEMÁS INVERTEBRADOS ACUÁTICOS
+  """
+  A_15
+
+  """
+  [019] ARRENDAMIENTO DE BIENES
+  """
+  A_17
+
+  """
+  [020] MANTENIMIENTO Y REPARACIÓN DE BIENES MUEBLES
+  """
+  A_18
+
+  """
+  [021] MOVIMIENTO DE CARGA
+  """
+  A_19
+
+  """
+  [022] OTROS SERVICIOS EMPRESARIALES
+  """
+  A_20
+
+  """
+  [023] LECHE
+  """
+  A_21
+
+  """
+  [024] COMISIÓN MERCANTIL
+  """
+  A_22
+
+  """
+  [025] FABRICACIÓN DE BIENES POR ENCARGO
+  """
+  A_23
+
+  """
+  [026] SERVICIO DE TRANSPORTE PERSONAS
+  """
+  A_24
+
+  """
+  [027] TRANSPORTE DE CARGA
+  """
+  A_25
+
+  """
+  [028] TRANSPORTE PÚBLICO DE PASAJEROS REALIZADO POR VÍA TERRESTRE
+  """
+  A_26
+
+  """
+  [030] CONTRATOS DE CONSTRUCCIÓN
+  """
+  A_28
+
+  """
+  [031] ORO GRAVADO CON EL IGV
+  """
+  A_29
+
+  """
+  [032] PAPRIKA Y OTROS FRUTOS DE LOS GÉNEROS CAPSICUM O PIMIENTA
+  """
+  A_30
+
+  """
+  [034] MINERALES METÁLICOS NO AURÍFEROS
+  """
+  A_32
+
+  """
+  [035] BIENES EXONERADOS DEL IGV
+  """
+  A_33
+
+  """
+  [036] ORO Y DEMÁS MINERALES METÁLICOS EXONERADOS DEL IGV
+  """
+  A_34
+
+  """
+  [037] DEMÁS SERVICIOS GRAVADOS CON EL IGV
+  """
+  A_35
+
+  """
+  [039] MINERALES NO METÁLICOS
+  """
+  A_37
+
+  """
+  [040] BIEN INMUEBLE GRAVADO CON EL IGV
+  """
+  A_38
+
+  """
+  [041] PLOMO
+  """
+  A_39
+
+  """
+  NO APLICA
+  """
+  A_0
+}
+
+"""
+An enumeration.
+"""
+enum OperationsOperationDetractionPaymentMethodChoices {
+  """
+  [001] Depósito en cuenta
+  """
+  A_1
+
+  """
+  [002] Giro
+  """
+  A_2
+
+  """
+  [003] Transferencia de fondos
+  """
+  A_3
+
+  """
+  [004] Orden de pago
+  """
+  A_4
+
+  """
+  [005] Tarjeta de débito
+  """
+  A_5
+
+  """
+  [006] Tarjeta de crédito emitida en el país por una empresa del sistema financiero 
+  """
+  A_6
+
+  """
+  [007] Cheques con la cláusula de NO NEGOCIABLE, INTRANSFERIBLES, NO A LA ORDEN u otra equivalente, a que se refiere el inciso g) del artículo 5 de la ley
+  """
+  A_7
+
+  """
+  [008] Efectivo, por operaciones en las que no existe obligación de utilizar medio de pago
+  """
+  A_8
+
+  """
+  [009] Efectivo, en los demás casos
+  """
+  A_9
+
+  """
+  [010] Medios de pago usados en comercio exterior 
+  """
+  A_10
+
+  """
+  [011] Documentos emitidos por las EDPYMES y las cooperativas de ahorro y crédito no autorizadas a captar depósitos del público
+  """
+  A_11
+
+  """
+  [012] Tarjeta de crédito emitida en el país o en el exterior por una empresa no perteneciente al sistema financiero, cuyo objeto principal sea la emisión y administración de tarjetas de crédito
+  """
+  A_12
+
+  """
+  [013] Tarjetas de crédito emitidas en el exterior por empresas bancarias o financieras no domiciliadas
+  """
+  A_13
+
+  """
+  [101] Transferencias – Comercio exterior
+  """
+  A_14
+
+  """
+  [102] Cheques bancarios - Comercio exterior
+  """
+  A_15
+
+  """
+  [103] Orden de pago simple - Comercio exterior
+  """
+  A_16
+
+  """
+  [104] Orden de pago documentario - Comercio exterior
+  """
+  A_17
+
+  """
+  [105] Remesa simple - Comercio exterior
+  """
+  A_18
+
+  """
+  [106] Remesa documentaria - Comercio exterior
+  """
+  A_19
+
+  """
+  [107] Carta de crédito simple - Comercio exterior
+  """
+  A_20
+
+  """
+  [108] Carta de crédito documentario - Comercio exterior
+  """
+  A_21
+
+  """
+  [999] Otros medios de pago
+  """
+  A_22
+
+  """
+  NO APLICA
+  """
+  A_0
+}
+
+"""
+An enumeration.
+"""
+enum OperationsOperationCurrencyTypeChoices {
+  """
+  SOLES
+  """
+  PEN
+
+  """
+  DÓLARES
+  """
+  USD
+
+  """
+  EUROS
+  """
+  EUR
+
+  """
+  LIBRA ESTERLINA
+  """
+  GBP
+}
+
+"""
+The `Decimal` scalar type represents a python Decimal.
+"""
+scalar Decimal
+
+"""
+The `Time` scalar type represents a Time value as
+specified by
+[iso8601](https://en.wikipedia.org/wiki/ISO_8601).
+"""
+scalar Time
+
+type UserType {
+  id: ID!
+
+  password: String
+
+  lastLogin: DateTime
+
+  """
+  Indica que este usuario tiene todos los permisos sin asignárselos explícitamente.
+  """
+  isSuperuser: Boolean!
+
+  firstName: String!
+
+  lastName: String!
+
+  """
+  Indica si el usuario puede entrar en este sitio de administración.
+  """
+  isStaff: Boolean!
+
+  """
+  Indica si el usuario debe ser tratado como activo. Desmarque esta opción en lugar de borrar la cuenta.
+  """
+  isActive: Boolean!
+
+  dateJoined: DateTime!
+
+  email: String!
+
+  username: String!
+
+  document: String
+
+  phone: String
+
+  avatar: String
+
+  role: UsersUserRoleChoices!
+
+  subsidiary: SubsidiaryType
+
+  mobileDescription: String
+
+  operationSet: [OperationType!]!
+
+  employeeAccount: [CashType!]!
+
+  cashflowSet: [CashFlowType!]!
+
+  roleName: String
+
+  repeatPassword: String
+
+  avatarUrl: String
+
+  fullName: String
+
+  subsidiaryId: Int
+
+  companyId: Int
+}
+
+"""
+An enumeration.
+"""
+enum UsersUserRoleChoices {
+  """
+  EMPRESARIAL
+  """
+  A_01
+
+  """
+  PERSONAL
+  """
+  A_02
+
+  """
+  APP MOVIL
+  """
+  A_03
+}
+
+type CashFlowType {
+  id: Int
+
+  cash: CashType
+
+  user: UserType
+
+  operation: OperationType
+
+  supplier: PersonType
+
+  transactionDate: Date
+
+  transactionType: AccountingCashFlowTransactionTypeChoices!
+
+  wayPay: AccountingCashFlowWayPayChoices!
+
+  bankOperationCode: String
+
+  documentTypeAttached: AccountingCashFlowDocumentTypeAttachedChoices!
+
+  description: String
+
+  subtotal: Decimal!
+
+  igv: Decimal!
+
+  total: Decimal!
+
+  remainingTotal: Decimal!
+
+  createdAt: DateTime
+
+  isValidated: Boolean!
+}
+
+"""
+An enumeration.
+"""
+enum AccountingCashFlowTransactionTypeChoices {
+  """
+  Apertura
+  """
+  A
+
+  """
+  Cierre
+  """
+  C
+
+  """
+  Entrada
+  """
+  E
+
+  """
+  Salida
+  """
+  S
+
+  """
+  Transferencia de Caja a Caja
+  """
+  TCC
+
+  """
+  Transferencia de Caja a Banco
+  """
+  TCB
+
+  """
+  Transferencia de Banco a Banco
+  """
+  TBB
+
+  """
+  Transferencia de Banco a Caja
+  """
+  TBC
+
+  """
+  Deposito
+  """
+  D
+
+  """
+  Retiro
+  """
+  R
+
+  """
+  DEBE
+  """
+  DC
+
+  """
+  HABER
+  """
+  HC
+}
+
+"""
+An enumeration.
+"""
+enum AccountingCashFlowWayPayChoices {
+  """
+  EFECTIVO [CONTADO]
+  """
+  A_1
+
+  """
+  TARJETA DÉBITO [CONTADO]
+  """
+  A_2
+
+  """
+  TARJETA CRÉDITO [CONTADO]
+  """
+  A_3
+
+  """
+  TRANSFERENCIA [CONTADO]
+  """
+  A_4
+
+  """
+  GIRO [CONTADO]
+  """
+  A_5
+
+  """
+  CHEQUE [CONTADO]
+  """
+  A_6
+
+  """
+  CUPÓN [CONTADO]
+  """
+  A_7
+
+  """
+  YAPE [CONTADO]
+  """
+  A_8
+
+  """
+  POR PAGAR [CRÉDITO]
+  """
+  A_9
+
+  """
+  OTROS [CONTADO]
+  """
+  A_10
+}
+
+"""
+An enumeration.
+"""
+enum AccountingCashFlowDocumentTypeAttachedChoices {
+  """
+  Factura
+  """
+  F
+
+  """
+  Boleta
+  """
+  B
+
+  """
+  Ticket
+  """
+  T
+
+  """
+  Vale
+  """
+  V
+
+  """
+  Otro
+  """
+  O
+}
+
+type WarehouseType {
+  id: ID!
+
+  name: String
+
+  subsidiary: SubsidiaryType
+
+  category: LogisticsWarehouseCategoryChoices!
+
+  operationSet: [OperationType!]!
+
+  subsidiaryId: Int
+
+  subsidiaryName: String
+
+  categoryReadable: String
+}
+
+"""
+An enumeration.
+"""
+enum LogisticsWarehouseCategoryChoices {
+  """
+  VENTA
+  """
+  A_01
+
+  """
+  VEHICULO
+  """
+  A_02
+
+  """
+  RESERVA
+  """
+  A_03
+
+  """
+  NO APLICA
+  """
+  NA
+}
+
+"""
+An enumeration.
+"""
+enum OperationsOperationIgvTypeChoices {
+  """
+  18%
+  """
+  A_18
+
+  """
+  10% (Ley 31556)
+  """
+  A_10
+
+  """
+  4% (IVAP)
+  """
+  A_4
+
+  """
+  NO APLICA
+  """
+  A_0
+}
+
+"""
+An enumeration.
+"""
+enum OperationsOperationGuideReasonTransferChoices {
+  """
+  VENTA
+  """
+  A_01
+
+  """
+  COMPRA
+  """
+  A_02
+
+  """
+  VENTA CON ENTREGA A TERCEROS
+  """
+  A_03
+
+  """
+  TRASLADO ENTRE ESTABLECIMIENTOS DE LA MISMA EMPRESA
+  """
+  A_04
+
+  """
+  CONSIGNACION
+  """
+  A_05
+
+  """
+  DEVOLUCION
+  """
+  A_06
+
+  """
+  RECOJO DE BIENES TRANSFORMADOS
+  """
+  A_07
+
+  """
+  IMPORTACION
+  """
+  A_08
+
+  """
+  EXPORTACION
+  """
+  A_09
+
+  """
+  OTROS
+  """
+  A_13
+
+  """
+  VENTA SUJETA A CONFIRMACION DEL COMPRADOR
+  """
+  A_14
+
+  """
+  TRASLADO DE BIENES PARA TRANSFORMACION
+  """
+  A_17
+
+  """
+  TRASLADO EMISOR ITINERANTE CP
+  """
+  A_18
+
+  """
+  NO APLICA
+  """
+  NA
+}
+
+"""
+An enumeration.
+"""
+enum OperationsOperationGuideModeTransferChoices {
+  """
+  TRANSPORTE PÚBLICO
+  """
+  A_01
+
+  """
+  TRANSPORTE PRIVADO
+  """
+  A_02
+
+  """
+  NO APLICA
+  """
+  NA
+}
+
+type DocumentEmittedType {
+  id: ID!
+
+  subsidiary: SubsidiaryType
+
+  documentType: OperationsDocumentEmittedDocumentTypeChoices!
+
+  serial: String
+
+  correlative: Int!
+
+  emitDate: Date
+
+  currencyType: OperationsDocumentEmittedCurrencyTypeChoices!
+
+  saleExchangeRate: Decimal!
+
+  currencyDateChange: Date
+
+  totalAmount: Decimal!
+
+  retentionType: OperationsDocumentEmittedRetentionTypeChoices!
+
+  totalRetention: Decimal!
+
+  retentionDate: Date
+
+  operationSet: [OperationType!]!
+}
+
+"""
+An enumeration.
+"""
+enum OperationsDocumentEmittedDocumentTypeChoices {
+  """
+  FACTURA
+  """
+  A_01
+
+  """
+  BOLETA
+  """
+  A_03
+
+  """
+  NOTA DE CREDITO
+  """
+  A_07
+
+  """
+  NOTA DE DEBITO
+  """
+  A_08
+
+  """
+  GUIA DE REMISION REMITENTE
+  """
+  A_09
+
+  """
+  GUÍA DE REMISIÓN TRANSPORTISTA
+  """
+  A_31
+
+  """
+  COMPROBANTE DE RETENCIÓN
+  """
+  A_20
+
+  """
+  COMPROBANTE DE PERCEPCIÓN
+  """
+  A_40
+
+  """
+  NO APLICA
+  """
+  NA
+}
+
+"""
+An enumeration.
+"""
+enum OperationsDocumentEmittedCurrencyTypeChoices {
+  """
+  SOLES
+  """
+  PEN
+
+  """
+  DÓLARES
+  """
+  USD
+
+  """
+  EUROS
+  """
+  EUR
+
+  """
+  LIBRA ESTERLINA
+  """
+  GBP
+}
+
+"""
+An enumeration.
+"""
+enum OperationsDocumentEmittedRetentionTypeChoices {
+  """
+  TASA 3%
+  """
+  A_1
+
+  """
+  TASA 6%
+  """
+  A_2
+
+  """
+  NO APLICA
+  """
+  A_0
+}
+
+type UnitType {
+  id: ID!
+
+  shortName: String
+
+  description: String
+
+  code: String
+
+  minimumUnits: [ProductType!]!
+
+  maximumUnits: [ProductType!]!
+
+  producttariffSet: [ProductTariffType!]!
+
+  operationSet: [OperationType!]!
+}
+
+type ProductType {
+  id: Int
+
+  code: String
+
+  codeSnt: String
+
+  name: String
+
+  stockMin: Int
+
+  stockMax: Int
+
+  path: String
+
+  available: Boolean!
+
+  activeType: LogisticsProductActiveTypeChoices!
+
+  ean: String
+
+  weightInKilograms: Float
+
+  maximumFactor: Int
+
+  minimumFactor: Int
+
+  minimumUnit: UnitType
+
+  maximumUnit: UnitType
+
+  typeAffectation: TypeAffectationType
+
+  subjectPerception: Boolean!
+
+  observation: String
+
+  subsidiary: SubsidiaryType
+
+  producttariffSet: [ProductTariffType!]!
+
+  totalProductTariff: Int
+
+  typeAffectationId: Int
+
+  typeAffectationName: String
+
+  minimumUnitId: Int
+
+  minimumUnitName: String
+
+  maximumUnitId: Int
+
+  maximumUnitName: String
+
+  activeTypeReadable: String
+
+  priceWithIgv1: Float
+
+  priceWithoutIgv1: Float
+
+  priceWithIgv2: Float
+
+  priceWithoutIgv2: Float
+
+  priceWithIgv3: Float
+
+  priceWithoutIgv3: Float
+
+  priceWithIgv4: Float
+
+  priceWithoutIgv4: Float
+}
+
+"""
+An enumeration.
+"""
+enum LogisticsProductActiveTypeChoices {
+  """
+  PRODUCTO
+  """
+  A_01
+
+  """
+  REGALO
+  """
+  A_02
+
+  """
+  SERVICIO
+  """
+  A_03
+
+  """
+  NO APLICA
+  """
+  NA
+}
+
+"""
+The `Float` scalar type represents signed double-precision fractional values as specified by [IEEE 754](https://en.wikipedia.org/wiki/IEEE_floating_point).
+"""
+scalar Float
+
+type TypeAffectationType {
+  id: Int
+
+  code: String
+
+  name: String
+
+  affectCode: String
+
+  affectName: String
+
+  affectType: String
+
+  productSet: [ProductType!]!
+
+  operationdetailSet: [OperationDetailType!]!
+}
+
+type OperationDetailType {
+  id: Int
+
+  operation: OperationType
+
+  productTariff: ProductTariffType
+
+  typeAffectation: TypeAffectationType
+
+  quantity: Decimal!
+
+  unitValue: Decimal!
+
+  unitPrice: Decimal!
+
+  discountPercentage: Decimal!
+
+  igvPercentage: Decimal!
+
+  perceptionPercentage: Decimal!
+
+  totalDiscount: Decimal!
+
+  totalValue: Decimal!
+
+  totalIgv: Decimal!
+
+  totalAmount: Decimal!
+
+  totalPerception: Decimal!
+
+  totalToPay: Decimal!
+
+  remainingQuantity: Float
+
+  remainingPrice: Decimal!
+
+  remainingPriceTotal: Decimal!
+
+  description: String
+
+  productId: Int
+
+  productName: String
+
+  productTariffId: Int
+
+  typeAffectationId: Int
+
+  quantityReturned: Float
+
+  quantityAvailable: Float
+}
+
+type ProductTariffType {
+  id: ID!
+
+  product: ProductType
+
+  unit: UnitType
+
+  typePrice: LogisticsProductTariffTypePriceChoices!
+
+  priceWithIgv: Decimal!
+
+  priceWithoutIgv: Decimal!
+
+  quantityMinimum: Decimal!
+
+  operationdetailSet: [OperationDetailType!]!
+
+  productId: Int
+
+  productName: String
+
+  unitId: Int
+
+  unitName: String
+
+  unitDescription: String
+
+  quantity: Float
+}
+
+"""
+An enumeration.
+"""
+enum LogisticsProductTariffTypePriceChoices {
+  """
+  NO APLICA
+  """
+  A_0
+
+  """
+  COSTO DE COMPRA UNITARIO
+  """
+  A_1
+
+  """
+  COSTO DE COMPRA AL POR MAYOR
+  """
+  A_2
+
+  """
+  PRECIO UNITARIO DE VENTA
+  """
+  A_3
+
+  """
+  PRECIO AL POR MAYOR DE VENTA
+  """
+  A_4
+}
+
+type SerialAssignedType {
+  id: Int
+
+  subsidiary: SubsidiaryType
+
+  documentType: OperationsSerialAssignedDocumentTypeChoices!
+
+  serial: String
+
+  isGeneratedViaApi: Boolean!
+
+  documentTypeReadable: String
+}
+
+"""
+An enumeration.
+"""
+enum OperationsSerialAssignedDocumentTypeChoices {
+  """
+  FACTURA
+  """
+  A_01
+
+  """
+  BOLETA
+  """
+  A_03
+
+  """
+  NOTA DE CREDITO
+  """
+  A_07
+
+  """
+  NOTA DE DEBITO
+  """
+  A_08
+
+  """
+  GUIA DE REMISION REMITENTE
+  """
+  A_09
+
+  """
+  GUÍA DE REMISIÓN TRANSPORTISTA
+  """
+  A_31
+
+  """
+  COMPROBANTE DE RETENCIÓN
+  """
+  A_20
+
+  """
+  COMPROBANTE DE PERCEPCIÓN
+  """
+  A_40
+
+  """
+  NO APLICA
+  """
+  NA
+}
+
+"""
+An enumeration.
+"""
+enum AccountingCashAccountTypeChoices {
+  """
+  CAJA
+  """
+  C
+
+  """
+  BANCO
+  """
+  B
+
+  """
+  CUENTA POR COBRAR
+  """
+  CC
+
+  """
+  CUENTA POR PAGAR
+  """
+  CP
+}
+
+"""
+An enumeration.
+"""
+enum AccountingCashCurrencyTypeChoices {
+  """
+  SOLES
+  """
+  PEN
+
+  """
+  DÓLARES
+  """
+  USD
+
+  """
+  EUROS
+  """
+  EUR
+
+  """
+  LIBRA ESTERLINA
+  """
+  GBP
+}
+
+type ChoiceWithNumericCodeType {
+  code: Int
+
+  name: String
+}
+
+type LocationType {
+  districtId: String
+
+  districtDescription: String
+
+  provinceDescription: String
+
+  departmentDescription: String
+}
+
+type ProvinceType {
+  id: String!
+
+  description: String
+}
+
+type DepartmentType {
+  id: String!
+
+  description: String
+}
+
+type ChoiceWithStringCodeType {
+  code: String
+
+  name: String
+}
+
+type CpeType {
+  xml: String
+
+  cdr: String
+
+  description: String
+}
+
+type SalesSummaryType {
+  sales: [OperationType]
+
+  totalInvoices: Float
+
+  totalSalesTickets: Float
+
+  totalCreditNotes: Float
+
+  totalDebitNotes: Float
+
+  totalNumberOfPages: Int
+
+  totalNumberOfSales: Int
+}
+
+type GuidesSummaryType {
+  guides: [OperationType]
+
+  totalNumberOfPages: Int
+
+  totalNumberOfSales: Int
+}
+
+type RetentionsSummaryType {
+  retentions: [OperationType]
+
+  totalNumberOfPages: Int
+
+  totalNumberOfSales: Int
+}
+
+type ProductDetailType {
+  remainingQuantity: Float
+
+  priceWithIgv1: Float
+
+  priceWithoutIgv1: Float
+
+  productTariffId1: Int
+
+  priceWithIgv3: Float
+
+  priceWithoutIgv3: Float
+
+  productTariffId3: Int
+
+  typeAffectationId: Int
+}
+
+type Mutation {
+  createCashFlow(description: String, subsidiaryId: Int, total: Float, transactionDate: String, transactionType: String, userId: Int): CreateCashFlowMutation
+
+  deleteCashFlow(id: ID!): DeleteCashFlowMutation
+
+  createPerson(address: String, country: String, districtId: String, documentNumber: String, documentType: String, economicActivityMain: Int, email: String, isClient: Boolean, isEnabled: Boolean, isSupplier: Boolean, names: String, phone: String, shortName: String): CreatePersonMutation
+
+  updatePerson(address: String, document: String, email: String, id: ID!, isState: Boolean, names: String, phone: String, type: String): UpdatePersonMutation
+
+  createInvoice(cliente: ClienteType, empresa: EmpresaType, items: [ItemType], sucursal: SucursalType, venta: VentaType): CreateInvoiceMutation
+
+  cancelInvoice(lowDate: Date, operationId: Int): CancelInvoiceMutation
+
+  sntPerson(document: String): SntMutation
+
+  createSale(clientId: Int = 0, commentSet: [String!], correlative: Int = 0, creditNoteType: String = "NA", currencyType: String = "PEN", descriptionSet: [String!], detractionPaymentMethod: Int = 0, detractionPercentage: Float = 0, detractionType: Int = 0, discountForItem: Float = 0, discountGlobal: Float = 0, discountPercentageGlobal: Float = 0, discountPercentageSet: [Float!], documentType: String = "NA", emitDate: Date = null, guideArrivalAddress: String = "", guideArrivalDistrictId: String = "040101", guideArrivalSerial: String = "", guideModeTransfer: String = "NA", guideOriginAddress: String = "", guideOriginDistrictId: String = "040101", guideOriginSerial: String = "", guideReasonTransfer: String = "NA", hasDetraction: Boolean = false, hasPerception: Boolean = false, hasRetention: Boolean = false, igvPercentageSet: [Float!], igvType: Int = 0, mainDriverDocumentNumber: String = "", mainDriverDocumentType: String = "1", mainDriverDriverLicense: String = "", mainDriverNames: String = "", mainVehicleLicensePlate: String = "", observation: String = "", operationType: String = "NA", othersDriversDocumentNumberSet: [String!], othersDriversDocumentTypeSet: [String!], othersDriversDriverLicenseSet: [String!], othersDriversNamesSet: [String!], othersVehiclesLicensePlateSet: [String!], parentOperationId: Int = 0, perceptionPercentage: Float = 0, perceptionPercentageSet: [Float!], perceptionType: Int = 0, productIdSet: [Int!], productTariffIdSet: [Int!], quantityPackages: Float = 0, quantitySet: [Int!], receiverDocumentNumber: String = "", receiverDocumentType: String = "1", receiverNames: String = "", relatedDocumentsCorrelativeSet: [Int!], relatedDocumentsDocumentTypeSet: [String!], relatedDocumentsSerialSet: [String!], retentionPercentage: Float = 0, retentionType: Int = 0, saleExchangeRate: Float = 0, serial: String = "", totalAmount: Float = 0, totalAmountSet: [Float!], totalDetraction: Float = 0, totalDiscount: Float = 0, totalDiscountSet: [Float!], totalExonerated: Float = 0, totalFree: Float = 0, totalIgv: Float = 0, totalIgvSet: [Float!], totalPayed: Float = 0, totalPerception: Float = 0, totalPerceptionSet: [Float!], totalRetention: Float = 0, totalSet: [Float!], totalTaxed: Float = 0, totalToPay: Float = 0, totalToPaySet: [Float!], totalTurned: Float = 0, totalUnaffected: Float = 0, totalValueSet: [Float!], totalWeight: Float = 0, transferDate: Date = null, transportationCompanyDocumentNumber: String = "", transportationCompanyDocumentType: String = "6", transportationCompanyMtcRegistrationNumber: String = "", transportationCompanyNames: String = "", typeAffectationIdSet: [Int!], unitPriceSet: [Float!], unitValueSet: [Float!], wayPaySet: [Int!], weightMeasurementUnitCode: String = "KGM"): CreateSaleMutation
+
+  createRetentionConstance(correlative: Int, emitDate: Date, observation: String, relatedDocuments: [RelatedDocumentInput], retentionType: Int, serial: String, supplierId: Int): CreateRetentionConstanceMutation
+
+  sendCpeByWhatsapp(id: Int): SendCpeByWhatsapp
+
+  createSerialAssigned(documentType: String, serial: String, subsidiaryId: Int): CreateSerialAssignedMutation
+
+  updateSerialAssigned(documentType: String, id: Int, serial: String, subsidiaryId: Int): UpdateSerialAssignedMutation
+
+  deleteSerialAssigned(id: Int): DeleteSerialAssignedMutation
+
+  registerSale(cliente: ClienteType, items: [ItemType], venta: VentaType): RegisterSaleMutation
+
+  annulInvoice(correlative: Int, serial: String): AnnulInvoiceMutation
+
+  createWarehouse(category: String, name: String, subsidiaryId: Int): CreateWarehouseMutation
+
+  updateWarehouse(category: String, id: ID!, name: String, subsidiaryId: Int): UpdateWarehouseMutation
+
+  createProduct(activeType: String, available: Boolean, code: String, ean: String, maximumFactor: Int, maximumUnitId: Int, minimumFactor: Int, minimumUnitId: Int, name: String, observation: String, priceWithIgv1: Float, priceWithIgv2: Float, priceWithIgv3: Float, priceWithIgv4: Float, priceWithoutIgv1: Float, priceWithoutIgv2: Float, priceWithoutIgv3: Float, priceWithoutIgv4: Float, subjectPerception: Boolean, typeAffectationId: Int, weightInKilograms: Float): CreateProductMutation
+
+  deleteProduct(id: ID!): DeleteProductMutation
+
+  updateProduct(activeType: String, available: Boolean, code: String, ean: String, id: ID!, maximumFactor: Int, maximumUnitId: Int, minimumFactor: Int, minimumUnitId: Int, name: String, observation: String, priceWithIgv1: Float, priceWithIgv2: Float, priceWithIgv3: Float, priceWithIgv4: Float, priceWithoutIgv1: Float, priceWithoutIgv2: Float, priceWithoutIgv3: Float, priceWithoutIgv4: Float, subjectPerception: Boolean, typeAffectationId: Int, weightInKilograms: Float): UpdateProductMutation
+
+  createUnit(code: String, description: String, shortName: String): CreateUnitMutation
+
+  updateUnit(code: String, description: String, id: ID!, shortName: String): UpdateUnitMutation
+
+  createPurchase(correlative: Int, currencyType: String, descriptionSet: [String!], discountForItem: Float, discountGlobal: Float, discountPercentageGlobal: Float, discountPercentageSet: [Float!], documentType: String, emitDate: String, igvPercentageSet: [Float!], igvType: Int, perceptionPercentageSet: [Float!], productTariffIdSet: [Int!], quantitySet: [Int!], saleExchangeRate: Float, serial: String, supplierId: Int, totalAmount: Float, totalAmountSet: [Float!], totalDiscount: Float, totalDiscountSet: [Float!], totalExonerated: Float, totalFree: Float, totalIgv: Float, totalIgvSet: [Float!], totalPayed: Float, totalPerception: Float, totalPerceptionSet: [Float!], totalSet: [Float!], totalTaxed: Float, totalToPay: Float, totalToPaySet: [Float!], totalTurned: Float, totalUnaffected: Float, totalValueSet: [Float!], typeAffectationIdSet: [Int!], unitPriceSet: [Float!], unitValueSet: [Float!], wayPaySet: [Int!]): CreatePurchaseMutation
+
+  updatePrice(id: ID!, priceWithIgv: Float, priceWithoutIgv: Float): UpdatePriceMutation
+
+  tokenAuth(email: String!, password: String!): ObtainJSONWebToken
+
+  verifyToken(token: String): Verify
+
+  refreshToken(refreshToken: String): Refresh
+
+  revokeToken(refreshToken: String): Revoke
+
+  logout(userId: Int): LogoutMutation
+
+  loginUser(email: String!, password: String!): LoginUser
+
+  qrScan(description: String!, token: String!, username: String): QrScan
+
+  createUser(avatar: String, avatarUrl: String, document: String, email: String, firstName: String, isActive: Boolean, lastName: String, password: String, phone: String, repeatPassword: String, role: String, subsidiaryId: Int): CreateUserMutation
+
+  updateUser(avatar: String, avatarUrl: String, document: String, email: String, firstName: String, id: ID!, isActive: Boolean, lastName: String, password: String, phone: String, repeatPassword: String, role: String, subsidiaryId: Int): UpdateUserMutation
+
+  accountCompany(document: String, email: String, firstName: String, lastName: String, password: String, phone: String, ruc: String): AccountCompanyMutation
+
+  createCompany(address: String, app: Boolean, businessName: String, catalog: Boolean, certification: String, certificationExpirationDate: String, certificationKey: String, deductionAccount: String, doc: String, email: String, emissionInvoiceWithPreviousDate: Int, emissionReceiptWithPreviousDate: Int, guide: Boolean, guideClientId: String, guideClientSecret: String, includeIgv: Boolean, invoiceB: Boolean, invoiceF: Boolean, isEnabled: Boolean, isProduction: Boolean, keySol: String, limit: Int, logo: String, ose: Boolean, percentageIgv: Int, phone: String, shortName: String, typeDoc: String, userSol: String, withStock: Boolean): CreateCompanyMutation
+
+  updateCompany(address: String, app: Boolean, businessName: String, catalog: Boolean, certification: String, certificationExpirationDate: String, certificationKey: String, deductionAccount: String, doc: String, email: String, emissionInvoiceWithPreviousDate: Int, emissionReceiptWithPreviousDate: Int, guide: Boolean, guideClientId: String, guideClientSecret: String, id: ID!, includeIgv: Boolean, invoiceB: Boolean, invoiceF: Boolean, isEnabled: Boolean, isProduction: Boolean, keySol: String, limit: Int, logo: String, ose: Boolean, percentageIgv: Int, phone: String, shortName: String, typeDoc: String, userSol: String, withStock: Boolean): UpdateCompanyMutation
+
+  createSubsidiary(address: String, companyId: Int, districtId: String, name: String, pdfFormatForGuides: Int, pdfFormatForInvoices: Int, pdfFormatForReceiptInvoices: Int, phone: String, serial: String): CreateSubsidiaryMutation
+
+  updateSubsidiary(address: String, companyId: Int, districtId: String, id: ID!, name: String, pdfFormatForGuides: Int, pdfFormatForInvoices: Int, pdfFormatForReceiptInvoices: Int, phone: String, serial: String): UpdateSubsidiaryMutation
+
+  deleteDevice(id: ID!): CancelDeviceMutation
+}
+
+type CreateCashFlowMutation {
+  message: String
+}
+
+type DeleteCashFlowMutation {
+  message: String
+}
+
+type CreatePersonMutation {
+  message: String
+
+  success: Boolean
+
+  person: PersonType
+}
+
+type UpdatePersonMutation {
+  message: String
+
+  success: Boolean
+}
+
+type CreateInvoiceMutation {
+  message: String
+
+  success: Boolean
+
+  operationId: Int
+}
+
+input ClienteType {
+  razonSocialNombres: String
+
+  numeroDocumento: String
+
+  codigoTipoEntidad: Int
+
+  clienteDireccion: String
+
+  clienteTelefono: String = ""
+}
+
+input EmpresaType {
+  ruc: String
+
+  razonSocial: String
+
+  nombreComercial: String
+
+  domicilioFiscal: String
+
+  modo: Int
+
+  usuSecundarioProduccionUser: String
+
+  usuSecundarioProduccionPassword: String
+
+  porcentajeIgv: Int
+}
+
+input ItemType {
+  producto: String
+
+  cantidad: Float
+
+  precioBase: Float
+
+  codigoSunat: String
+
+  codigoProducto: String
+
+  codigoUnidad: String
+
+  tipoIgvCodigo: String
+}
+
+input SucursalType {
+  ubigeo: String
+
+  serie: String
+
+  nombre: String = ""
+
+  direccion: String = ""
+
+  telefono: String = ""
+}
+
+input VentaType {
+  serie: String
+
+  numero: String
+
+  fechaEmision: String
+
+  horaEmision: String
+
+  fechaVencimiento: String
+
+  monedaId: Int
+
+  formaPagoId: Int
+
+  totalGravada: Float
+
+  totalDescuentoGlobalPorcentaje: Float
+
+  totalDescuentoGlobal: Float
+
+  totalIgv: Float
+
+  totalExonerada: Float
+
+  totalInafecta: Float
+
+  totalImporte: Float
+
+  totalAPagar: Float
+
+  tipoDocumentoCodigo: String
+
+  nota: String
+}
+
+type CancelInvoiceMutation {
+  message: String
+
+  success: Boolean
+}
+
+type SntMutation {
+  message: String
+
+  success: Boolean
+
+  person: PersonSunatType
+}
+
+type PersonSunatType {
+  sntDocument: String
+
+  sntNames: String
+
+  sntAddress: String
+
+  sntDepartment: String
+
+  sntProvince: String
+
+  sntDistrict: String
+
+  sntDriverLicense: String
+}
+
+type CreateSaleMutation {
+  message: String
+
+  error: Boolean
+}
+
+type CreateRetentionConstanceMutation {
+  message: String
+
+  error: Boolean
+}
+
+input RelatedDocumentInput {
+  documentType: String
+
+  serial: String
+
+  correlative: Int
+
+  emitDate: Date
+
+  currencyDateChange: Date
+
+  currencyType: String
+
+  saleExchangeRate: Decimal
+
+  totalAmount: Decimal
+
+  retentionType: Int
+
+  totalRetention: Decimal
+
+  retentionDate: Date
+
+  quotas: [QuotaInput]
+}
+
+input QuotaInput {
+  paymentDate: Date
+
+  number: Int
+
+  total: Decimal
+}
+
+type SendCpeByWhatsapp {
+  message: String
+
+  error: Boolean
+}
+
+type CreateSerialAssignedMutation {
+  message: String
+
+  error: Boolean
+}
+
+type UpdateSerialAssignedMutation {
+  message: String
+
+  error: Boolean
+}
+
+type DeleteSerialAssignedMutation {
+  message: String
+
+  error: Boolean
+}
+
+type RegisterSaleMutation {
+  message: String
+
+  success: Boolean
+
+  operationId: Int
+}
+
+type AnnulInvoiceMutation {
+  message: String
+
+  success: Boolean
+}
+
+type CreateWarehouseMutation {
+  message: String
+}
+
+type UpdateWarehouseMutation {
+  message: String
+}
+
+type CreateProductMutation {
+  message: String
+
+  product: ProductType
+}
+
+type DeleteProductMutation {
+  message: String
+}
+
+type UpdateProductMutation {
+  message: String
+
+  product: ProductType
+}
+
+type CreateUnitMutation {
+  message: String
+}
+
+type UpdateUnitMutation {
+  message: String
+}
+
+type CreatePurchaseMutation {
+  message: String
+
+  error: Boolean
+}
+
+type UpdatePriceMutation {
+  message: String
+
+  error: Boolean
+}
+
+type ObtainJSONWebToken {
+  payload: GenericScalar!
+
+  refreshExpiresIn: Int!
+
+  user: UserType
+
+  token: String!
+
+  refreshToken: String!
+}
+
+"""
+The `GenericScalar` scalar type represents a generic
+GraphQL scalar value that could be:
+String, Boolean, Int, Float, List or Object.
+"""
+scalar GenericScalar
+
+type Verify {
+  payload: GenericScalar!
+}
+
+type Refresh {
+  payload: GenericScalar!
+
+  refreshExpiresIn: Int!
+
+  token: String!
+
+  refreshToken: String!
+}
+
+type Revoke {
+  revoked: Int!
+}
+
+type LogoutMutation {
+  success: Boolean
+}
+
+type LoginUser {
+  success: String
+
+  error: String
+
+  user: UserType
+
+  token: String
+}
+
+type QrScan {
+  success: Boolean
+
+  message: String
+
+  company: CompanyType
+
+  subsidiary: SubsidiaryType
+
+  user: UserType
+}
+
+type CreateUserMutation {
+  message: String
+
+  success: Boolean
+}
+
+type UpdateUserMutation {
+  message: String
+}
+
+type AccountCompanyMutation {
+  message: String
+
+  success: Boolean
+}
+
+type CreateCompanyMutation {
+  message: String
+
+  success: Boolean
+}
+
+type UpdateCompanyMutation {
+  message: String
+}
+
+type CreateSubsidiaryMutation {
+  message: String
+
+  success: Boolean
+}
+
+type UpdateSubsidiaryMutation {
+  message: String
+}
+
+type CancelDeviceMutation {
+  message: String
+
+  success: Boolean
+}
+
+"""
+A GraphQL Schema defines the capabilities of a GraphQL server. It exposes all available types and directives on the server, as well as the entry points for query, mutation, and subscription operations.
+"""
+type __Schema {
+  description: String
+
+  """
+  A list of all types supported by this server.
+  """
+  types: [__Type!]!
+
+  """
+  The type that query operations will be rooted at.
+  """
+  queryType: __Type!
+
+  """
+  If this server supports mutation, the type that mutation operations will be rooted at.
+  """
+  mutationType: __Type
+
+  """
+  If this server support subscription, the type that subscription operations will be rooted at.
+  """
+  subscriptionType: __Type
+
+  """
+  A list of all directives supported by this server.
+  """
+  directives: [__Directive!]!
+}
+
+"""
+The fundamental unit of any GraphQL Schema is the type. There are many kinds of types in GraphQL as represented by the `__TypeKind` enum.
+
+Depending on the kind of a type, certain fields describe information about that type. Scalar types provide no information beyond a name, description and optional `specifiedByURL`, while Enum types provide their values. Object and Interface types provide the fields they describe. Abstract types, Union and Interface, provide the Object types possible at runtime. List and NonNull types compose other types.
+"""
+type __Type {
+  kind: __TypeKind!
+
+  name: String
+
+  description: String
+
+  specifiedByURL: String
+
+  fields(includeDeprecated: Boolean = false): [__Field!]
+
+  interfaces: [__Type!]
+
+  possibleTypes: [__Type!]
+
+  enumValues(includeDeprecated: Boolean = false): [__EnumValue!]
+
+  inputFields(includeDeprecated: Boolean = false): [__InputValue!]
+
+  ofType: __Type
+}
+
+"""
+An enum describing what kind of type a given `__Type` is.
+"""
+enum __TypeKind {
+  """
+  Indicates this type is a scalar.
+  """
+  SCALAR
+
+  """
+  Indicates this type is an object. `fields` and `interfaces` are valid fields.
+  """
+  OBJECT
+
+  """
+  Indicates this type is an interface. `fields`, `interfaces`, and `possibleTypes` are valid fields.
+  """
+  INTERFACE
+
+  """
+  Indicates this type is a union. `possibleTypes` is a valid field.
+  """
+  UNION
+
+  """
+  Indicates this type is an enum. `enumValues` is a valid field.
+  """
+  ENUM
+
+  """
+  Indicates this type is an input object. `inputFields` is a valid field.
+  """
+  INPUT_OBJECT
+
+  """
+  Indicates this type is a list. `ofType` is a valid field.
+  """
+  LIST
+
+  """
+  Indicates this type is a non-null. `ofType` is a valid field.
+  """
+  NON_NULL
+}
+
+"""
+Object and Interface types are described by a list of Fields, each of which has a name, potentially a list of arguments, and a return type.
+"""
+type __Field {
+  name: String!
+
+  description: String
+
+  args(includeDeprecated: Boolean = false): [__InputValue!]!
+
+  type: __Type!
+
+  isDeprecated: Boolean!
+
+  deprecationReason: String
+}
+
+"""
+Arguments provided to Fields or Directives and the input fields of an InputObject are represented as Input Values which describe their type and optionally a default value.
+"""
+type __InputValue {
+  name: String!
+
+  description: String
+
+  type: __Type!
+
+  """
+  A GraphQL-formatted string representing the default value for this input value.
+  """
+  defaultValue: String
+
+  isDeprecated: Boolean!
+
+  deprecationReason: String
+}
+
+"""
+One possible value for a given Enum. Enum values are unique values, not a placeholder for a string or numeric value. However an Enum value is returned in a JSON response as a string.
+"""
+type __EnumValue {
+  name: String!
+
+  description: String
+
+  isDeprecated: Boolean!
+
+  deprecationReason: String
+}
+
+"""
+A Directive provides a way to describe alternate runtime execution and type validation behavior in a GraphQL document.
+
+In some cases, you need to provide options to alter GraphQL's execution behavior in ways field arguments will not suffice, such as conditionally including or skipping a field. Directives provide this by describing additional information to the executor.
+"""
+type __Directive {
+  name: String!
+
+  description: String
+
+  isRepeatable: Boolean!
+
+  locations: [__DirectiveLocation!]!
+
+  args(includeDeprecated: Boolean = false): [__InputValue!]!
+}
+
+"""
+A Directive can be adjacent to many parts of the GraphQL language, a __DirectiveLocation describes one such possible adjacencies.
+"""
+enum __DirectiveLocation {
+  """
+  Location adjacent to a query operation.
+  """
+  QUERY
+
+  """
+  Location adjacent to a mutation operation.
+  """
+  MUTATION
+
+  """
+  Location adjacent to a subscription operation.
+  """
+  SUBSCRIPTION
+
+  """
+  Location adjacent to a field.
+  """
+  FIELD
+
+  """
+  Location adjacent to a fragment definition.
+  """
+  FRAGMENT_DEFINITION
+
+  """
+  Location adjacent to a fragment spread.
+  """
+  FRAGMENT_SPREAD
+
+  """
+  Location adjacent to an inline fragment.
+  """
+  INLINE_FRAGMENT
+
+  """
+  Location adjacent to a variable definition.
+  """
+  VARIABLE_DEFINITION
+
+  """
+  Location adjacent to a schema definition.
+  """
+  SCHEMA
+
+  """
+  Location adjacent to a scalar definition.
+  """
+  SCALAR
+
+  """
+  Location adjacent to an object type definition.
+  """
+  OBJECT
+
+  """
+  Location adjacent to a field definition.
+  """
+  FIELD_DEFINITION
+
+  """
+  Location adjacent to an argument definition.
+  """
+  ARGUMENT_DEFINITION
+
+  """
+  Location adjacent to an interface definition.
+  """
+  INTERFACE
+
+  """
+  Location adjacent to a union definition.
+  """
+  UNION
+
+  """
+  Location adjacent to an enum definition.
+  """
+  ENUM
+
+  """
+  Location adjacent to an enum value definition.
+  """
+  ENUM_VALUE
+
+  """
+  Location adjacent to an input object type definition.
+  """
+  INPUT_OBJECT
+
+  """
+  Location adjacent to an input object field definition.
+  """
+  INPUT_FIELD_DEFINITION
+}
+
+"""
+Directs the executor to include this field or fragment only when the `if` argument is true.
+"""
+directive @include ("Included when true." if: Boolean!) on FIELD|FRAGMENT_SPREAD|INLINE_FRAGMENT
+
+"""
+Directs the executor to skip this field or fragment when the `if` argument is true.
+"""
+directive @skip ("Skipped when true." if: Boolean!) on FIELD|FRAGMENT_SPREAD|INLINE_FRAGMENT
+
+"""
+Marks an element of a GraphQL schema as no longer supported.
+"""
+directive @deprecated ("Explains why this element was deprecated, usually also including a suggestion for how to access supported similar data. Formatted using the Markdown syntax, as specified by [CommonMark](https:\/\/commonmark.org\/)." reason: String = "No longer supported") on FIELD_DEFINITION|ARGUMENT_DEFINITION|INPUT_FIELD_DEFINITION|ENUM_VALUE
+
+"""
+Exposes a URL that specifies the behaviour of this scalar.
+"""
+directive @specifiedBy ("The URL that specifies the behaviour of this scalar." url: String!) on SCALAR
+
+schema {
+  query: Query
+  mutation: Mutation
 }
