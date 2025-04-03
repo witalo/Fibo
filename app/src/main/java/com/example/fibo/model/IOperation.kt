@@ -5,6 +5,7 @@ data class IOperation(
     val serial: String = "",
     val correlative: Int = 0,
     val operationType: String = "",
+    val documentTypeReadable: String = "",
     val operationStatus: String = "",
     val documentType: String = "",
     val operationDate: String = "",

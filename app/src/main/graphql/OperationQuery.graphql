@@ -3,9 +3,9 @@ query GetOperationByDateAndUserId($date: Date!, $userId: Int!) {
         id
         emitDate
         operationDate
-        operationType
         currencyType
         documentType
+        documentTypeReadable
         serial
         correlative
         totalAmount

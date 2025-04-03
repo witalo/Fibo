@@ -128,7 +128,7 @@ fun InvoiceContent(
         // Sección de Listado (70% del espacio)
         Box(
             modifier = Modifier
-                .weight(0.7f)
+                .weight(0.8f)
                 .fillMaxWidth()
         ) {
             if (invoices.isEmpty()) {
@@ -146,7 +146,7 @@ fun InvoiceContent(
         // Sección de Botones (30% del espacio)
         Column(
             modifier = Modifier
-                .weight(0.3f)
+                .weight(0.2f)
                 .fillMaxWidth(),
             verticalArrangement = Arrangement.Bottom
         ) {
@@ -196,8 +196,8 @@ fun InvoiceItem(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "#${invoice.id}",
-                    style = MaterialTheme.typography.labelLarge,
+                    text = "${invoice.serial}-${invoice.correlative}",
+                    style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary
                 )
                 Text(
@@ -225,16 +225,16 @@ fun InvoiceItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Chip(
-                    label = invoice.documentType,
-                    color = when (invoice.documentType) {
-                        "Factura" -> MaterialTheme.colorScheme.primary
-                        "Boleta" -> MaterialTheme.colorScheme.secondary
+                    label = invoice.documentTypeReadable,
+                    color = when (invoice.documentTypeReadable) {
+                        "FACTURA" -> MaterialTheme.colorScheme.tertiary
+                        "BOLETA" -> MaterialTheme.colorScheme.primary
                         else -> MaterialTheme.colorScheme.tertiary
                     }
                 )
 
                 Text(
-                    text = "S/. ${invoice.totalAmount}",
+                    text = "S/. ${invoice.totalToPay}",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
@@ -368,140 +368,3 @@ fun ErrorMessage(message: String, onRetry: () -> Unit) {
         }
     }
 }
-//@OptIn(ExperimentalMaterial3Api::class)
-//@Composable
-//fun HomeScreen(
-//    navController: NavController,
-//    homeViewModel: HomeViewModel = hiltViewModel(),
-//    onLogout: () -> Unit
-//) {
-//    val selectedDate by homeViewModel.selectedDate.collectAsState()
-//    val invoiceState by homeViewModel.invoiceState.collectAsState()
-//
-//    var isMenuOpen by remember { mutableStateOf(false) }
-//
-//    // Función para alternar el menú
-//    fun toggleMenu() {
-//        isMenuOpen = !isMenuOpen
-//    }
-//
-//    Scaffold(
-//        topBar = {
-//            AppTopBar(
-//                title = "Inicio",
-//                onMenuClick = { toggleMenu() },
-////                onMenuClick = { isMenuOpen = true },
-//                onDateSelected = { date ->
-//                    homeViewModel.updateSelectedDate(date)
-//                },
-//                currentDate = selectedDate
-//            )
-//        },
-//        content = { paddingValues ->
-//            Box(
-//                modifier = Modifier
-//                    .fillMaxSize()
-//                    .padding(paddingValues)
-//            ) {
-//                // Contenido principal
-//                when (invoiceState) {
-//                    is HomeViewModel.InvoiceState.Loading -> {
-//                        // Mostrar indicador de carga
-//                        CircularProgressIndicator()
-//                    }
-//                    is HomeViewModel.InvoiceState.Success -> {
-//                        val data = (invoiceState as HomeViewModel.InvoiceState.Success).data
-//                        // Mostrar listado de operaciones
-//                        // Implementar la interfaz para mostrar las facturas y recibos
-//
-//                        // Botones para nueva factura y nuevo recibo
-//                        Column(
-//                            modifier = Modifier
-//                                .fillMaxWidth()
-//                                .padding(16.dp)
-//                        ) {
-//                            Button(
-//                                onClick = { navController.navigate(Screen.NewInvoice.route) },
-//                                modifier = Modifier.fillMaxWidth()
-//                            ) {
-//                                Text("Nueva Factura")
-//                            }
-//
-//                            Spacer(modifier = Modifier.height(8.dp))
-//
-//                            Button(
-//                                onClick = { navController.navigate(Screen.NewReceipt.route) },
-//                                modifier = Modifier.fillMaxWidth()
-//                            ) {
-//                                Text("Nueva Boleta")
-//                            }
-//                        }
-//                    }
-//                    is HomeViewModel.InvoiceState.Error -> {
-//                        val message = (invoiceState as HomeViewModel.InvoiceState.Error).message
-//                        Text(text = "Error: $message")
-//                    }
-//                }
-//
-//                // Menú lateral
-//                SideMenu(
-//                    isOpen = isMenuOpen,
-//                    onClose = { isMenuOpen = false },
-//                    onMenuItemSelected = { option ->
-//                        when (option) {
-//                            "Nueva Factura" -> navController.navigate(Screen.NewInvoice.route)
-//                            "Nueva Boleta" -> navController.navigate(Screen.NewReceipt.route)
-//                        }
-//                        isMenuOpen = false
-//                    },
-//                    onLogout = onLogout
-//                )
-//            }
-//        }
-//    )
-//}
-//@Composable
-//fun InvoiceList(
-//    invoices: List<IOperation>,
-//    onInvoiceClick: (IOperation) -> Unit
-//) {
-//    LazyColumn(modifier = Modifier.fillMaxSize()) {
-//        itemsIndexed(items = invoices) { _, invoice ->
-//            InvoiceItem(
-//                invoice = invoice,
-//                onClick = { onInvoiceClick(invoice) }
-//            )
-//        }
-//    }
-//}
-//@Composable
-//fun InvoiceItem(
-//    invoice: IOperation,
-//    onClick: () -> Unit
-//) {
-//    Card(
-//        modifier = Modifier
-//            .fillMaxWidth()
-//            .padding(8.dp)
-//            .clickable(onClick = onClick),
-//        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-//    ) {
-//        Column(modifier = Modifier.padding(16.dp)) {
-//            Text(
-//                text = "Operación: ${invoice.id}",
-//                style = MaterialTheme.typography.titleMedium
-//            )
-//            Spacer(modifier = Modifier.height(4.dp))
-//            Text(
-//                text = "Tipo: ${invoice.documentType}",
-//                style = MaterialTheme.typography.bodyMedium
-//            )
-//            Spacer(modifier = Modifier.height(4.dp))
-//            Text(
-//                text = "Fecha: ${invoice.emitDate}",
-//                style = MaterialTheme.typography.bodySmall
-//            )
-//            // Agrega más campos según tu modelo IOperation
-//        }
-//    }
-//}
