@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Create
@@ -34,6 +36,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -346,30 +349,22 @@ fun InvoiceItem(
                         else -> MaterialTheme.colorScheme.tertiary
                     }
                 )
-                IconButton(
-                    onClick = { /* Acción al hacer clic */ },
-                    modifier = Modifier
-                        .size(40.dp) // Tamaño pequeño
-                        .background(Color.Transparent), // Fondo transparente
-                ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.whasap), // Reemplaza con tu icono
-                        contentDescription = "WhatsApp",
-                        tint = Color(0xFF25D366) // Color verde WhatsApp
-                    )
-                }
-                IconButton(
-                    onClick = { /* Acción al hacer clic */ },
+                Image(
+                    painter = painterResource(id = R.drawable.ic_whasap),
+                    contentDescription = "WHASAP",
                     modifier = Modifier
                         .size(40.dp)
-                        .background(Color.Transparent),
-                ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.pdf), // Reemplaza con tu icono
-                        contentDescription = "PDF",
-                        tint = Color(0xFFF40F02) // Color rojo PDF
-                    )
-                }
+                        .background(Color.White, CircleShape),
+                    contentScale = ContentScale.Fit
+                )
+                Image(
+                    painter = painterResource(id = R.drawable.is_pdf),
+                    contentDescription = "PDF",
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(Color.White, CircleShape),
+                    contentScale = ContentScale.Fit
+                )
                 Text(
                     text = "S/. ${invoice.totalToPay}",
                     style = MaterialTheme.typography.titleLarge,
