@@ -1,9 +1,7 @@
 package com.example.fibo.ui.screens
 
-import android.annotation.SuppressLint
-import android.os.Build
-import android.util.Log
-import androidx.annotation.RequiresApi
+import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -11,11 +9,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Create
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.outlined.Error
@@ -31,12 +27,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.fibo.viewmodels.HomeViewModel
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -46,6 +43,7 @@ import com.example.fibo.model.IOperation
 import com.example.fibo.navigation.Screen
 import com.example.fibo.ui.components.AppTopBar
 import com.example.fibo.ui.components.SideMenu
+import com.example.fibo.utils.ColorGradients
 
 
 @Composable
@@ -58,6 +56,7 @@ fun HomeScreen(
     val selectedDate by homeViewModel.selectedDate.collectAsState()
     val invoiceState by homeViewModel.invoiceState.collectAsState()
     var isMenuOpen by remember { mutableStateOf(false) }
+
 
     SideMenu(
         isOpen = isMenuOpen,
@@ -94,7 +93,8 @@ fun HomeScreen(
                         when (invoiceState) {
                             is HomeViewModel.InvoiceState.Loading -> CenterLoadingIndicator()
                             is HomeViewModel.InvoiceState.Success -> {
-                                val invoices = (invoiceState as HomeViewModel.InvoiceState.Success).data
+                                val invoices =
+                                    (invoiceState as HomeViewModel.InvoiceState.Success).data
                                 InvoiceContent(
                                     invoices = invoices,
                                     onInvoiceClick = { invoice ->
@@ -104,6 +104,7 @@ fun HomeScreen(
                                     onNewReceipt = { navController.navigate(Screen.NewReceipt.route) }
                                 )
                             }
+
                             is HomeViewModel.InvoiceState.Error -> {
                                 ErrorMessage(
                                     message = (invoiceState as HomeViewModel.InvoiceState.Error).message,
@@ -117,108 +118,7 @@ fun HomeScreen(
         }
     )
 }
-//@Composable
-//fun HomeScreen(
-//    navController: NavController,
-//    homeViewModel: HomeViewModel = hiltViewModel(),
-//    onLogout: () -> Unit
-//) {
-//    val subsidiaryData by homeViewModel.subsidiaryData.collectAsState()
-//    val selectedDate by homeViewModel.selectedDate.collectAsState()
-//    val invoiceState by homeViewModel.invoiceState.collectAsState()
-//    var isMenuOpen by remember { mutableStateOf(false) }
-//
-//    //    // Función para alternar el menú
-//    fun toggleMenu() {
-//        isMenuOpen = !isMenuOpen
-//    }
-//
-//    Scaffold(
-//        topBar = {
-//            AppTopBar(
-//                title = "Inicio",
-//                onMenuClick = { toggleMenu() },
-//                onDateSelected = { date ->
-//                    homeViewModel.updateSelectedDate(date)
-//                },
-//                currentDate = selectedDate
-//            )
-//        },
-//        content = { paddingValues ->
-////            Box(
-////                modifier = Modifier
-////                    .fillMaxSize()
-////                    .padding(paddingValues)
-////            ) {
-////                when (invoiceState) {
-////                    is HomeViewModel.InvoiceState.Loading -> {
-////                        CenterLoadingIndicator()
-////                    }
-////                    is HomeViewModel.InvoiceState.Success -> {
-////                        val invoices = (invoiceState as HomeViewModel.InvoiceState.Success).data
-////                        InvoiceContent(
-////                            invoices = invoices,
-////                            onInvoiceClick = { invoice ->
-////                                // Navegar al detalle
-////                                navController.navigate("invoice_detail/${invoice.id}")
-////                            },
-////                            onNewInvoice = { navController.navigate(Screen.NewInvoice.route) },
-////                            onNewReceipt = { navController.navigate(Screen.NewReceipt.route) }
-////                        )
-////                    }
-////                    is HomeViewModel.InvoiceState.Error -> {
-////                        ErrorMessage(
-////                            message = (invoiceState as HomeViewModel.InvoiceState.Error).message,
-////                            onRetry = { homeViewModel.loadInvoices(selectedDate) }
-////                        )
-////                    }
-////                }
-//
-//                SideMenu(
-//                    isOpen = isMenuOpen,
-//                    subsidiaryData = subsidiaryData,
-//                    onMenuItemSelected = { option ->
-//                        when (option) {
-//                            "Nueva Factura" -> navController.navigate(Screen.NewInvoice.route)
-//                            "Nueva Boleta" -> navController.navigate(Screen.NewReceipt.route)
-//                        }
-//                        isMenuOpen = false
-//                    },
-//                    onLogout = onLogout,
-//                    content = {
-//                        Box(
-//                            modifier = Modifier
-//                                .fillMaxSize()
-//                                .padding(paddingValues)
-//                                .background(MaterialTheme.colorScheme.background) // Fondo por defecto
-//                        ) {
-//                            when (invoiceState) {
-//                                is HomeViewModel.InvoiceState.Loading -> CenterLoadingIndicator()
-//                                is HomeViewModel.InvoiceState.Success -> {
-//                                    val invoices = (invoiceState as HomeViewModel.InvoiceState.Success).data
-//                                    InvoiceContent(
-//                                        invoices = invoices,
-//                                        onInvoiceClick = { invoice ->
-//                                            navController.navigate("invoice_detail/${invoice.id}")
-//                                        },
-//                                        onNewInvoice = { navController.navigate(Screen.NewInvoice.route) },
-//                                        onNewReceipt = { navController.navigate(Screen.NewReceipt.route) }
-//                                    )
-//                                }
-//                                is HomeViewModel.InvoiceState.Error -> {
-//                                    ErrorMessage(
-//                                        message = (invoiceState as HomeViewModel.InvoiceState.Error).message,
-//                                        onRetry = { homeViewModel.loadInvoices(selectedDate) }
-//                                    )
-//                                }
-//                            }
-//                        }
-//                    }
-//                )
-////            }
-//        }
-//    )
-//}
+
 @Composable
 fun InvoiceContent(
     invoices: List<IOperation>,
@@ -234,7 +134,7 @@ fun InvoiceContent(
         // Sección de Listado (70% del espacio)
         Box(
             modifier = Modifier
-                .weight(0.85f)
+                .weight(0.82f)
                 .fillMaxWidth()
         ) {
             if (invoices.isEmpty()) {
@@ -248,14 +148,14 @@ fun InvoiceContent(
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(6.dp))
 
         // Sección de Botones (30% del espacio)
         Column(
             modifier = Modifier
-                .weight(0.15f)
+                .weight(0.18f)
                 .fillMaxWidth(),
-            verticalArrangement = Arrangement.Bottom
+//            verticalArrangement = Arrangement.Bottom
         ) {
             ActionButtons(
                 onNewInvoice = onNewInvoice,
@@ -289,10 +189,11 @@ fun InvoiceItem(
     invoice: IOperation,
     onClick: () -> Unit
 ) {
+    val context = LocalContext.current
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+//            .clickable(onClick = onClick)
             // Added a border for better styling
             .border(
                 width = 1.dp,
@@ -312,14 +213,16 @@ fun InvoiceItem(
             ) {
                 Text(
                     text = "${invoice.serial}-${invoice.correlative}",
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        brush = ColorGradients.orangeFire
+                    ),
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = invoice.emitDate,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                 )
             }
 
@@ -328,7 +231,7 @@ fun InvoiceItem(
             invoice.client.names?.let {
                 Text(
                     text = it,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleSmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -343,31 +246,51 @@ fun InvoiceItem(
             ) {
                 Chip(
                     label = invoice.documentTypeReadable,
-                    color = when (invoice.documentTypeReadable) {
-                        "FACTURA" -> MaterialTheme.colorScheme.tertiary
-                        "BOLETA" -> MaterialTheme.colorScheme.primary
-                        else -> MaterialTheme.colorScheme.tertiary
+                    gradient = when (invoice.documentTypeReadable) {
+                        "FACTURA" -> ColorGradients.greenEmerald
+                        "BOLETA" -> ColorGradients.purpleDeep
+                        else -> ColorGradients.greenNature
                     }
                 )
-                Image(
-                    painter = painterResource(id = R.drawable.ic_whasap),
-                    contentDescription = "WHASAP",
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(Color.White, CircleShape),
-                    contentScale = ContentScale.Fit
-                )
-                Image(
-                    painter = painterResource(id = R.drawable.is_pdf),
-                    contentDescription = "PDF",
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(Color.White, CircleShape),
-                    contentScale = ContentScale.Fit
-                )
+                IconButton(
+                    onClick = {
+                        Toast.makeText(
+                            context,
+                            "Compartiendo por WhatsApp",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    },
+                    modifier = Modifier.size(40.dp) // Tamaño del área clickeable
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_whasap),
+                        contentDescription = "PDF",
+                        modifier = Modifier.size(30.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                }
+                IconButton(
+                    onClick = {
+                        Toast.makeText(
+                            context,
+                            "Abriendo el PDF",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    },
+                    modifier = Modifier.size(40.dp) // Tamaño del área clickeable
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_pdf),
+                        contentDescription = "PDF",
+                        modifier = Modifier.size(25.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                }
                 Text(
                     text = "S/. ${invoice.totalToPay}",
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        brush = ColorGradients.goldLuxury
+                    ),
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -375,67 +298,179 @@ fun InvoiceItem(
         }
     }
 }
+
 @Composable
 fun ActionButtons(
     onNewInvoice: () -> Unit,
     onNewReceipt: () -> Unit
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(2.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        FilledTonalButton(
+        // Botón Nueva Factura - Versión mejorada
+        ElevatedButton(
             onClick = onNewInvoice,
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.filledTonalButtonColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(45.dp),
+            colors = ButtonDefaults.elevatedButtonColors(
+                containerColor = Color(0xFF4A6FA5),  // Azul profesional
+                contentColor = Color.White
+            ),
+            elevation = ButtonDefaults.elevatedButtonElevation(
+                defaultElevation = 6.dp,
+                pressedElevation = 2.dp
+            ),
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(
+                width = 1.dp,
+                color = Color(0xFFFFFFFF).copy(alpha = 0.3f)
             )
         ) {
-            Icon(
-                imageVector = Icons.Default.ReceiptLong,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Nueva Factura")
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ReceiptLong,
+                    contentDescription = "Nueva Factura",
+                    modifier = Modifier.size(22.dp),
+                    tint = Color.White
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "Nueva Factura",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Icon(
+                    imageVector = Icons.Filled.ArrowForward,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = Color.White.copy(alpha = 0.8f)
+                )
+            }
         }
 
-        FilledTonalButton(
+        // Botón Nueva Boleta - Versión mejorada
+        ElevatedButton(
             onClick = onNewReceipt,
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.filledTonalButtonColors(
-                containerColor = MaterialTheme.colorScheme.secondaryContainer
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(45.dp),
+            colors = ButtonDefaults.elevatedButtonColors(
+                containerColor = Color(0xFF6A8C72),  // Verde profesional
+                contentColor = Color.White
+            ),
+            elevation = ButtonDefaults.elevatedButtonElevation(
+                defaultElevation = 6.dp,
+                pressedElevation = 2.dp
+            ),
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(
+                width = 1.dp,
+                color = Color(0xFFFFFFFF).copy(alpha = 0.3f)
             )
         ) {
-            Icon(
-                imageVector = Icons.Default.Receipt,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Nueva Boleta")
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Receipt,
+                    contentDescription = "Nueva Boleta",
+                    modifier = Modifier.size(22.dp),
+                    tint = Color.White
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "Nueva Boleta",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Icon(
+                    imageVector = Icons.Filled.ArrowForward,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = Color.White.copy(alpha = 0.8f)
+                )
+            }
         }
     }
 }
+//@Composable
+//fun ActionButtons(
+//    onNewInvoice: () -> Unit,
+//    onNewReceipt: () -> Unit
+//) {
+//    Column(
+//        modifier = Modifier.fillMaxWidth(),
+//        verticalArrangement = Arrangement.spacedBy(2.dp)
+//    ) {
+//        FilledTonalButton(
+//            onClick = onNewInvoice,
+//            modifier = Modifier.fillMaxWidth(),
+//            colors = ButtonDefaults.filledTonalButtonColors(
+//                containerColor = MaterialTheme.colorScheme.primaryContainer
+//            )
+//        ) {
+//            Icon(
+//                imageVector = Icons.Default.ReceiptLong,
+//                contentDescription = null,
+//                modifier = Modifier.size(18.dp)
+//            )
+//            Spacer(modifier = Modifier.width(8.dp))
+//            Text("Nueva Factura")
+//        }
+//
+//        FilledTonalButton(
+//            onClick = onNewReceipt,
+//            modifier = Modifier.fillMaxWidth(),
+//            colors = ButtonDefaults.filledTonalButtonColors(
+//                containerColor = MaterialTheme.colorScheme.secondaryContainer
+//            )
+//        ) {
+//            Icon(
+//                imageVector = Icons.Default.Receipt,
+//                contentDescription = null,
+//                modifier = Modifier.size(18.dp)
+//            )
+//            Spacer(modifier = Modifier.width(8.dp))
+//            Text("Nueva Boleta")
+//        }
+//    }
+//}
 
 @Composable
 fun Chip(
     label: String,
-    color: Color
+    gradient: Brush // Mantenemos Brush pero con otro nombre
 ) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(16.dp))
-            .background(color.copy(alpha = 0.2f))
+            .background(Color.White.copy(alpha = 0.1f)) // Fondo transparente
+//            .border(
+//                width = 1.dp,
+//                brush = gradient, // Borde con el gradiente
+//                shape = RoundedCornerShape(16.dp)
+//            )
             .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
         Text(
             text = label,
-            color = color,
-            style = MaterialTheme.typography.labelMedium
+            style = MaterialTheme.typography.labelMedium.copy(
+                brush = gradient
+            )
         )
     }
 }
+
 
 @Composable
 fun CenterLoadingIndicator() {
