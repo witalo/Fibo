@@ -5,7 +5,8 @@ data class IPerson(
     val names: String? = null,
     val documentNumber: String? = null,
     val email: String? = null,
-    val phone: String? = null
+    val phone: String? = null,
+    val address: String? = null
 ) {
     // Puedes añadir funciones de ayuda si lo necesitas
     fun getFullIdentification(): String {

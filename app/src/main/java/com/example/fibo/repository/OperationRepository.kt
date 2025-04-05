@@ -63,4 +63,41 @@ class OperationRepository @Inject constructor(
             }
             return String.format("%.2f", value).toDouble()
     }
+
+
+
+
+    suspend fun createInvoice(operation: IOperation): Int {
+        // 1. Convertir IOperation a un input de GraphQL (depende de tu esquema)
+//        val createInvoiceInput = buildCreateInvoiceInput(operation)
+//
+//        // 2. Ejecutar la mutación GraphQL
+//        val mutation = CreateInvoiceMutation(createInvoiceInput)
+//        val response = apolloClient.mutation(mutation).execute()
+//
+//        // 3. Verificar errores
+//        if (response.hasErrors()) {
+//            throw Exception("Error al crear factura: ${response.errors?.firstOrNull()?.message}")
+//        }
+//
+//        // 4. Retornar el ID de la factura creada (ajusta según tu esquema GraphQL)
+//        return response.data?.createInvoice?.id?.toInt()
+//            ?: throw Exception("No se pudo obtener el ID de la factura")
+        return 0
+    }
+
+//    private fun buildCreateInvoiceInput(operation: IOperation): CreateInvoiceInput {
+        // Convierte IOperation al formato que espera tu API GraphQL
+//        return CreateInvoiceInput(
+//            clientId = operation.client.id,
+//            products = operation.operationDetailSet.map { detail ->
+//                ProductInput(
+//                    id = detail.productId,
+//                    quantity = detail.quantity,
+//                    unitPrice = detail.unitPrice
+//                )
+//            }
+//            // ... otros campos necesarios
+//        )
+//    }
 }

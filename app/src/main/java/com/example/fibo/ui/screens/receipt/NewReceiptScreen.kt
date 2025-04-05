@@ -14,7 +14,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.example.fibo.ui.screens.invoice.InvoiceFormData
 import com.example.fibo.viewmodels.NewInvoiceViewModel
 import com.example.fibo.viewmodels.NewReceiptViewModel
 
