@@ -8,6 +8,7 @@ import com.example.fibo.datastore.PreferencesManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import com.example.fibo.model.IOperation
+import com.example.fibo.model.ISubsidiary
 import com.example.fibo.repository.OperationRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,6 +32,7 @@ class HomeViewModel @Inject constructor(
 
     // Store the userId when available
     private var currentUserId: Int? = null
+    val subsidiaryData: StateFlow<ISubsidiary?> = preferencesManager.subsidiaryData
 
     init {
         // Set up user data collection
@@ -43,6 +45,7 @@ class HomeViewModel @Inject constructor(
                 }
             }
         }
+
     }
 
     fun updateSelectedDate(date: String) {
