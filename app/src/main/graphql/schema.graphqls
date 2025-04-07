@@ -7,7 +7,7 @@ type Query {
 
   searchGeographicLocationCode(search: String): [LocationType]
 
-  searchClientByParameter(search: String, documentType: String): [PersonType]
+  searchClientByParameter(search: String, documentType: String, operationDocumentType: String, isClient: Boolean, isDriver: Boolean, isSupplier: Boolean, isReceiver: Boolean): [PersonType]
 
   districtsByProvinceId(provinceId: String): [DistrictType]
 
@@ -51,11 +51,15 @@ type Query {
 
   allGuides(subsidiaryId: Int, startDate: Date, endDate: Date, documentType: String, page: Int, pageSize: Int): GuidesSummaryType
 
+  allQuotes(subsidiaryId: Int, startDate: Date, endDate: Date, documentType: String, page: Int, pageSize: Int): QuotesSummaryType
+
   allRetentions(subsidiaryId: Int, startDate: Date, endDate: Date, documentType: String, page: Int, pageSize: Int): RetentionsSummaryType
 
   allSerials(subsidiaryId: Int): [SerialAssignedType]
 
   operationsApp(date: Date, userId: Int): [OperationType]
+
+  clientById(clientId: ID): PersonType
 
   allWarehouses(subsidiaryId: Int, category: String): [WarehouseType]
 
@@ -78,6 +82,8 @@ type Query {
   productDetailByProductId(productId: Int): ProductDetailType
 
   allPurchases(supplierId: Int, startDate: Date, endDate: Date): [OperationType]
+
+  searchProduct(search: String, subsidiaryId: Int, first: Int): [ProductType]
 
   myProfile: UserType
 
@@ -271,6 +277,8 @@ type CompanyType {
   createdAt: DateTime!
 
   updatedAt: DateTime!
+
+  accountNumber: String
 
   subsidiarySet: [SubsidiaryType!]!
 }
@@ -1914,6 +1922,16 @@ enum OperationsOperationDocumentTypeChoices {
   A_40
 
   """
+  COMPROBANTE DE OPERACIONES
+  """
+  A_48
+
+  """
+  NOTA DE AJUSTE DE OPERACIONES
+  """
+  A_89
+
+  """
   NO APLICA
   """
   NA
@@ -3133,6 +3151,16 @@ enum OperationsDocumentEmittedDocumentTypeChoices {
   A_40
 
   """
+  COMPROBANTE DE OPERACIONES
+  """
+  A_48
+
+  """
+  NOTA DE AJUSTE DE OPERACIONES
+  """
+  A_89
+
+  """
   NO APLICA
   """
   NA
@@ -3496,6 +3524,16 @@ enum OperationsSerialAssignedDocumentTypeChoices {
   A_40
 
   """
+  COMPROBANTE DE OPERACIONES
+  """
+  A_48
+
+  """
+  NOTA DE AJUSTE DE OPERACIONES
+  """
+  A_89
+
+  """
   NO APLICA
   """
   NA
@@ -3617,6 +3655,14 @@ type GuidesSummaryType {
   totalNumberOfSales: Int
 }
 
+type QuotesSummaryType {
+  quotes: [OperationType]
+
+  totalNumberOfPages: Int
+
+  totalNumberOfSales: Int
+}
+
 type RetentionsSummaryType {
   retentions: [OperationType]
 
@@ -3650,7 +3696,7 @@ type Mutation {
 
   createPerson(address: String, country: String, districtId: String, documentNumber: String, documentType: String, economicActivityMain: Int, email: String, isClient: Boolean, isEnabled: Boolean, isSupplier: Boolean, names: String, phone: String, shortName: String): CreatePersonMutation
 
-  updatePerson(address: String, document: String, email: String, id: ID!, isState: Boolean, names: String, phone: String, type: String): UpdatePersonMutation
+  updatePerson(address: String, country: String, districtId: String, documentNumber: String, documentType: String, economicActivityMain: Int, email: String, id: ID!, isClient: Boolean, isEnabled: Boolean, isSupplier: Boolean, names: String, phone: String, shortName: String): UpdatePersonMutation
 
   createInvoice(cliente: ClienteType, empresa: EmpresaType, items: [ItemType], sucursal: SucursalType, venta: VentaType): CreateInvoiceMutation
 
@@ -3743,6 +3789,8 @@ type UpdatePersonMutation {
   message: String
 
   success: Boolean
+
+  person: PersonType
 }
 
 type CreateInvoiceMutation {
@@ -3857,6 +3905,8 @@ type SntMutation {
   message: String
 
   success: Boolean
+
+  status: Boolean
 
   person: PersonSunatType
 }

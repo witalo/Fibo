@@ -5,7 +5,10 @@ import android.util.Log
 import com.example.fibo.model.IOperation
 import com.apollographql.apollo3.ApolloClient
 import com.example.fibo.GetOperationByDateAndUserIdQuery
+import com.example.fibo.SearchProductsQuery
+import com.example.fibo.SntPersonMutation
 import com.example.fibo.model.IPerson
+import com.example.fibo.model.IProduct
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -64,8 +67,61 @@ class OperationRepository @Inject constructor(
             return String.format("%.2f", value).toDouble()
     }
 
+    suspend fun getSntPerson(document: String): Result<IPerson> {
+        return runCatching {
+            val mutation = SntPersonMutation(document = document)
+            val response = apolloClient.mutation(mutation).execute()
 
+            if (response.hasErrors()) {
+                val errorMessages = response.errors?.joinToString { it.message } ?: "Error desconocido"
+                throw RuntimeException("Error en la mutación: $errorMessages")
+            }
 
+            val personData = response.data?.sntPerson?.person
+            if (personData == null || response.data?.sntPerson?.status != true) {
+                val errorMessage = response.data?.sntPerson?.message ?: "No se encontraron datos del cliente"
+                throw RuntimeException(errorMessage)
+            }
+
+            IPerson(
+                id = 0,
+                names = personData.sntNames.orEmpty(),
+                documentNumber = document,
+                phone = "",
+                email = "",
+                address = personData.sntAddress.orEmpty()
+            )
+        }
+    }
+    suspend fun searchProducts(query: String, subsidiaryId: Int): List<IProduct> {
+        return try {
+            val response = apolloClient.query(
+                SearchProductsQuery(query = query, subsidiaryId = subsidiaryId)
+            ).execute()
+
+            if (response.hasErrors()) {
+                val errorMessage = response.errors?.joinToString { it.message } ?: "Error desconocido"
+                throw Exception("Error al buscar productos: $errorMessage")
+            }
+
+            response.data?.searchProduct?.filterNotNull()?.map { product ->
+                IProduct(
+                    id = product.id!!,
+                    code = product.code.orEmpty(),
+                    name = product.name.orEmpty(),
+                    priceWithIgv3 = 0.0,
+                    priceWithoutIgv3 = 0.0,
+                    productTariffId3 = 0,
+                    remainingQuantity = 0.0,
+                    typeAffectationId = 0
+                )
+            } ?: emptyList()
+        } catch (e: Exception) {
+            // Log del error si es necesario
+            println("Error en searchProducts: ${e.message}")
+            emptyList()
+        }
+    }
 
     suspend fun createInvoice(operation: IOperation): Int {
         // 1. Convertir IOperation a un input de GraphQL (depende de tu esquema)

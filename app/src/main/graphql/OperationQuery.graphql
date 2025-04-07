@@ -39,3 +39,10 @@ query GetOperationByDateAndUserId($date: Date!, $userId: Int!) {
     }
 
 }
+query SearchProducts($query: String!, $subsidiaryId: Int!) {
+    searchProduct(search: $query, subsidiaryId: $subsidiaryId, first: 50) {
+                id
+                code
+                name
+    }
+}

@@ -35,6 +35,24 @@ object ColorGradients {
             Color(0xFF1CB5E0),
             Color(0xFF000046))
     )
+    val blueButtonGradient = Brush.linearGradient(
+        colors = listOf(
+        Color(0xFF1085F8),  // Azul claro
+        Color(0xFF1174D5),  // Azul medio
+        Color(0xFF1069BE)   // Azul oscuro
+        ),
+        start = Offset(100f, 0f),  // Ajuste para que el degradado no sea muy brusco
+        end = Offset(0f, 100f)
+    )
+
+    val blueButton = Brush.verticalGradient(
+        colors = listOf(
+            Color(0xFF2078C5),
+            Color(0xFF1E71B9),
+            Color(0xFF135893),
+            Color(0xFF093B67),
+            Color(0xFF000046))
+    )
 
     // Gradientes Rojos
     val redPassion = Brush.linearGradient(
