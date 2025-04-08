@@ -5,11 +5,12 @@ import android.util.Log
 import com.example.fibo.model.IOperation
 import com.apollographql.apollo3.ApolloClient
 import com.example.fibo.GetOperationByDateAndUserIdQuery
-import com.example.fibo.GetProductByIdQuery
+import com.example.fibo.GetTariffByProductIdQuery
 import com.example.fibo.SearchProductsQuery
 import com.example.fibo.SntPersonMutation
 import com.example.fibo.model.IPerson
 import com.example.fibo.model.IProduct
+import com.example.fibo.model.ITariff
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -28,7 +29,7 @@ class OperationRepository @Inject constructor(
                 documentType = o.documentType.toString(),
                 documentTypeReadable = o.documentTypeReadable.toString(),
                 emitDate = o.emitDate!!.toString(),
-                serial = o.serial?: "",
+                serial = o.serial ?: "",
                 correlative = o.correlative ?: 0,
                 totalAmount = o.totalAmount.toSafeDouble(),
                 totalTaxed = o.totalTaxed.toSafeDouble(),
@@ -53,19 +54,20 @@ class OperationRepository @Inject constructor(
         } ?: emptyList()
 
     }
+
     // Funciones de extensión para conversión segura
     @SuppressLint("DefaultLocale")
     private fun Any?.toSafeDouble(): Double {
-            val value = when (this) {
-                is Double -> this
-                is Float -> this.toDouble()
-                is Int -> this.toDouble()
-                is Long -> this.toDouble()
-                is String -> this.toDoubleOrNull() ?: 0.0
-                is Number -> this.toDouble()
-                else -> 0.0
-            }
-            return String.format("%.2f", value).toDouble()
+        val value = when (this) {
+            is Double -> this
+            is Float -> this.toDouble()
+            is Int -> this.toDouble()
+            is Long -> this.toDouble()
+            is String -> this.toDoubleOrNull() ?: 0.0
+            is Number -> this.toDouble()
+            else -> 0.0
+        }
+        return String.format("%.2f", value).toDouble()
     }
 
     suspend fun getSntPerson(document: String): Result<IPerson> {
@@ -74,13 +76,15 @@ class OperationRepository @Inject constructor(
             val response = apolloClient.mutation(mutation).execute()
 
             if (response.hasErrors()) {
-                val errorMessages = response.errors?.joinToString { it.message } ?: "Error desconocido"
+                val errorMessages =
+                    response.errors?.joinToString { it.message } ?: "Error desconocido"
                 throw RuntimeException("Error en la mutación: $errorMessages")
             }
 
             val personData = response.data?.sntPerson?.person
             if (personData == null || response.data?.sntPerson?.status != true) {
-                val errorMessage = response.data?.sntPerson?.message ?: "No se encontraron datos del cliente"
+                val errorMessage =
+                    response.data?.sntPerson?.message ?: "No se encontraron datos del cliente"
                 throw RuntimeException(errorMessage)
             }
 
@@ -94,6 +98,7 @@ class OperationRepository @Inject constructor(
             )
         }
     }
+
     suspend fun searchProducts(query: String, subsidiaryId: Int): List<IProduct> {
         return try {
             val response = apolloClient.query(
@@ -101,7 +106,8 @@ class OperationRepository @Inject constructor(
             ).execute()
 
             if (response.hasErrors()) {
-                val errorMessage = response.errors?.joinToString { it.message } ?: "Error desconocido"
+                val errorMessage =
+                    response.errors?.joinToString { it.message } ?: "Error desconocido"
                 throw Exception("Error al buscar productos: $errorMessage")
             }
 
@@ -110,11 +116,6 @@ class OperationRepository @Inject constructor(
                     id = product.id!!,
                     code = product.code.orEmpty(),
                     name = product.name.orEmpty(),
-                    priceWithIgv3 = 0.0,
-                    priceWithoutIgv3 = 0.0,
-                    productTariffId3 = 0,
-                    remainingQuantity = 0.0,
-                    typeAffectationId = 0
                 )
             } ?: emptyList()
         } catch (e: Exception) {
@@ -123,30 +124,39 @@ class OperationRepository @Inject constructor(
             emptyList()
         }
     }
-    suspend fun getProductTariffByProductID(productId: Int): IProduct {
+
+    suspend fun getTariffByProductID(productId: Int, subsidiaryId: Int): ITariff {
         return try {
-            val response = apolloClient.query(GetProductByIdQuery(pk = productId.toString())).execute()
+            val response = apolloClient.query(
+                GetTariffByProductIdQuery(
+                    productId = productId,
+                    subsidiaryId = subsidiaryId
+                )
+            ).execute()
 
             if (response.hasErrors()) {
-                val errorMessages = response.errors?.joinToString { it.message } ?: "Error desconocido"
+                val errorMessages =
+                    response.errors?.joinToString { it.message } ?: "Error desconocido"
                 throw RuntimeException("Error en la consulta: $errorMessages")
             }
 
-            val productData = response.data?.productById
-                ?: throw RuntimeException("No se encontraron datos del producto")
+            val tariffData = response.data?.tariffByProductId
+                ?: throw RuntimeException("No se encontraron precios del producto")
 
-            IProduct(
-                id = productData.id ?: 0,
-                code = productData.code.orEmpty(),
-                name = productData.name.orEmpty(),
-                priceWithIgv3 = productData.priceWithIgv3 ?: 0.0,
-                priceWithoutIgv3 = productData.priceWithoutIgv3 ?: 0.0,
-                productTariffId3 = 0, // Asignar valor correcto si lo tienes
-                remainingQuantity = 0.0, // Asignar si aplica
-                typeAffectationId = productData.typeAffectationId ?: 0
+            ITariff(
+                productId = tariffData.productId ?: 0,
+                productCode = tariffData.productCode.orEmpty(),
+                productName = tariffData.productName.orEmpty(),
+                unitId = tariffData.unitId ?: 0,
+                unitName = tariffData.unitName.orEmpty(),
+                remainingQuantity = tariffData.remainingQuantity ?: 0.0,
+                priceWithIgv = tariffData.priceWithIgv ?: 0.0,
+                priceWithoutIgv = tariffData.priceWithoutIgv ?: 0.0,
+                productTariffId = tariffData.productTariffId ?: 0,
+                typeAffectationId = tariffData.typeAffectationId ?: 0
             )
         } catch (e: Exception) {
-            println("Error en getProductTariffByProductID: ${e.message}")
+            println("Error en GetTariffByProductIdQuery: ${e.message}")
             throw e // o puedes retornar un IProduct default si lo prefieres
         }
     }
@@ -171,7 +181,7 @@ class OperationRepository @Inject constructor(
     }
 
 //    private fun buildCreateInvoiceInput(operation: IOperation): CreateInvoiceInput {
-        // Convierte IOperation al formato que espera tu API GraphQL
+    // Convierte IOperation al formato que espera tu API GraphQL
 //        return CreateInvoiceInput(
 //            clientId = operation.client.id,
 //            products = operation.operationDetailSet.map { detail ->

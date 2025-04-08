@@ -9,6 +9,7 @@ import com.example.fibo.model.IPerson
 import com.example.fibo.model.IProduct
 import com.example.fibo.model.IProductTariff
 import com.example.fibo.model.ISubsidiary
+import com.example.fibo.model.ITariff
 import com.example.fibo.repository.OperationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
@@ -35,8 +36,8 @@ class NewInvoiceViewModel @Inject constructor(
     private val _searchState = MutableStateFlow<ProductSearchState>(ProductSearchState.Idle)
     val searchState: StateFlow<ProductSearchState> = _searchState.asStateFlow()
 
-    private val _selectedProduct = MutableStateFlow<IProduct?>(null)
-    val selectedProduct: StateFlow<IProduct?> = _selectedProduct.asStateFlow()
+    private val _selectedProduct = MutableStateFlow<ITariff?>(null)
+    val selectedProduct: StateFlow<ITariff?> = _selectedProduct.asStateFlow()
 
     private val _searchResults = MutableStateFlow<List<IProduct>>(emptyList())
     val searchResults: StateFlow<List<IProduct>> = _searchResults.asStateFlow()
@@ -117,15 +118,15 @@ class NewInvoiceViewModel @Inject constructor(
         }
     }
 
-    fun fetchProductDetails(productId: Int) {
+    fun getTariff(productId: Int, subsidiaryId: Int) {
         viewModelScope.launch {
             _isLoading.value = true
             try {
                 // Consulta completa que devuelve todos los datos del producto
-//                val product = operationRepository.getProductDetails(productId)
-//                _selectedProduct.value = product
+                val tariff = operationRepository.getTariffByProductID(productId=productId, subsidiaryId = subsidiaryId)
+                _selectedProduct.value = tariff
             } catch (e: Exception) {
-                _error.value = "Error al obtener detalles del producto: ${e.message}"
+                _error.value = "Error al obtener tarifas del producto: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
@@ -161,7 +162,7 @@ class NewInvoiceViewModel @Inject constructor(
     fun clearError() {
         _error.value = null
     }
-    fun selectProduct(product: IProduct) {
+    fun selectProduct(product: ITariff) {
         _selectedProduct.value = product
     }
 

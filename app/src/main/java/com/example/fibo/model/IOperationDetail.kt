@@ -2,7 +2,7 @@ package com.example.fibo.model
 
 data class IOperationDetail(
     val id: Int,
-    val productTariff: IProductTariff,
+    val tariff: ITariff,
     val quantity: String,
     val price: String,
     val unitValue: Double = 0.0,

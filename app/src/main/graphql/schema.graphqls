@@ -85,6 +85,8 @@ type Query {
 
   searchProduct(search: String, subsidiaryId: Int, first: Int): [ProductType]
 
+  tariffByProductId(productId: Int, subsidiaryId: Int): TariffType
+
   myProfile: UserType
 
   userById(pk: ID): UserType
@@ -3685,6 +3687,28 @@ type ProductDetailType {
   priceWithoutIgv3: Float
 
   productTariffId3: Int
+
+  typeAffectationId: Int
+}
+
+type TariffType {
+  productId: Int
+
+  productCode: String
+
+  productName: String
+
+  unitId: Int
+
+  unitName: String
+
+  remainingQuantity: Float
+
+  priceWithIgv: Float
+
+  priceWithoutIgv: Float
+
+  productTariffId: Int
 
   typeAffectationId: Int
 }
