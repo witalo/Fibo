@@ -1,7 +1,6 @@
 package com.example.fibo.ui.screens.invoice
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -11,9 +10,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -22,7 +20,11 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Inventory
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -36,13 +38,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.fibo.viewmodels.NewInvoiceViewModel
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -569,39 +568,38 @@ fun AddProductDialog(
     viewModel: NewInvoiceViewModel,
     subsidiaryId: Int = 0
 ) {
-    var localQuery by remember { mutableStateOf("") }
+    var searchQuery by remember { mutableStateOf("") }
     val searchState by viewModel.searchState.collectAsState()
     val selectedProduct by viewModel.selectedProduct.collectAsState()
-    val searchResults by viewModel.searchResults.collectAsState()
 
+    // Estados para el producto seleccionado
     var quantity by remember { mutableStateOf("1") }
     var discount by remember { mutableStateOf("0.00") }
-    val price = remember(selectedProduct) {
-        selectedProduct?.priceWithIgv3?.toString() ?: "0.00"
+
+    // Precios con IGV y sin IGV (se actualizan cuando se selecciona un producto)
+    var priceWithIgv by remember(selectedProduct) {
+        mutableStateOf(selectedProduct?.priceWithIgv3?.toString() ?: "0.00")
+    }
+    var priceWithoutIgv by remember(selectedProduct) {
+        mutableStateOf(selectedProduct?.priceWithoutIgv3?.toString() ?: "0.00")
     }
 
-    // Cálculos optimizados
-    val (totalValue, totalIgv, totalWithDiscount) = remember(quantity, price, discount) {
-        val qty = quantity.toDoubleOrNull() ?: 1.0
-        val priceVal = price.toDoubleOrNull() ?: 0.0
-        val discountVal = discount.toDoubleOrNull() ?: 0.0
-        val igvPercentage = 0.18
+    // Cálculos para el resumen
+    val qtyValue = quantity.toDoubleOrNull() ?: 1.0
+    val priceValue = priceWithIgv.toDoubleOrNull() ?: 0.0
+    val priceWithoutIgvValue = priceWithoutIgv.toDoubleOrNull() ?: 0.0
+    val discountValue = discount.toDoubleOrNull() ?: 0.0
 
-        val unitValue = priceVal / (1 + igvPercentage)
-        val subtotal = unitValue * qty
-        val igv = subtotal * igvPercentage
-        val total = (subtotal + igv) - discountVal
+    val igvPercentage = 0.18
+    val subtotal = priceWithoutIgvValue * qtyValue
+    val igvAmount = subtotal * igvPercentage
+    val total = subtotal + igvAmount - discountValue
 
-        Triple(subtotal, igv, total)
-    }
-
-    // Búsqueda con debounce
-    LaunchedEffect(localQuery) {
-        if (localQuery.length >= 3) {
+    // Debounce para la búsqueda
+    LaunchedEffect(searchQuery) {
+        if (searchQuery.length >= 3) {
             delay(350) // Tiempo de debounce
-            viewModel.searchProducts(localQuery, subsidiaryId)
-        } else {
-            viewModel.clearProductSelection()
+            viewModel.searchProductsByQuery(searchQuery, subsidiaryId)
         }
     }
 
@@ -609,14 +607,12 @@ fun AddProductDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        Card(
+        Surface(
             modifier = Modifier
                 .fillMaxWidth(0.95f)
-                .heightIn(max = 600.dp),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(8.dp)
-            )
+                .heightIn(max = 650.dp),
+            shape = RoundedCornerShape(24.dp),
+            tonalElevation = 6.dp
         ) {
             Column(
                 modifier = Modifier
@@ -624,135 +620,141 @@ fun AddProductDialog(
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
             ) {
-                // Header con título y botón de cerrar
+                // Encabezado del diálogo
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         "Agregar Producto",
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Bold
                         )
                     )
 
                     IconButton(
                         onClick = onDismiss,
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                shape = CircleShape
+                            )
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Close,
+                            Icons.Default.Close,
                             contentDescription = "Cerrar",
-                            tint = MaterialTheme.colorScheme.onSurface
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-                // Campo de búsqueda mejorado
-                SearchTextField(
-                    query = localQuery,
-                    onQueryChange = { localQuery = it },
-                    modifier = Modifier.fillMaxWidth()
+                // Campo de búsqueda con autocompletado
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Buscar por nombre o código") },
+                    placeholder = { Text("Ingrese al menos 3 caracteres") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Buscar",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Limpiar",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Resultados de búsqueda con animación
+                // Resultados de la búsqueda
                 AnimatedVisibility(
-                    visible = localQuery.isNotEmpty() && selectedProduct == null,
+                    visible = searchQuery.length >= 3 && selectedProduct == null,
                     enter = fadeIn() + expandVertically(),
                     exit = fadeOut() + shrinkVertically()
                 ) {
-                    when (searchState) {
-                        is ProductSearchState.Loading -> {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(100.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(32.dp),
-                                    color = MaterialTheme.colorScheme.primary,
-                                    strokeWidth = 3.dp
-                                )
-                            }
-                        }
-
-                        is ProductSearchState.Success -> {
-                            LazyColumn(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(max = 250.dp)
-                                    .border(
-                                        width = 1.dp,
-                                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                                        shape = RoundedCornerShape(12.dp)
-                                    )
-                                    .clip(RoundedCornerShape(12.dp))
-                            ) {
-                                items(searchResults) { product ->
-                                    ProductSuggestionItem(
-                                        product = product,
-                                        onClick = {
-                                            viewModel.selectProduct(product)
-                                        }
-                                    )
-                                    Divider(
-                                        thickness = 0.5.dp,
-                                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
-                                    )
-                                }
-                            }
-                        }
-
-                        is ProductSearchState.Empty -> {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(80.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    "No se encontraron productos",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-
-                        is ProductSearchState.Error -> {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(80.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    "Error: ${(searchState as ProductSearchState.Error).message}",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                            }
-                        }
-
-                        ProductSearchState.Idle -> {
-                            if (localQuery.isNotEmpty()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 250.dp)
+                    ) {
+                        when (searchState) {
+                            is ProductSearchState.Loading -> {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(80.dp),
+                                        .height(100.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text(
-                                        "Ingrese al menos 3 caracteres",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(35.dp),
+                                        strokeWidth = 3.dp,
+                                        trackColor = MaterialTheme.colorScheme.surfaceVariant
                                     )
+                                }
+                            }
+                            is ProductSearchState.Success -> {
+                                val products = (searchState as ProductSearchState.Success).products
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
+                                    )
+                                ) {
+                                    Column(modifier = Modifier.fillMaxWidth()) {
+                                        products.forEachIndexed { index, product ->
+                                            ProductListItem(
+                                                product = product,
+                                                onClick = {
+                                                    // Al seleccionar un producto, obtener los detalles completos
+                                                    viewModel.fetchProductDetails(product.id)
+                                                }
+                                            )
+                                            if (index < products.size - 1) {
+                                                Divider(
+                                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                                    thickness = 0.5.dp,
+                                                    color = MaterialTheme.colorScheme.outlineVariant
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            is ProductSearchState.Empty -> {
+                                EmptySearchResult()
+                            }
+                            is ProductSearchState.Error -> {
+                                SearchError((searchState as ProductSearchState.Error).message)
+                            }
+                            else -> {
+                                // Estado Idle
+                                if (searchQuery.isNotEmpty()) {
+                                    MinimumSearchInfo()
                                 }
                             }
                         }
@@ -760,107 +762,167 @@ fun AddProductDialog(
                 }
 
                 // Detalles del producto seleccionado
-                selectedProduct?.let { product ->
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .animateContentSize()
-                    ) {
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        // Tarjeta de producto seleccionado
-                        SelectedProductCard(product)
-
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        // Campos de cantidad y descuento
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            OutlinedTextField(
-                                value = quantity,
-                                onValueChange = { quantity = it },
-                                label = { Text("Cantidad") },
-                                modifier = Modifier.weight(1f),
-                                keyboardOptions = KeyboardOptions(
-                                    keyboardType = KeyboardType.Number,
-                                    imeAction = ImeAction.Next
-                                ),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f)
-                                )
-                            )
-
-                            OutlinedTextField(
-                                value = discount,
-                                onValueChange = { discount = it },
-                                label = { Text("Descuento") },
-                                modifier = Modifier.weight(1f),
-                                keyboardOptions = KeyboardOptions(
-                                    keyboardType = KeyboardType.Number,
-                                    imeAction = ImeAction.Done
-                                ),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f)
-                                )
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        // Resumen de compra
-                        PurchaseSummary(
-                            subtotal = totalValue,
-                            igv = totalIgv,
-                            discount = discount.toDoubleOrNull() ?: 0.0,
-                            total = totalWithDiscount
-                        )
-
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        // Botón de agregar
-                        Button(
-                            onClick = {
-//                                val detail = IOperationDetail(
-//                                    id = 0,
-////                                    productId = product.id,
-////                                    productCode = product.code,
-////                                    productName = product.name,
-//                                    quantity = quantity.toDoubleOrNull() ?: 1.0,
-//                                    unitPrice = product.priceWithIgv3,
-//                                    totalValue = totalValue,
-//                                    totalDiscount = discount.toDoubleOrNull() ?: 0.0,
-//                                    totalIgv = totalIgv,
-//                                    totalAmount = totalValue + totalIgv,
-//                                    totalToPay = totalWithDiscount
-//                                )
-//                                onProductAdded(detail)
-                            },
+                AnimatedVisibility(
+                    visible = selectedProduct != null,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
+                    selectedProduct?.let { product ->
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(54.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary
-                            ),
-                            elevation = ButtonDefaults.buttonElevation(
-                                defaultElevation = 4.dp,
-                                pressedElevation = 8.dp,
-                                disabledElevation = 0.dp
-                            )
+                                .padding(top = 8.dp)
                         ) {
-                            Text(
-                                "Agregar Producto",
-                                style = MaterialTheme.typography.titleSmall.copy(
-                                    fontWeight = FontWeight.Bold
-                                )
+                            // Card con datos del producto seleccionado
+                            SelectedProductCard(
+                                product = product,
+                                onClear = { viewModel.clearProductSelection() }
                             )
+
+                            Spacer(modifier = Modifier.height(24.dp))
+
+                            // Sección de cantidad, precio y descuento
+                            Text(
+                                "Detalle de venta",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Cantidad y Descuento
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                OutlinedTextField(
+                                    value = quantity,
+                                    onValueChange = { quantity = it },
+                                    label = { Text("Cantidad") },
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+
+                                OutlinedTextField(
+                                    value = discount,
+                                    onValueChange = { discount = it },
+                                    label = { Text("Descuento S/") },
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Precios
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                OutlinedTextField(
+                                    value = priceWithoutIgv,
+                                    onValueChange = {
+                                        priceWithoutIgv = it
+                                        // Calcular precio con IGV
+                                        val withoutIgvValue = it.toDoubleOrNull() ?: 0.0
+                                        priceWithIgv = (withoutIgvValue * (1 + igvPercentage)).toString()
+                                    },
+                                    label = { Text("Precio sin IGV") },
+                                    leadingIcon = { Text("S/", modifier = Modifier.padding(start = 8.dp)) },
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+
+                                OutlinedTextField(
+                                    value = priceWithIgv,
+                                    onValueChange = {
+                                        priceWithIgv = it
+                                        // Calcular precio sin IGV
+                                        val withIgvValue = it.toDoubleOrNull() ?: 0.0
+                                        priceWithoutIgv = (withIgvValue / (1 + igvPercentage)).toString()
+                                    },
+                                    label = { Text("Precio con IGV") },
+                                    leadingIcon = { Text("S/", modifier = Modifier.padding(start = 8.dp)) },
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(24.dp))
+
+                            // Resumen de la venta
+                            PurchaseSummary(
+                                subtotal = subtotal,
+                                igv = igvAmount,
+                                discount = discountValue,
+                                total = total
+                            )
+
+                            Spacer(modifier = Modifier.height(24.dp))
+
+                            // Botón agregar
+                            Button(
+                                onClick = {
+                                    val productTariff = IProductTariff(
+                                        id = product.productTariffId3,
+                                        productId = product.id,
+                                        productCode = product.code,
+                                        productName = product.name,
+                                        typeAffectationId = product.typeAffectationId!!
+                                    )
+
+                                    val operationDetail = IOperationDetail(
+                                        id = 0,
+                                        productTariff = productTariff,
+                                        quantity = qtyValue.toString(),
+                                        price = priceValue.toString(),
+                                        unitValue = priceWithoutIgvValue,
+                                        unitPrice = priceValue,
+                                        totalDiscount = discountValue,
+                                        discountPercentage = if (subtotal > 0) (discountValue / subtotal) * 100 else 0.0,
+                                        igvPercentage = igvPercentage * 100,
+                                        totalIgv = igvAmount,
+                                        totalValue = subtotal,
+                                        totalAmount = subtotal + igvAmount,
+                                        totalToPay = total
+                                    )
+
+                                    onProductAdded(operationDetail)
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary
+                                ),
+                                elevation = ButtonDefaults.buttonElevation(
+                                    defaultElevation = 4.dp,
+                                    pressedElevation = 8.dp
+                                )
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.ShoppingCart,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        "Agregar Producto",
+                                        style = MaterialTheme.typography.titleMedium.copy(
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -869,178 +931,275 @@ fun AddProductDialog(
     }
 }
 
-// Componente de campo de búsqueda
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SearchTextField(
-    query: String,
-    onQueryChange: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    OutlinedTextField(
-        value = query,
-        onValueChange = onQueryChange,
-        modifier = modifier,
-        label = { Text("Buscar por nombre o código") },
-        leadingIcon = {
-            Icon(
-                imageVector = Icons.Default.Search,
-                contentDescription = "Buscar"
-            )
-        },
-        trailingIcon = {
-            if (query.isNotEmpty()) {
-                IconButton(onClick = { onQueryChange("") }) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Limpiar"
-                    )
-                }
-            }
-        },
-        singleLine = true,
-        shape = RoundedCornerShape(12.dp),
-        colors = TextFieldDefaults.outlinedTextFieldColors(
-            focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-            cursorColor = MaterialTheme.colorScheme.primary,
-            focusedLabelColor = MaterialTheme.colorScheme.primary,
-        )
-    )
-}
-// Componente de ítem de producto en la lista
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ProductSuggestionItem(
+private fun ProductListItem(
     product: IProduct,
     onClick: () -> Unit
 ) {
-    Card(
+    Surface(
         onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 2.dp),
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
-        ),
-        elevation = CardDefaults.cardElevation(1.dp)
+        modifier = Modifier.fillMaxWidth(),
+        color = Color.Transparent
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Imagen de producto (puedes reemplazar con un icono o imagen real)
+            // Icono o imagen del producto
             Box(
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(42.dp)
                     .background(
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                        shape = RoundedCornerShape(8.dp)
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                            )
+                        ),
+                        shape = CircleShape
                     ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.ShoppingCart,
-                    contentDescription = "Producto",
-                    tint = MaterialTheme.colorScheme.primary
+                    imageVector = Icons.Default.Inventory,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
                 )
             }
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            Column(modifier = Modifier.weight(1f)) {
+            // Información del producto
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
                 Text(
-                    product.name,
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        fontWeight = FontWeight.SemiBold
-                    ),
+                    text = product.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.height(4.dp))
-                Row {
-                    Text(
-                        "Código: ${product.code}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        "Stock: ${product.remainingQuantity}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Text(
+                    text = "Código: ${product.code}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
-            Text(
-                "S/ ${"%.2f".format(product.priceWithIgv3)}",
-                style = MaterialTheme.typography.bodyLarge.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // Ícono de selección
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowRight,
+                contentDescription = "Seleccionar",
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                modifier = Modifier.size(20.dp)
             )
         }
     }
 }
 
-// Componente de tarjeta de producto seleccionado
 @Composable
-private fun SelectedProductCard(product: IProduct) {
+private fun SelectedProductCard(
+    product: IProduct,
+    onClear: () -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
         ),
-        elevation = CardDefaults.cardElevation(4.dp)
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                "Producto seleccionado",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                product.name,
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Bold
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Producto seleccionado",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+
+                IconButton(
+                    onClick = onClear,
+                    modifier = Modifier
+                        .size(32.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f),
+                            shape = CircleShape
+                        )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Cambiar selección",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = product.name,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
             )
+
             Spacer(modifier = Modifier.height(8.dp))
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column {
-                    Text(
-                        "Código: ${product.code}",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    Text(
-                        "Stock: ${product.remainingQuantity}",
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                    InfoRow(label = "Código:", value = product.code)
+                    InfoRow(label = "Stock disponible:", value = "${product.remainingQuantity} unidades")
                 }
-                Text(
-                    "Precio: S/ ${"%.2f".format(product.priceWithIgv3)}",
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                )
+
+                PriceTag(price = product.priceWithIgv3)
             }
         }
     }
 }
 
-// Componente de resumen de compra
+@Composable
+private fun InfoRow(label: String, value: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
+private fun PriceTag(price: Double) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+        ),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "S/",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.width(2.dp))
+            Text(
+                text = String.format("%.2f", price),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmptySearchResult() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = Icons.Default.SearchOff,
+                contentDescription = null,
+                modifier = Modifier.size(48.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                "No se encontraron productos",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun SearchError(errorMessage: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = Icons.Default.Error,
+                contentDescription = null,
+                modifier = Modifier.size(40.dp),
+                tint = MaterialTheme.colorScheme.error
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                "Error en la búsqueda",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.error
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                errorMessage,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer
+            )
+        }
+    }
+}
+
+@Composable
+private fun MinimumSearchInfo() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            "Ingrese al menos 3 caracteres para buscar",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
 @Composable
 private fun PurchaseSummary(
     subtotal: Double,
@@ -1048,70 +1207,651 @@ private fun PurchaseSummary(
     discount: Double,
     total: Double
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
-                shape = RoundedCornerShape(12.dp)
-            )
-            .padding(16.dp)
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Text(
-            "Resumen",
-            style = MaterialTheme.typography.titleSmall.copy(
-                fontWeight = FontWeight.Bold
-            ),
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                "Resumen",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
-        PriceRow("Subtotal:", subtotal)
-        PriceRow("IGV (18%):", igv)
-        PriceRow("Descuento:", -discount)
+            Spacer(modifier = Modifier.height(16.dp))
 
-        Divider(
-            modifier = Modifier.padding(vertical = 8.dp),
-            thickness = 1.dp,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
-        )
+            SummaryRow(
+                label = "Subtotal:",
+                value = subtotal
+            )
 
-        PriceRow(
-            "TOTAL:",
-            total,
-            isBold = true,
-            textColor = MaterialTheme.colorScheme.primary
-        )
+            SummaryRow(
+                label = "IGV (18%):",
+                value = igv
+            )
+
+            SummaryRow(
+                label = "Descuento:",
+                value = -discount,
+                valueColor = if (discount > 0) MaterialTheme.colorScheme.tertiary else null
+            )
+
+            Divider(
+                modifier = Modifier.padding(vertical = 12.dp),
+                thickness = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant
+            )
+
+            SummaryRow(
+                label = "TOTAL:",
+                value = total,
+                isTotal = true
+            )
+        }
     }
 }
 
-// Componente de fila de precio
 @Composable
-private fun PriceRow(
+private fun SummaryRow(
     label: String,
     value: Double,
-    isBold: Boolean = false,
-    textColor: Color = MaterialTheme.colorScheme.onSurface
+    isTotal: Boolean = false,
+    valueColor: Color? = null
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            label,
-            style = if (isBold) MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
-            else MaterialTheme.typography.bodyLarge,
-            color = textColor
+            text = label,
+            style = if (isTotal) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium,
+            fontWeight = if (isTotal) FontWeight.Bold else FontWeight.Normal
         )
+
         Text(
-            "S/ ${"%.2f".format(value)}",
-            style = if (isBold) MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
-            else MaterialTheme.typography.bodyLarge,
-            color = textColor
+            text = "S/ ${String.format("%.2f", value)}",
+            style = if (isTotal) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium,
+            fontWeight = if (isTotal) FontWeight.Bold else FontWeight.Normal,
+            color = when {
+                valueColor != null -> valueColor
+                isTotal -> MaterialTheme.colorScheme.primary
+                else -> MaterialTheme.colorScheme.onSurface
+            }
         )
     }
 }
+
+
+
+
+//@OptIn(ExperimentalMaterial3Api::class)
+//@Composable
+//fun AddProductDialog(
+//    onDismiss: () -> Unit,
+//    onProductAdded: (IOperationDetail) -> Unit,
+//    viewModel: NewInvoiceViewModel,
+//    subsidiaryId: Int = 0
+//) {
+//    var localQuery by remember { mutableStateOf("") }
+//    val searchState by viewModel.searchState.collectAsState()
+//    val selectedProduct by viewModel.selectedProduct.collectAsState()
+//    val searchResults by viewModel.searchResults.collectAsState()
+//
+//    var quantity by remember { mutableStateOf("1") }
+//    var discount by remember { mutableStateOf("0.00") }
+//    val price = remember(selectedProduct) {
+//        selectedProduct?.priceWithIgv3?.toString() ?: "0.00"
+//    }
+//
+//    // Cálculos optimizados
+//    val (totalValue, totalIgv, totalWithDiscount) = remember(quantity, price, discount) {
+//        val qty = quantity.toDoubleOrNull() ?: 1.0
+//        val priceVal = price.toDoubleOrNull() ?: 0.0
+//        val discountVal = discount.toDoubleOrNull() ?: 0.0
+//        val igvPercentage = 0.18
+//
+//        val unitValue = priceVal / (1 + igvPercentage)
+//        val subtotal = unitValue * qty
+//        val igv = subtotal * igvPercentage
+//        val total = (subtotal + igv) - discountVal
+//
+//        Triple(subtotal, igv, total)
+//    }
+//
+//    // Búsqueda con debounce
+//    LaunchedEffect(localQuery) {
+//        if (localQuery.length >= 3) {
+//            delay(350) // Tiempo de debounce
+//            viewModel.searchProducts(localQuery, subsidiaryId)
+//        } else {
+//            viewModel.clearProductSelection()
+//        }
+//    }
+//
+//    Dialog(
+//        onDismissRequest = onDismiss,
+//        properties = DialogProperties(usePlatformDefaultWidth = false)
+//    ) {
+//        Card(
+//            modifier = Modifier
+//                .fillMaxWidth(0.95f)
+//                .heightIn(max = 600.dp),
+//            shape = RoundedCornerShape(20.dp),
+//            colors = CardDefaults.cardColors(
+//                containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(8.dp)
+//            )
+//        ) {
+//            Column(
+//                modifier = Modifier
+//                    .padding(24.dp)
+//                    .fillMaxWidth()
+//                    .verticalScroll(rememberScrollState())
+//            ) {
+//                // Header con título y botón de cerrar
+//                Row(
+//                    modifier = Modifier.fillMaxWidth(),
+//                    verticalAlignment = Alignment.CenterVertically,
+//                    horizontalArrangement = Arrangement.SpaceBetween
+//                ) {
+//                    Text(
+//                        "Agregar Producto",
+//                        style = MaterialTheme.typography.titleLarge.copy(
+//                            fontWeight = FontWeight.Bold,
+//                            color = MaterialTheme.colorScheme.primary
+//                        )
+//                    )
+//
+//                    IconButton(
+//                        onClick = onDismiss,
+//                        modifier = Modifier.size(32.dp)
+//                    ) {
+//                        Icon(
+//                            imageVector = Icons.Default.Close,
+//                            contentDescription = "Cerrar",
+//                            tint = MaterialTheme.colorScheme.onSurface
+//                        )
+//                    }
+//                }
+//
+//                Spacer(modifier = Modifier.height(16.dp))
+//
+//                // Campo de búsqueda mejorado
+//                SearchTextField(
+//                    query = localQuery,
+//                    onQueryChange = { localQuery = it },
+//                    modifier = Modifier.fillMaxWidth()
+//                )
+//
+//                Spacer(modifier = Modifier.height(16.dp))
+//
+//                // Resultados de búsqueda con animación
+//                AnimatedVisibility(
+//                    visible = localQuery.isNotEmpty() && selectedProduct == null,
+//                    enter = fadeIn() + expandVertically(),
+//                    exit = fadeOut() + shrinkVertically()
+//                ) {
+//                    when (searchState) {
+//                        is ProductSearchState.Loading -> {
+//                            Box(
+//                                modifier = Modifier
+//                                    .fillMaxWidth()
+//                                    .height(100.dp),
+//                                contentAlignment = Alignment.Center
+//                            ) {
+//                                CircularProgressIndicator(
+//                                    modifier = Modifier.size(32.dp),
+//                                    color = MaterialTheme.colorScheme.primary,
+//                                    strokeWidth = 3.dp
+//                                )
+//                            }
+//                        }
+//
+//                        is ProductSearchState.Success -> {
+//                            LazyColumn(
+//                                modifier = Modifier
+//                                    .fillMaxWidth()
+//                                    .heightIn(max = 250.dp)
+//                                    .border(
+//                                        width = 1.dp,
+//                                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+//                                        shape = RoundedCornerShape(12.dp)
+//                                    )
+//                                    .clip(RoundedCornerShape(12.dp))
+//                            ) {
+//                                items(searchResults) { product ->
+//                                    ProductSuggestionItem(
+//                                        product = product,
+//                                        onClick = {
+//                                            viewModel.selectProduct(product)
+//                                        }
+//                                    )
+//                                    Divider(
+//                                        thickness = 0.5.dp,
+//                                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+//                                    )
+//                                }
+//                            }
+//                        }
+//
+//                        is ProductSearchState.Empty -> {
+//                            Box(
+//                                modifier = Modifier
+//                                    .fillMaxWidth()
+//                                    .height(80.dp),
+//                                contentAlignment = Alignment.Center
+//                            ) {
+//                                Text(
+//                                    "No se encontraron productos",
+//                                    style = MaterialTheme.typography.bodyMedium,
+//                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+//                                )
+//                            }
+//                        }
+//
+//                        is ProductSearchState.Error -> {
+//                            Box(
+//                                modifier = Modifier
+//                                    .fillMaxWidth()
+//                                    .height(80.dp),
+//                                contentAlignment = Alignment.Center
+//                            ) {
+//                                Text(
+//                                    "Error: ${(searchState as ProductSearchState.Error).message}",
+//                                    style = MaterialTheme.typography.bodyMedium,
+//                                    color = MaterialTheme.colorScheme.error
+//                                )
+//                            }
+//                        }
+//
+//                        ProductSearchState.Idle -> {
+//                            if (localQuery.isNotEmpty()) {
+//                                Box(
+//                                    modifier = Modifier
+//                                        .fillMaxWidth()
+//                                        .height(80.dp),
+//                                    contentAlignment = Alignment.Center
+//                                ) {
+//                                    Text(
+//                                        "Ingrese al menos 3 caracteres",
+//                                        style = MaterialTheme.typography.bodyMedium,
+//                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+//                                    )
+//                                }
+//                            }
+//                        }
+//                    }
+//                }
+//
+//                // Detalles del producto seleccionado
+//                selectedProduct?.let { product ->
+//                    Column(
+//                        modifier = Modifier
+//                            .fillMaxWidth()
+//                            .animateContentSize()
+//                    ) {
+//                        Spacer(modifier = Modifier.height(24.dp))
+//
+//                        // Tarjeta de producto seleccionado
+//                        SelectedProductCard(product)
+//
+//                        Spacer(modifier = Modifier.height(24.dp))
+//
+//                        // Campos de cantidad y descuento
+//                        Row(
+//                            modifier = Modifier.fillMaxWidth(),
+//                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+//                        ) {
+//                            OutlinedTextField(
+//                                value = quantity,
+//                                onValueChange = { quantity = it },
+//                                label = { Text("Cantidad") },
+//                                modifier = Modifier.weight(1f),
+//                                keyboardOptions = KeyboardOptions(
+//                                    keyboardType = KeyboardType.Number,
+//                                    imeAction = ImeAction.Next
+//                                ),
+//                                shape = RoundedCornerShape(12.dp),
+//                                colors = TextFieldDefaults.colors(
+//                                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+//                                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f)
+//                                )
+//                            )
+//
+//                            OutlinedTextField(
+//                                value = discount,
+//                                onValueChange = { discount = it },
+//                                label = { Text("Descuento") },
+//                                modifier = Modifier.weight(1f),
+//                                keyboardOptions = KeyboardOptions(
+//                                    keyboardType = KeyboardType.Number,
+//                                    imeAction = ImeAction.Done
+//                                ),
+//                                shape = RoundedCornerShape(12.dp),
+//                                colors = TextFieldDefaults.colors(
+//                                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+//                                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f)
+//                                )
+//                            )
+//                        }
+//
+//                        Spacer(modifier = Modifier.height(24.dp))
+//
+//                        // Resumen de compra
+//                        PurchaseSummary(
+//                            subtotal = totalValue,
+//                            igv = totalIgv,
+//                            discount = discount.toDoubleOrNull() ?: 0.0,
+//                            total = totalWithDiscount
+//                        )
+//
+//                        Spacer(modifier = Modifier.height(24.dp))
+//
+//                        // Botón de agregar
+//                        Button(
+//                            onClick = {
+////                                val detail = IOperationDetail(
+////                                    id = 0,
+//////                                    productId = product.id,
+//////                                    productCode = product.code,
+//////                                    productName = product.name,
+////                                    quantity = quantity.toDoubleOrNull() ?: 1.0,
+////                                    unitPrice = product.priceWithIgv3,
+////                                    totalValue = totalValue,
+////                                    totalDiscount = discount.toDoubleOrNull() ?: 0.0,
+////                                    totalIgv = totalIgv,
+////                                    totalAmount = totalValue + totalIgv,
+////                                    totalToPay = totalWithDiscount
+////                                )
+////                                onProductAdded(detail)
+//                            },
+//                            modifier = Modifier
+//                                .fillMaxWidth()
+//                                .height(54.dp),
+//                            shape = RoundedCornerShape(12.dp),
+//                            colors = ButtonDefaults.buttonColors(
+//                                containerColor = MaterialTheme.colorScheme.primary,
+//                                contentColor = MaterialTheme.colorScheme.onPrimary
+//                            ),
+//                            elevation = ButtonDefaults.buttonElevation(
+//                                defaultElevation = 4.dp,
+//                                pressedElevation = 8.dp,
+//                                disabledElevation = 0.dp
+//                            )
+//                        ) {
+//                            Text(
+//                                "Agregar Producto",
+//                                style = MaterialTheme.typography.titleSmall.copy(
+//                                    fontWeight = FontWeight.Bold
+//                                )
+//                            )
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//    }
+//}
+//
+//// Componente de campo de búsqueda
+//@OptIn(ExperimentalMaterial3Api::class)
+//@Composable
+//private fun SearchTextField(
+//    query: String,
+//    onQueryChange: (String) -> Unit,
+//    modifier: Modifier = Modifier
+//) {
+//    OutlinedTextField(
+//        value = query,
+//        onValueChange = onQueryChange,
+//        modifier = modifier,
+//        label = { Text("Buscar por nombre o código") },
+//        leadingIcon = {
+//            Icon(
+//                imageVector = Icons.Default.Search,
+//                contentDescription = "Buscar"
+//            )
+//        },
+//        trailingIcon = {
+//            if (query.isNotEmpty()) {
+//                IconButton(onClick = { onQueryChange("") }) {
+//                    Icon(
+//                        imageVector = Icons.Default.Close,
+//                        contentDescription = "Limpiar"
+//                    )
+//                }
+//            }
+//        },
+//        singleLine = true,
+//        shape = RoundedCornerShape(12.dp),
+//        colors = TextFieldDefaults.outlinedTextFieldColors(
+//            focusedBorderColor = MaterialTheme.colorScheme.primary,
+//            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+//            cursorColor = MaterialTheme.colorScheme.primary,
+//            focusedLabelColor = MaterialTheme.colorScheme.primary,
+//        )
+//    )
+//}
+//// Componente de ítem de producto en la lista
+//@OptIn(ExperimentalMaterial3Api::class)
+//@Composable
+//private fun ProductSuggestionItem(
+//    product: IProduct,
+//    onClick: () -> Unit
+//) {
+//    Card(
+//        onClick = onClick,
+//        modifier = Modifier
+//            .fillMaxWidth()
+//            .padding(horizontal = 4.dp, vertical = 2.dp),
+//        shape = RoundedCornerShape(8.dp),
+//        colors = CardDefaults.cardColors(
+//            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+//        ),
+//        elevation = CardDefaults.cardElevation(1.dp)
+//    ) {
+//        Row(
+//            modifier = Modifier
+//                .fillMaxWidth()
+//                .padding(16.dp),
+//            verticalAlignment = Alignment.CenterVertically
+//        ) {
+//            // Imagen de producto (puedes reemplazar con un icono o imagen real)
+//            Box(
+//                modifier = Modifier
+//                    .size(48.dp)
+//                    .background(
+//                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+//                        shape = RoundedCornerShape(8.dp)
+//                    ),
+//                contentAlignment = Alignment.Center
+//            ) {
+//                Icon(
+//                    imageVector = Icons.Default.ShoppingCart,
+//                    contentDescription = "Producto",
+//                    tint = MaterialTheme.colorScheme.primary
+//                )
+//            }
+//
+//            Spacer(modifier = Modifier.width(16.dp))
+//
+//            Column(modifier = Modifier.weight(1f)) {
+//                Text(
+//                    product.name,
+//                    style = MaterialTheme.typography.bodyLarge.copy(
+//                        fontWeight = FontWeight.SemiBold
+//                    ),
+//                    maxLines = 1,
+//                    overflow = TextOverflow.Ellipsis
+//                )
+//                Spacer(modifier = Modifier.height(4.dp))
+//                Row {
+//                    Text(
+//                        "Código: ${product.code}",
+//                        style = MaterialTheme.typography.bodySmall,
+//                        color = MaterialTheme.colorScheme.onSurfaceVariant
+//                    )
+//                    Spacer(modifier = Modifier.width(8.dp))
+//                    Text(
+//                        "Stock: ${product.remainingQuantity}",
+//                        style = MaterialTheme.typography.bodySmall,
+//                        color = MaterialTheme.colorScheme.onSurfaceVariant
+//                    )
+//                }
+//            }
+//
+//            Text(
+//                "S/ ${"%.2f".format(product.priceWithIgv3)}",
+//                style = MaterialTheme.typography.bodyLarge.copy(
+//                    fontWeight = FontWeight.Bold,
+//                    color = MaterialTheme.colorScheme.primary
+//                )
+//            )
+//        }
+//    }
+//}
+//
+//// Componente de tarjeta de producto seleccionado
+//@Composable
+//private fun SelectedProductCard(product: IProduct) {
+//    Card(
+//        modifier = Modifier.fillMaxWidth(),
+//        shape = RoundedCornerShape(12.dp),
+//        colors = CardDefaults.cardColors(
+//            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+//        ),
+//        elevation = CardDefaults.cardElevation(4.dp)
+//    ) {
+//        Column(
+//            modifier = Modifier.padding(16.dp)
+//        ) {
+//            Text(
+//                "Producto seleccionado",
+//                style = MaterialTheme.typography.labelMedium,
+//                color = MaterialTheme.colorScheme.onSurfaceVariant
+//            )
+//            Spacer(modifier = Modifier.height(8.dp))
+//            Text(
+//                product.name,
+//                style = MaterialTheme.typography.titleMedium.copy(
+//                    fontWeight = FontWeight.Bold
+//                )
+//            )
+//            Spacer(modifier = Modifier.height(8.dp))
+//            Row(
+//                modifier = Modifier.fillMaxWidth(),
+//                horizontalArrangement = Arrangement.SpaceBetween
+//            ) {
+//                Column {
+//                    Text(
+//                        "Código: ${product.code}",
+//                        style = MaterialTheme.typography.bodySmall
+//                    )
+//                    Text(
+//                        "Stock: ${product.remainingQuantity}",
+//                        style = MaterialTheme.typography.bodySmall
+//                    )
+//                }
+//                Text(
+//                    "Precio: S/ ${"%.2f".format(product.priceWithIgv3)}",
+//                    style = MaterialTheme.typography.bodyLarge.copy(
+//                        fontWeight = FontWeight.Bold,
+//                        color = MaterialTheme.colorScheme.primary
+//                    )
+//                )
+//            }
+//        }
+//    }
+//}
+//
+//// Componente de resumen de compra
+//@Composable
+//private fun PurchaseSummary(
+//    subtotal: Double,
+//    igv: Double,
+//    discount: Double,
+//    total: Double
+//) {
+//    Column(
+//        modifier = Modifier
+//            .fillMaxWidth()
+//            .background(
+//                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
+//                shape = RoundedCornerShape(12.dp)
+//            )
+//            .padding(16.dp)
+//    ) {
+//        Text(
+//            "Resumen",
+//            style = MaterialTheme.typography.titleSmall.copy(
+//                fontWeight = FontWeight.Bold
+//            ),
+//            modifier = Modifier.padding(bottom = 8.dp)
+//        )
+//
+//        PriceRow("Subtotal:", subtotal)
+//        PriceRow("IGV (18%):", igv)
+//        PriceRow("Descuento:", -discount)
+//
+//        Divider(
+//            modifier = Modifier.padding(vertical = 8.dp),
+//            thickness = 1.dp,
+//            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+//        )
+//
+//        PriceRow(
+//            "TOTAL:",
+//            total,
+//            isBold = true,
+//            textColor = MaterialTheme.colorScheme.primary
+//        )
+//    }
+//}
+//
+//// Componente de fila de precio
+//@Composable
+//private fun PriceRow(
+//    label: String,
+//    value: Double,
+//    isBold: Boolean = false,
+//    textColor: Color = MaterialTheme.colorScheme.onSurface
+//) {
+//    Row(
+//        modifier = Modifier
+//            .fillMaxWidth()
+//            .padding(vertical = 4.dp),
+//        horizontalArrangement = Arrangement.SpaceBetween
+//    ) {
+//        Text(
+//            label,
+//            style = if (isBold) MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+//            else MaterialTheme.typography.bodyLarge,
+//            color = textColor
+//        )
+//        Text(
+//            "S/ ${"%.2f".format(value)}",
+//            style = if (isBold) MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+//            else MaterialTheme.typography.bodyLarge,
+//            color = textColor
+//        )
+//    }
+//}
+
+
+
+
+
+
+
 //@Composable
 //fun AddProductDialog(
 //    onDismiss: () -> Unit,

@@ -5,6 +5,7 @@ import android.util.Log
 import com.example.fibo.model.IOperation
 import com.apollographql.apollo3.ApolloClient
 import com.example.fibo.GetOperationByDateAndUserIdQuery
+import com.example.fibo.GetProductByIdQuery
 import com.example.fibo.SearchProductsQuery
 import com.example.fibo.SntPersonMutation
 import com.example.fibo.model.IPerson
@@ -120,6 +121,33 @@ class OperationRepository @Inject constructor(
             // Log del error si es necesario
             println("Error en searchProducts: ${e.message}")
             emptyList()
+        }
+    }
+    suspend fun getProductTariffByProductID(productId: Int): IProduct {
+        return try {
+            val response = apolloClient.query(GetProductByIdQuery(pk = productId.toString())).execute()
+
+            if (response.hasErrors()) {
+                val errorMessages = response.errors?.joinToString { it.message } ?: "Error desconocido"
+                throw RuntimeException("Error en la consulta: $errorMessages")
+            }
+
+            val productData = response.data?.productById
+                ?: throw RuntimeException("No se encontraron datos del producto")
+
+            IProduct(
+                id = productData.id ?: 0,
+                code = productData.code.orEmpty(),
+                name = productData.name.orEmpty(),
+                priceWithIgv3 = productData.priceWithIgv3 ?: 0.0,
+                priceWithoutIgv3 = productData.priceWithoutIgv3 ?: 0.0,
+                productTariffId3 = 0, // Asignar valor correcto si lo tienes
+                remainingQuantity = 0.0, // Asignar si aplica
+                typeAffectationId = productData.typeAffectationId ?: 0
+            )
+        } catch (e: Exception) {
+            println("Error en getProductTariffByProductID: ${e.message}")
+            throw e // o puedes retornar un IProduct default si lo prefieres
         }
     }
 

@@ -89,6 +89,48 @@ class NewInvoiceViewModel @Inject constructor(
             }
         }
     }
+    // Agregar métodos para búsqueda y detalles de producto
+    fun searchProductsByQuery(query: String, subsidiaryId: Int) {
+        if (query.length < 3) {
+            _searchState.value = ProductSearchState.Idle
+            return
+        }
+
+        _searchState.value = ProductSearchState.Loading(query)
+        viewModelScope.launch {
+            try {
+                // Consulta básica que devuelve sólo id, code, name
+                val products = operationRepository.searchProducts(query, subsidiaryId)
+                _searchResults.value = products
+
+                _searchState.value = if (products.isEmpty()) {
+                    ProductSearchState.Empty(query)
+                } else {
+                    ProductSearchState.Success(products, query)
+                }
+            } catch (e: Exception) {
+                _searchState.value = ProductSearchState.Error(
+                    message = e.message ?: "Error al buscar productos",
+                    query = query
+                )
+            }
+        }
+    }
+
+    fun fetchProductDetails(productId: Int) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                // Consulta completa que devuelve todos los datos del producto
+//                val product = operationRepository.getProductDetails(productId)
+//                _selectedProduct.value = product
+            } catch (e: Exception) {
+                _error.value = "Error al obtener detalles del producto: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
 
     fun createInvoice(operation: IOperation, onSuccess: (Int) -> Unit) {
         if (operation.client.names.isNullOrBlank()) {

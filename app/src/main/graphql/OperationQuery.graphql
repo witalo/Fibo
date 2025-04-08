@@ -46,3 +46,14 @@ query SearchProducts($query: String!, $subsidiaryId: Int!) {
                 name
     }
 }
+query GetProductById($pk: ID!) {
+    productById(pk: $pk) {
+        id
+        code
+        name
+        priceWithIgv3
+        priceWithoutIgv3
+        typeAffectationId
+        typeAffectationName
+    }
+}
