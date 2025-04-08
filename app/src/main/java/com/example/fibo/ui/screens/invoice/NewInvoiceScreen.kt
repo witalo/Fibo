@@ -377,7 +377,7 @@ fun NewInvoiceScreen(
                                         Icon(
                                             imageVector = Icons.Default.Delete,
                                             contentDescription = "Eliminar",
-                                            tint = MaterialTheme.colorScheme.error,
+                                            tint = Color(0xFFFF5722),
                                             modifier = Modifier.size(18.dp) // Icono más pequeño
                                         )
                                     }
