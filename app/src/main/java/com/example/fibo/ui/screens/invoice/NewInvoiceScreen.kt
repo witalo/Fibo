@@ -491,7 +491,8 @@ fun NewInvoiceScreen(
                                     totalAmount = totalAmount,
                                     totalIgv = totalIgv,
                                     totalTaxed = totalValue,
-                                    totalToPay = totalAmount
+                                    totalToPay = totalAmount,
+                                    subsidiaryId = subsidiaryData?.id!!
                                 )
                                 viewModel.createInvoice(operation) { operationId ->
                                     onInvoiceCreated(operationId.toString())

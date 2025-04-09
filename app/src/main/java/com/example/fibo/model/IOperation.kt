@@ -11,7 +11,7 @@ data class IOperation(
     val operationDate: String = "",
     val emitDate: String = "",
     val client: IPerson,
-//    val subsidiary: ISubsidiary,
+    val subsidiaryId: Int,
     val discountGlobal: Double = 0.0,
     val discountPercentageGlobal: Double = 0.0,
     val totalDiscount: Double = 0.0,
