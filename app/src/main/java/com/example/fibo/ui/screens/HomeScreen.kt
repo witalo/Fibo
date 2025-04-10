@@ -126,12 +126,15 @@ fun InvoiceContent(
     onNewInvoice: () -> Unit,
     onNewReceipt: () -> Unit
 ) {
+    // Calculate totals
+    val invoiceCount = invoices.count { it.documentTypeReadable == "FACTURA" }
+    val receiptCount = invoices.count { it.documentTypeReadable == "BOLETA" }
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 8.dp)
     ) {
-        // Sección de Listado (70% del espacio)
+        // Sección de Listado (82% del espacio)
         Box(
             modifier = Modifier
                 .weight(0.82f)
@@ -150,7 +153,7 @@ fun InvoiceContent(
 
         Spacer(modifier = Modifier.height(6.dp))
 
-        // Sección de Botones (30% del espacio)
+        // Sección de Botones (18% del espacio)
         Column(
             modifier = Modifier
                 .weight(0.18f)
@@ -159,7 +162,9 @@ fun InvoiceContent(
         ) {
             ActionButtons(
                 onNewInvoice = onNewInvoice,
-                onNewReceipt = onNewReceipt
+                onNewReceipt = onNewReceipt,
+                invoiceCount = invoiceCount,
+                receiptCount = receiptCount
             )
         }
     }
@@ -247,8 +252,8 @@ fun InvoiceItem(
                 Chip(
                     label = invoice.documentTypeReadable,
                     gradient = when (invoice.documentTypeReadable) {
-                        "FACTURA" -> ColorGradients.greenEmerald
-                        "BOLETA" -> ColorGradients.purpleDeep
+                        "FACTURA" -> ColorGradients.blueOcean
+                        "BOLETA" -> ColorGradients.greenNature
                         else -> ColorGradients.greenNature
                     }
                 )
@@ -302,7 +307,9 @@ fun InvoiceItem(
 @Composable
 fun ActionButtons(
     onNewInvoice: () -> Unit,
-    onNewReceipt: () -> Unit
+    onNewReceipt: () -> Unit,
+    invoiceCount: Int,
+    receiptCount: Int
 ) {
     Column(
         modifier = Modifier
@@ -332,8 +339,25 @@ fun ActionButtons(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth()
             ) {
+                // Counter Chip
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color.White.copy(alpha = 0.2f))
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = "Total: $invoiceCount",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
                 Icon(
                     imageVector = Icons.Default.ReceiptLong,
                     contentDescription = "Nueva Factura",
@@ -378,8 +402,25 @@ fun ActionButtons(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth()
             ) {
+                // Counter Chip
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color.White.copy(alpha = 0.2f))
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = "Total: $receiptCount",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
                 Icon(
                     imageVector = Icons.Default.Receipt,
                     contentDescription = "Nueva Boleta",
