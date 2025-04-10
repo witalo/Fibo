@@ -1877,6 +1877,8 @@ type OperationType {
   documentTypeReadable: String
 
   creditNoteReferences: String
+
+  subsidiaryId: Int
 }
 
 """
@@ -3740,6 +3742,8 @@ type Mutation {
 
   deleteSerialAssigned(id: Int): DeleteSerialAssignedMutation
 
+  updateQuote(clientId: Int = 0, commentSet: [String], correlative: Int = 0, currencyType: String = "PEN", descriptionSet: [String], discountForItem: Float = 0, discountGlobal: Float = 0, discountPercentageGlobal: Float = 0, discountPercentageSet: [Float], documentType: String = "NA", emitDate: Date = null, igvPercentageSet: [Float], igvType: Int = 0, observation: String = "", operationType: String = "NA", perceptionPercentageSet: [Float], productTariffIdSet: [Int], quantitySet: [Int], quoteId: ID, saleExchangeRate: Float = 0, serial: String = "", totalAmount: Float = 0, totalAmountSet: [Float], totalDiscount: Float = 0, totalDiscountSet: [Float], totalExonerated: Float = 0, totalFree: Float = 0, totalIgv: Float = 0, totalIgvSet: [Float], totalPayed: Float = 0, totalPerception: Float = 0, totalPerceptionSet: [Float], totalSet: [Float], totalTaxed: Float = 0, totalToPay: Float = 0, totalToPaySet: [Float], totalTurned: Float = 0, totalUnaffected: Float = 0, totalValueSet: [Float], typeAffectationIdSet: [Int], unitPriceSet: [Float], unitValueSet: [Float], wayPaySet: [Int]): UpdateQuoteMutation
+
   registerSale(cliente: ClienteType, items: [ItemType], venta: VentaType): RegisterSaleMutation
 
   annulInvoice(correlative: Int, serial: String): AnnulInvoiceMutation
@@ -4016,6 +4020,12 @@ type UpdateSerialAssignedMutation {
 }
 
 type DeleteSerialAssignedMutation {
+  message: String
+
+  error: Boolean
+}
+
+type UpdateQuoteMutation {
   message: String
 
   error: Boolean

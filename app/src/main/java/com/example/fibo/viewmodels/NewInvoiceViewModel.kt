@@ -10,6 +10,7 @@ import com.example.fibo.model.IProduct
 import com.example.fibo.model.IProductTariff
 import com.example.fibo.model.ISubsidiary
 import com.example.fibo.model.ITariff
+import com.example.fibo.model.IUser
 import com.example.fibo.repository.OperationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
@@ -32,6 +33,7 @@ class NewInvoiceViewModel @Inject constructor(
     val error: StateFlow<String?> = _error.asStateFlow()
 
     val subsidiaryData: StateFlow<ISubsidiary?> = preferencesManager.subsidiaryData
+    val userData: StateFlow<IUser?> = preferencesManager.userData
     // Estados para la búsqueda de productos
     private val _searchState = MutableStateFlow<ProductSearchState>(ProductSearchState.Idle)
     val searchState: StateFlow<ProductSearchState> = _searchState.asStateFlow()
@@ -58,36 +60,6 @@ class NewInvoiceViewModel @Inject constructor(
                     _error.value = e.message ?: "Error al obtener datos"
                 }
             _isLoading.value = false
-        }
-    }
-
-    fun searchProducts(query: String, subsidiaryId: Int) {
-        when {
-            query.length < 3 -> {
-                _searchState.value = ProductSearchState.Idle
-                _selectedProduct.value = null
-            }
-            query == _searchState.value.currentQuery -> return // Ya está buscando esta query
-            else -> {
-                viewModelScope.launch {
-                    _searchState.value = ProductSearchState.Loading(query)
-                    try {
-//                        val subsidiaryId = subsidiaryData.value?.id ?: 0
-                        val results = operationRepository.searchProducts(query, subsidiaryId)
-
-                        _searchState.value = if (results.isEmpty()) {
-                            ProductSearchState.Empty(query)
-                        } else {
-                            ProductSearchState.Success(results, query)
-                        }
-                    } catch (e: Exception) {
-                        _searchState.value = ProductSearchState.Error(
-                            message = e.message ?: "Error desconocido",
-                            query = query
-                        )
-                    }
-                }
-            }
         }
     }
     // Agregar métodos para búsqueda y detalles de producto

@@ -19,6 +19,7 @@ query GetOperationByDateAndUserId($date: Date!, $userId: Int!) {
         totalPayed
         operationStatus
         operationStatusReadable
+        subsidiaryId
         sendWhatsapp
         linkXml
         linkXmlLow

@@ -41,6 +41,7 @@ class OperationRepository @Inject constructor(
                 totalToPay = o.totalToPay.toSafeDouble(),
                 totalPayed = o.totalPayed.toSafeDouble(),
                 operationStatus = o.operationStatus.toString(),
+                subsidiaryId = o.subsidiaryId!!,
                 client = o.client?.let {
                     IPerson(
                         id = it.id,
