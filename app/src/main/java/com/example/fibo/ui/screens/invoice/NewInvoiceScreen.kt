@@ -83,6 +83,11 @@ fun NewInvoiceScreen(
     var showAddItemDialog by remember { mutableStateOf(false) }
     var operationDetails by remember { mutableStateOf<List<IOperationDetail>>(emptyList()) }
 
+    var discountGlobalValue by remember { mutableStateOf(0.0) }
+    var discountGlobalPercentage by remember { mutableStateOf(0.0) }
+    var discountGlobalString by remember { mutableStateOf("0.00") }
+    var applyGlobalDiscount by remember { mutableStateOf(false) }
+
     // Calcular totales basados en typeAffectationId
     val totalTaxed = operationDetails.filter { it.typeAffectationId == 1 }
         .sumOf { it.totalValue }
@@ -96,19 +101,35 @@ fun NewInvoiceScreen(
     // Suma de descuentos por ítem
     val discountForItem = operationDetails.sumOf { it.totalDiscount }
 
-    // Descuento global (agregamos variable para capturar esto)
-    var discountGlobal by remember { mutableStateOf("0.00") }
-    val discountGlobalValue = discountGlobal.toDoubleOrNull() ?: 0.0
-
-    // Total general
+    // Total general sin descuento global
     val totalIgv = operationDetails.filter { it.typeAffectationId == 1 }
         .sumOf { it.totalIgv }
-    val totalAmount = totalTaxed + totalExonerated + totalUnaffected + totalIgv
-    val totalToPay = totalAmount - discountGlobalValue
 
-//    val totalAmount = operationDetails.sumOf { it.totalAmount }
-//    val totalIgv = operationDetails.sumOf { it.totalIgv }
-    val totalValue = operationDetails.sumOf { it.totalValue }
+    val baseImponible = totalTaxed + totalExonerated + totalUnaffected
+    val totalAmount = baseImponible + totalIgv
+    // Calcular descuento global si está activo
+    LaunchedEffect(discountGlobalString, applyGlobalDiscount, totalAmount) {
+        if (applyGlobalDiscount) {
+            val inputValue = discountGlobalString.toDoubleOrNull() ?: 0.0
+            // Si el valor ingresado es un porcentaje (<=100)
+            if (inputValue <= 100) {
+                discountGlobalPercentage = inputValue
+                discountGlobalValue = (baseImponible * inputValue) / 100
+            } else {
+                // Es un valor fijo
+                discountGlobalValue = inputValue
+                discountGlobalPercentage = if (baseImponible > 0) (inputValue / baseImponible) * 100 else 0.0
+            }
+        } else {
+            discountGlobalValue = 0.0
+            discountGlobalPercentage = 0.0
+        }
+    }
+    // Total de descuentos (global + por ítem)
+    val totalDiscount = discountGlobalValue + discountForItem
+
+    // Total a pagar considerando todos los descuentos
+    val totalToPay = totalAmount - totalDiscount
 
     Scaffold(
         topBar = {
@@ -337,21 +358,21 @@ fun NewInvoiceScreen(
                                     "Cant.",
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.width(40.dp),
+                                    modifier = Modifier.width(30.dp),
                                     textAlign = TextAlign.Center
                                 )
                                 Text(
                                     "Precio",
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.width(60.dp),
+                                    modifier = Modifier.width(70.dp),
                                     textAlign = TextAlign.Center
                                 )
                                 Text(
                                     "Total",
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.width(70.dp),
+                                    modifier = Modifier.width(80.dp),
                                     textAlign = TextAlign.End
                                 )
                                 Spacer(modifier = Modifier.width(24.dp))
@@ -373,27 +394,42 @@ fun NewInvoiceScreen(
                                             overflow = TextOverflow.Ellipsis
                                         )
                                         Text(
-                                            "Código: ${detail.tariff.productId}",
+                                            "Código: ${detail.tariff.productCode} (${getAffectationTypeShort(detail.typeAffectationId)})",
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
+                                        if (detail.totalDiscount > 0) {
+                                            Text(
+                                                "Dscto: S/ ${String.format("%.2f", detail.totalDiscount)}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = Color(0xFFFF5722)
+                                            )
+                                        }
                                     }
+                                    // Tipo de afectación
+//                                    Text(
+//                                        getAffectationTypeShort(detail.typeAffectationId),
+//                                        style = MaterialTheme.typography.labelSmall,
+//                                        modifier = Modifier.width(30.dp),
+//                                        textAlign = TextAlign.Center,
+//                                        color = getAffectationColor(detail.typeAffectationId)
+//                                    )
                                     Text(
                                         "${detail.quantity}",
                                         style = MaterialTheme.typography.bodySmall,
-                                        modifier = Modifier.width(40.dp),
+                                        modifier = Modifier.width(30.dp),
                                         textAlign = TextAlign.Center
                                     )
                                     Text(
                                         "S/ ${detail.unitPrice}",
                                         style = MaterialTheme.typography.bodySmall,
-                                        modifier = Modifier.width(60.dp),
-                                        textAlign = TextAlign.Center
+                                        modifier = Modifier.width(70.dp),
+                                        textAlign = TextAlign.End
                                     )
                                     Text(
                                         "S/ ${String.format("%.2f", detail.totalAmount)}",
                                         style = MaterialTheme.typography.bodySmall,
-                                        modifier = Modifier.width(70.dp),
+                                        modifier = Modifier.width(80.dp),
                                         textAlign = TextAlign.End
                                     )
                                     IconButton(
@@ -417,6 +453,87 @@ fun NewInvoiceScreen(
                 }
             }
 
+            // CARD DESCUENTO GLOBAL
+            if (operationDetails.isNotEmpty()) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .padding(12.dp)
+                            .fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = applyGlobalDiscount,
+                                onCheckedChange = { applyGlobalDiscount = it },
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = MaterialTheme.colorScheme.primary,
+                                    uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            )
+                            Text(
+                                "Aplicar descuento global",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+
+                        AnimatedVisibility(visible = applyGlobalDiscount) {
+                            Column {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    OutlinedTextField(
+                                        value = discountGlobalString,
+                                        onValueChange = { discountGlobalString = it },
+                                        label = { Text("Valor del descuento") },
+                                        placeholder = { Text("% o monto en S/") },
+                                        modifier = Modifier.weight(1f),
+                                        singleLine = true,
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                        shape = RoundedCornerShape(8.dp)
+                                    )
+
+                                    Spacer(modifier = Modifier.width(12.dp))
+
+                                    Column(
+                                        horizontalAlignment = Alignment.End
+                                    ) {
+                                        Text(
+                                            "Descuento: S/ ${String.format("%.2f", discountGlobalValue)}",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFFFF5722)
+                                        )
+                                        Text(
+                                            "(${String.format("%.2f", discountGlobalPercentage)}%)",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    "Ingrese un porcentaje (hasta 100) o un monto fijo en soles",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
             // CARD FOOTER - Totales y botones
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -432,40 +549,74 @@ fun NewInvoiceScreen(
                         "Resumen",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 12.dp)
+                        modifier = Modifier.padding(bottom = 8.dp)
                     )
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            "Subtotal:",
-                            style = MaterialTheme.typography.bodySmall
+                    // Mostrar los diferentes tipos según SUNAT
+                    if (totalTaxed > 0) {
+                        ResumenRow(
+                            label = "Op. Gravadas:",
+                            value = totalTaxed,
+                            color = getAffectationColor(1)
                         )
-                        Text(
-                            "S/ ${String.format("%.2f", totalValue)}",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Bold
+                    }
+
+                    if (totalExonerated > 0) {
+                        ResumenRow(
+                            label = "Op. Exoneradas:",
+                            value = totalExonerated,
+                            color = getAffectationColor(2)
+                        )
+                    }
+
+                    if (totalUnaffected > 0) {
+                        ResumenRow(
+                            label = "Op. Inafectas:",
+                            value = totalUnaffected,
+                            color = getAffectationColor(3)
+                        )
+                    }
+
+                    if (totalFree > 0) {
+                        ResumenRow(
+                            label = "Op. Gratuitas:",
+                            value = totalFree,
+                            color = getAffectationColor(4)
                         )
                     }
 
                     Spacer(modifier = Modifier.height(4.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            "IGV (18%):",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                        Text(
-                            "S/ ${String.format("%.2f", totalIgv)}",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Bold
+                    // Descuento por ítem si hay
+//                    if (discountForItem > 0) {
+//                        ResumenRow(
+//                            label = "Descuento por ítem:",
+//                            value = -discountForItem,
+//                            color = Color(0xFFFF5722)
+//                        )
+//                        Spacer(modifier = Modifier.height(4.dp))
+//                    }
+//                    // Descuento global si hay
+//                    if (discountGlobalValue > 0) {
+//                        ResumenRow(
+//                            label = "Descuento global:",
+//                            value = -discountGlobalValue,
+//                            color = Color(0xFFFF5722)
+//                        )
+//                        Spacer(modifier = Modifier.height(4.dp))
+//                    }
+                    if (totalDiscount > 0) {
+                        ResumenRow(
+                            label = "Descuentos:",
+                            value = -totalDiscount,
+                            color = Color(0xFFFF5722)
                         )
                     }
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    ResumenRow(
+                        label = "IGV (18%):",
+                        value = totalIgv
+                    )
 
                     Spacer(modifier = Modifier.height(4.dp))
                     Divider(thickness = 0.5.dp)
@@ -481,7 +632,7 @@ fun NewInvoiceScreen(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            "S/ ${String.format("%.2f", totalAmount)}",
+                            "S/ ${String.format("%.2f", totalToPay)}",
                             style = MaterialTheme.typography.titleMedium.copy(
                                 brush = ColorGradients.goldLuxury
                             ),
@@ -528,17 +679,18 @@ fun NewInvoiceScreen(
                                     subsidiaryId = subsidiaryData?.id!!,
                                     client = clientData ?: IPerson(),
                                     operationDetailSet = operationDetails,
-                                    discountGlobal = 0.0,
-                                    discountPercentageGlobal = 0.0,
-                                    discountForItem = 0.0,
-                                    totalTaxed = totalValue,
-                                    totalUnaffected = 0.0,
-                                    totalExonerated = 0.0,
+                                    discountGlobal = discountGlobalValue,
+                                    discountPercentageGlobal = discountGlobalPercentage,
+                                    discountForItem = discountForItem,
+                                    totalDiscount = totalDiscount,
+                                    totalTaxed = totalTaxed,
+                                    totalUnaffected = totalUnaffected,
+                                    totalExonerated = totalExonerated,
                                     totalIgv = totalIgv,
-                                    totalFree = 0.0,
+                                    totalFree = totalFree,
                                     totalAmount = totalAmount,
-                                    totalToPay = totalAmount,
-                                    totalPayed = totalAmount
+                                    totalToPay = totalToPay,
+                                    totalPayed = totalToPay
                                 )
                                 viewModel.createInvoice(operation) { operationId ->
                                     onInvoiceCreated(operationId.toString())
@@ -565,7 +717,6 @@ fun NewInvoiceScreen(
                 }
             }
         }
-
         // Diálogo para agregar producto
         if (showAddItemDialog) {
             AddProductDialog(
@@ -578,7 +729,6 @@ fun NewInvoiceScreen(
                 subsidiaryId = subsidiaryData?.id ?: 0
             )
         }
-
         // Indicador de carga
         if (isLoading) {
             Box(
@@ -610,7 +760,28 @@ fun NewInvoiceScreen(
         }
     }
 }
-
+@Composable
+fun ResumenRow(
+    label: String,
+    value: Double,
+    color: Color = MaterialTheme.colorScheme.onSurface
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall
+        )
+        Text(
+            text = "S/ ${String.format("%.2f", value)}",
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Bold,
+            color = color
+        )
+    }
+}
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddProductDialog(
@@ -626,6 +797,9 @@ fun AddProductDialog(
     // Estados para el producto seleccionado
     var quantity by remember { mutableStateOf("1") }
     var discount by remember { mutableStateOf("0.00") }
+    var selectedAffectationType by remember(selectedProduct) {
+        mutableStateOf(selectedProduct?.typeAffectationId ?: 1)
+    }
 
     // Precios con IGV y sin IGV (se actualizan cuando se selecciona un producto)
     var priceWithIgv by remember(selectedProduct) {
@@ -640,11 +814,22 @@ fun AddProductDialog(
     val priceValue = priceWithIgv.toDoubleOrNull() ?: 0.0
     val priceWithoutIgvValue = priceWithoutIgv.toDoubleOrNull() ?: 0.0
     val discountValue = discount.toDoubleOrNull() ?: 0.0
+    val discountPercentage = if (priceWithoutIgvValue * qtyValue > 0)
+        (discountValue / (priceWithoutIgvValue * qtyValue)) * 100 else 0.0
 
     val igvPercentage = 0.18
     val subtotal = priceWithoutIgvValue * qtyValue
-    val igvAmount = subtotal * igvPercentage
-    val total = subtotal + igvAmount - discountValue
+
+    // El IGV solo aplica para operaciones gravadas (tipo 1)
+    val igvAmount = if (selectedAffectationType == 1) subtotal * igvPercentage else 0.0
+
+    // Total varía según el tipo de afectación
+    val total = when (selectedAffectationType) {
+        1 -> subtotal + igvAmount - discountValue // Gravada
+        2, 3 -> subtotal - discountValue // Exonerada o Inafecta
+        4 -> 0.0 // Gratuita
+        else -> subtotal + igvAmount - discountValue
+    }
 
     // Debounce para la búsqueda
     LaunchedEffect(searchQuery) {
@@ -1406,6 +1591,24 @@ private fun SummaryRow(
                 else -> MaterialTheme.colorScheme.onSurface
             }
         )
+    }
+}
+fun getAffectationColor(typeAffectationId: Int): Color {
+    return when (typeAffectationId) {
+        1 -> Color(0xFF058F0C) // Gravado - verde claro
+        2 -> Color(0xFF00BCD4) // Inafecto - amarillo claro
+        3 -> Color(0xFF00BCD4) // Exonerado - celeste
+        4 -> Color(0xFFFF9800) // Gratuita - rosado claro
+        else -> Color.White
+    }
+}
+fun getAffectationTypeShort(typeAffectationId: Int): String {
+    return when (typeAffectationId) {
+        1 -> "GRAV" // Gravada
+        2 -> "INAF" // Inafecta
+        3 -> "EXO"  // Exonerada
+        4 -> "GRA"  // Gratuita
+        else -> "N/D"
     }
 }
 //---------------------------------------------------------------------------------------------------
