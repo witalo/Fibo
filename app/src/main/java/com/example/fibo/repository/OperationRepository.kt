@@ -51,7 +51,7 @@ class OperationRepository @Inject constructor(
                 subsidiaryId = o.subsidiaryId!!,
                 client = o.client?.let {
                     IPerson(
-                        id = it.id,
+                        id = it.id.toInt(),
                         names = it.names.orEmpty(),
                         documentNumber = it.documentNumber.orEmpty(),
                         phone = it.phone.orEmpty(),
@@ -169,7 +169,7 @@ class OperationRepository @Inject constructor(
         }
     }
 
-    suspend fun createInvoice(operation: IOperation): Result<Int> {
+    suspend fun createInvoice(operation: IOperation): Result<Pair<Int, String>>{
         return try {
             // Convert operation details to input type
             val operationDetailInputs = operation.operationDetailSet.map { detail ->
@@ -251,7 +251,15 @@ class OperationRepository @Inject constructor(
             if (data != null && data.createOperation?.success == true) {
                 val operationIdStr = data.createOperation.operation?.id
                 val operationIdInt = operationIdStr?.toIntOrNull() ?: -1
-                Result.success(operationIdInt)
+                val serial = data.createOperation.operation?.serial ?: ""
+                val correlative = data.createOperation.operation?.correlative ?: 0
+                // Format the success message with serial-correlative
+                val successMessage = if (serial.isNotEmpty()) {
+                    "${data.createOperation.message ?: "Comprobante creada exitosamente"} (${serial}-${correlative})"
+                } else {
+                    data.createOperation.message ?: "Factura creada exitosamente"
+                }
+                Result.success(Pair(operationIdInt, successMessage))
             } else {
                 Result.failure(Exception(data?.createOperation?.message ?: "Unknown error"))
             }
@@ -259,126 +267,4 @@ class OperationRepository @Inject constructor(
             Result.failure(e)
         }
     }
-
-//    suspend fun createInvoice(operation: IOperation, callback: (Int) -> Unit) {
-//        try {
-//            // 1. Preparar los detalles de la operación
-//            val operationDetailsInput = operation.operationDetailSet.map { detail ->
-//                mapOf(
-//                    "type_affectation_id" to detail.typeAffectationId,
-//                    "quantity" to detail.quantity,
-//                    "unit_value" to detail.unitValue,
-//                    "unit_price" to detail.unitPrice,
-//                    "total_discount" to detail.totalDiscount,
-//                    "discount_percentage" to detail.discountPercentage,
-//                    "igv_percentage" to detail.igvPercentage,
-//                    "total_value" to detail.totalValue,
-//                    "total_igv" to detail.totalIgv,
-//                    "total_amount" to detail.totalAmount,
-//                    "total_to_pay" to detail.totalToPay,
-//                    "tariff" to mapOf(
-//                        "product_tariff_id" to detail.tariff.productTariffId,
-//                        "product_id" to detail.tariff.productId,
-//                        "product_code" to detail.tariff.productCode,
-//                        "product_name" to detail.tariff.productName,
-//                        "unit_id" to detail.tariff.unitId,
-//                        "unit_name" to detail.tariff.unitName,
-//                        "price_with_igv" to detail.tariff.priceWithIgv,
-//                        "price_without_igv" to detail.tariff.priceWithoutIgv,
-//                        "type_affectation_id" to detail.tariff.typeAffectationId
-//                    )
-//                )
-//            }
-//
-//            // 2. Preparar el cliente
-//            val clientInput = mapOf(
-//                "id" to operation.client.id,
-//                "document_number" to operation.client.documentNumber,
-//                "names" to operation.client.names,
-//                "email" to operation.client.email,
-//                "phone" to operation.client.phone,
-//                "address" to operation.client.address,
-//            )
-//
-//            // 3. Definir la mutación GraphQL
-//            val mutation = CreateOperationMutation(
-//                id = operation.id,
-//                serial = operation.serial ?: "",
-//                correlative = operation.correlative,
-//                documentType = operation.documentType,
-//                operationType = operation.operationType,
-//                operationStatus = operation.operationStatus,
-//                operationAction = operation.operationAction,
-//                currencyType = operation.currencyType,
-//                operationDate = operation.operationDate,
-//                emitDate = operation.emitDate,
-//                emitTime = operation.emitTime,
-//                userId = operation.userId,
-//                subsidiaryId = operation.subsidiaryId,
-//                client = PersonInput(
-//                    documentNumber = operation.client.documentNumber,
-//                    names = operation.client.names,
-//                    address = operation.client.address
-//                ),
-//                discountGlobal = operation.discountGlobal,
-//                discountPercentageGlobal = operation.discountPercentageGlobal,
-//                discountForItem = operation.discountForItem,
-//                totalDiscount = operation.totalDiscount,
-//                totalTaxed = operation.totalTaxed,
-//                totalUnaffected = operation.totalUnaffected,
-//                totalExonerated = operation.totalExonerated,
-//                totalIgv = operation.totalIgv,
-//                totalFree = operation.totalFree,
-//                totalAmount = operation.totalAmount,
-//                totalToPay = operation.totalToPay,
-//                totalPayed = operation.totalPayed,
-//                operationDetailSet = operationDetailsInput.map { detail ->
-//                    OperationDetailInput(
-//                        typeAffectationId = detail["type_affectation_id"] as Int,
-//                        quantity = detail["quantity"] as Double,
-//                        unitValue = detail["unit_value"] as Double,
-//                        unitPrice = detail["unit_price"] as Double,
-//                        totalDiscount = detail["total_discount"] as Double,
-//                        discountPercentage = detail["discount_percentage"] as Double,
-//                        igvPercentage = detail["igv_percentage"] as Double,
-//                        totalValue = detail["total_value"] as Double,
-//                        totalIgv = detail["total_igv"] as Double,
-//                        totalAmount = detail["total_amount"] as Double,
-//                        totalToPay = detail["total_to_pay"] as Double,
-//                        tariff = TariffInput(
-//                            productId = (detail["tariff"] as Map<String, Any>)["product_id"] as Int,
-//                            productCode = (detail["tariff"] as Map<String, Any>)["product_code"] as? String,
-//                            productName = (detail["tariff"] as Map<String, Any>)["product_name"] as? String,
-//                            unitId = (detail["tariff"] as Map<String, Any>)["unit_id"] as? Int,
-//                            unitName = (detail["tariff"] as Map<String, Any>)["unit_name"] as? String,
-//                            priceWithIgv = (detail["tariff"] as Map<String, Any>)["price_with_igv"] as Double,
-//                            priceWithoutIgv = (detail["tariff"] as Map<String, Any>)["price_without_igv"] as Double,
-//                            typeAffectationId = (detail["tariff"] as Map<String, Any>)["type_affectation_id"] as Int
-//                        )
-//                    )
-//                }
-//            )
-//
-//            // 4. Ejecutar la mutación
-//            val response = apolloClient.mutation(mutation).execute()
-//
-//            if (response.hasErrors()) {
-//                val errorMessage = response.errors?.joinToString { it.message } ?: "Error desconocido"
-//                throw Exception("Error al crear factura: $errorMessage")
-//            }
-//
-//            // 5. Obtener el resultado
-//            val operationId = response.data?.createOperation?.operation?.id?.toInt()
-//                ?: throw Exception("No se pudo obtener el ID de la operación creada")
-//
-//            // 6. Llamar al callback con el ID de la operación
-//            callback(operationId)
-//
-//        } catch (e: Exception) {
-//            // Manejar errores y llamar al callback con 0 (o podrías usar un sealed class/resultado)
-//            println("Error al crear factura: ${e.message}")
-//            callback(0)
-//        }
-//    }
-
 }

@@ -3728,6 +3728,8 @@ type Mutation {
 
   cancelInvoice(lowDate: Date, operationId: Int): CancelInvoiceMutation
 
+  createOperation(client: PersonInput!, correlative: Int = 0, currencyType: String!, discountForItem: Float = 0, discountGlobal: Float = 0, discountPercentageGlobal: Float = 0, documentType: String!, emitDate: String!, emitTime: String!, id: Int = 0, operationAction: String!, operationDate: String!, operationDetailSet: [OperationDetailInput]!, operationStatus: String!, operationType: String!, serial: String, subsidiaryId: Int!, totalAmount: Float = 0, totalDiscount: Float = 0, totalExonerated: Float = 0, totalFree: Float = 0, totalIgv: Float = 0, totalPayed: Float = 0, totalTaxed: Float = 0, totalToPay: Float = 0, totalUnaffected: Float = 0, userId: Int!): CreateOperationMutation
+
   sntPerson(document: String): SntMutation
 
   createSale(clientId: Int = 0, commentSet: [String!], correlative: Int = 0, creditNoteType: String = "NA", currencyType: String = "PEN", descriptionSet: [String!], detractionPaymentMethod: Int = 0, detractionPercentage: Float = 0, detractionType: Int = 0, discountForItem: Float = 0, discountGlobal: Float = 0, discountPercentageGlobal: Float = 0, discountPercentageSet: [Float!], documentType: String = "NA", emitDate: Date = null, guideArrivalAddress: String = "", guideArrivalDistrictId: String = "040101", guideArrivalSerial: String = "", guideModeTransfer: String = "NA", guideOriginAddress: String = "", guideOriginDistrictId: String = "040101", guideOriginSerial: String = "", guideReasonTransfer: String = "NA", hasDetraction: Boolean = false, hasPerception: Boolean = false, hasRetention: Boolean = false, igvPercentageSet: [Float!], igvType: Int = 0, mainDriverDocumentNumber: String = "", mainDriverDocumentType: String = "1", mainDriverDriverLicense: String = "", mainDriverNames: String = "", mainVehicleLicensePlate: String = "", observation: String = "", operationType: String = "NA", othersDriversDocumentNumberSet: [String!], othersDriversDocumentTypeSet: [String!], othersDriversDriverLicenseSet: [String!], othersDriversNamesSet: [String!], othersVehiclesLicensePlateSet: [String!], parentOperationId: Int = 0, perceptionPercentage: Float = 0, perceptionPercentageSet: [Float!], perceptionType: Int = 0, productIdSet: [Int!], productTariffIdSet: [Int!], quantityPackages: Float = 0, quantitySet: [Int!], receiverDocumentNumber: String = "", receiverDocumentType: String = "1", receiverNames: String = "", relatedDocumentsCorrelativeSet: [Int!], relatedDocumentsDocumentTypeSet: [String!], relatedDocumentsSerialSet: [String!], retentionPercentage: Float = 0, retentionType: Int = 0, saleExchangeRate: Float = 0, serial: String = "", totalAmount: Float = 0, totalAmountSet: [Float!], totalDetraction: Float = 0, totalDiscount: Float = 0, totalDiscountSet: [Float!], totalExonerated: Float = 0, totalFree: Float = 0, totalIgv: Float = 0, totalIgvSet: [Float!], totalPayed: Float = 0, totalPerception: Float = 0, totalPerceptionSet: [Float!], totalRetention: Float = 0, totalSet: [Float!], totalTaxed: Float = 0, totalToPay: Float = 0, totalToPaySet: [Float!], totalTurned: Float = 0, totalUnaffected: Float = 0, totalValueSet: [Float!], totalWeight: Float = 0, transferDate: Date = null, transportationCompanyDocumentNumber: String = "", transportationCompanyDocumentType: String = "6", transportationCompanyMtcRegistrationNumber: String = "", transportationCompanyNames: String = "", typeAffectationIdSet: [Int!], unitPriceSet: [Float!], unitValueSet: [Float!], wayPaySet: [Int!], weightMeasurementUnitCode: String = "KGM"): CreateSaleMutation
@@ -3747,8 +3749,6 @@ type Mutation {
   registerSale(cliente: ClienteType, items: [ItemType], venta: VentaType): RegisterSaleMutation
 
   annulInvoice(correlative: Int, serial: String): AnnulInvoiceMutation
-
-  createOperation(client: PersonInput!, correlative: Int = 0, currencyType: String!, discountForItem: Float = 0, discountGlobal: Float = 0, discountPercentageGlobal: Float = 0, documentType: String!, emitDate: String!, emitTime: String!, id: Int = 0, operationAction: String!, operationDate: String!, operationDetailSet: [OperationDetailInput]!, operationStatus: String!, operationType: String!, serial: String, subsidiaryId: Int!, totalAmount: Float = 0, totalDiscount: Float = 0, totalExonerated: Float = 0, totalFree: Float = 0, totalIgv: Float = 0, totalPayed: Float = 0, totalTaxed: Float = 0, totalToPay: Float = 0, totalUnaffected: Float = 0, userId: Int!): CreateOperationMutation
 
   createWarehouse(category: String, name: String, subsidiaryId: Int): CreateWarehouseMutation
 
@@ -3931,6 +3931,84 @@ type CancelInvoiceMutation {
   success: Boolean
 }
 
+type CreateOperationMutation {
+  operation: OperationType
+
+  success: Boolean
+
+  message: String
+}
+
+input PersonInput {
+  id: Int
+
+  documentType: String
+
+  documentNumber: String
+
+  names: String
+
+  address: String
+
+  email: String
+
+  phone: String
+}
+
+input OperationDetailInput {
+  id: Int
+
+  tariff: TariffInput
+
+  typeAffectationId: Int
+
+  quantity: Float
+
+  unitValue: Float
+
+  unitPrice: Float
+
+  discountPercentage: Float
+
+  totalDiscount: Float
+
+  perceptionPercentage: Float
+
+  totalPerception: Float
+
+  igvPercentage: Float
+
+  totalValue: Float
+
+  totalIgv: Float
+
+  totalAmount: Float
+
+  totalToPay: Float
+}
+
+input TariffInput {
+  productId: Int
+
+  productCode: String
+
+  productName: String
+
+  unitId: Int
+
+  unitName: String
+
+  remainingQuantity: Float
+
+  priceWithIgv: Float
+
+  priceWithoutIgv: Float
+
+  productTariffId: Int
+
+  typeAffectationId: Int
+}
+
 type SntMutation {
   message: String
 
@@ -3942,6 +4020,8 @@ type SntMutation {
 }
 
 type PersonSunatType {
+  sntId: Int
+
   sntDocument: String
 
   sntNames: String
@@ -4045,84 +4125,6 @@ type AnnulInvoiceMutation {
   message: String
 
   success: Boolean
-}
-
-type CreateOperationMutation {
-  operation: OperationType
-
-  success: Boolean
-
-  message: String
-}
-
-input PersonInput {
-  id: Int
-
-  documentType: String
-
-  documentNumber: String
-
-  names: String
-
-  address: String
-
-  email: String
-
-  phone: String
-}
-
-input OperationDetailInput {
-  id: Int
-
-  tariff: TariffInput
-
-  typeAffectationId: Int
-
-  quantity: Float
-
-  unitValue: Float
-
-  unitPrice: Float
-
-  discountPercentage: Float
-
-  totalDiscount: Float
-
-  perceptionPercentage: Float
-
-  totalPerception: Float
-
-  igvPercentage: Float
-
-  totalValue: Float
-
-  totalIgv: Float
-
-  totalAmount: Float
-
-  totalToPay: Float
-}
-
-input TariffInput {
-  productId: Int
-
-  productCode: String
-
-  productName: String
-
-  unitId: Int
-
-  unitName: String
-
-  remainingQuantity: Float
-
-  priceWithIgv: Float
-
-  priceWithoutIgv: Float
-
-  productTariffId: Int
-
-  typeAffectationId: Int
 }
 
 type CreateWarehouseMutation {

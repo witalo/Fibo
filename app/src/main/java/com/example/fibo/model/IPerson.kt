@@ -1,7 +1,7 @@
 package com.example.fibo.model
 
 data class IPerson(
-    val id: Comparable<*> = 0,
+    val id: Int = 0,
     val names: String? = null,
     val documentNumber: String? = null,
     val email: String? = null,

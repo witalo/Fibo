@@ -1,5 +1,6 @@
 package com.example.fibo.ui.screens.invoice
 
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -43,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -57,6 +59,7 @@ import com.example.fibo.model.IPerson
 import com.example.fibo.model.IProduct
 import com.example.fibo.model.IProductTariff
 import com.example.fibo.model.ITariff
+import com.example.fibo.navigation.Screen
 import com.example.fibo.utils.ColorGradients
 import com.example.fibo.utils.getCurrentFormattedDate
 import com.example.fibo.utils.getCurrentFormattedTime
@@ -73,6 +76,7 @@ fun NewInvoiceScreen(
     onInvoiceCreated: (String) -> Unit,
     viewModel: NewInvoiceViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
     val subsidiaryData by viewModel.subsidiaryData.collectAsState()
     val userData by viewModel.userData.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
@@ -772,8 +776,14 @@ fun NewInvoiceScreen(
                                     totalToPay = totalToPay,
                                     totalPayed = totalToPay
                                 )
-                                viewModel.createInvoice(operation) { operationId ->
-                                    onInvoiceCreated(operationId.toString())
+//                                viewModel.createInvoice(operation) { operationId ->
+//                                    onInvoiceCreated(operationId.toString())
+//                                }
+                                viewModel.createInvoice(operation) { operationId, message ->
+                                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                                    onBack()
+                                    // Alternatively, if you still want to navigate to invoice detail:
+                                    // onInvoiceCreated(operationId.toString())
                                 }
                             },
                             modifier = Modifier

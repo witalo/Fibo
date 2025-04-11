@@ -5,6 +5,7 @@ mutation sntPerson($document: String!) {
         status
         message
         person{
+            sntDocument
             sntNames
             sntAddress
         }
