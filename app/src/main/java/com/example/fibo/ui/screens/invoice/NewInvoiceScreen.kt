@@ -63,7 +63,7 @@ import com.example.fibo.utils.getCurrentFormattedTime
 import com.example.fibo.viewmodels.ProductSearchState
 import kotlinx.coroutines.delay
 import kotlin.math.max
-
+import kotlin.math.min
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -108,17 +108,55 @@ fun NewInvoiceScreen(
     val baseImponible = totalTaxed + totalExonerated + totalUnaffected
     val totalAmount = baseImponible + totalIgv
     // Calcular descuento global si está activo
-    LaunchedEffect(discountGlobalString, applyGlobalDiscount, totalAmount) {
+//    LaunchedEffect(discountGlobalString, applyGlobalDiscount, totalAmount) {
+//        if (applyGlobalDiscount) {
+//            val inputValue = discountGlobalString.toDoubleOrNull() ?: 0.0
+//            // Si el valor ingresado es un porcentaje (<=100)
+//            if (inputValue <= 100) {
+//                discountGlobalPercentage = inputValue
+//                discountGlobalValue = (baseImponible * inputValue) / 100
+//            } else {
+//                // Es un valor fijo
+//                discountGlobalValue = inputValue
+//                discountGlobalPercentage = if (baseImponible > 0) (inputValue / baseImponible) * 100 else 0.0
+//            }
+//        } else {
+//            discountGlobalValue = 0.0
+//            discountGlobalPercentage = 0.0
+//        }
+//    }
+    // Calcular descuento global si está activo (sobre la base imponible)
+//    LaunchedEffect(discountGlobalString, applyGlobalDiscount, baseImponible) {
+//        if (applyGlobalDiscount) {
+//            val inputValue = discountGlobalString.toDoubleOrNull() ?: 0.0
+//            if (inputValue <= 100) {
+//                discountGlobalPercentage = inputValue
+//                discountGlobalValue = (baseImponible * inputValue) / 100
+//            } else {
+//                discountGlobalValue = inputValue
+//                discountGlobalPercentage = if (baseImponible > 0) (inputValue / baseImponible) * 100 else 0.0
+//            }
+//        } else {
+//            discountGlobalValue = 0.0
+//            discountGlobalPercentage = 0.0
+//        }
+//    }
+    var discountByPercentage by remember { mutableStateOf(false) } //  Controla si el descuento es por porcentaje o monto
+    LaunchedEffect(discountGlobalString, applyGlobalDiscount, discountByPercentage, baseImponible) {
         if (applyGlobalDiscount) {
             val inputValue = discountGlobalString.toDoubleOrNull() ?: 0.0
-            // Si el valor ingresado es un porcentaje (<=100)
-            if (inputValue <= 100) {
-                discountGlobalPercentage = inputValue
-                discountGlobalValue = (baseImponible * inputValue) / 100
+            if (discountByPercentage) {
+                // Solo aplicar como porcentaje (validar que no sea mayor a 100)
+                discountGlobalPercentage = min(inputValue, 100.0)
+                discountGlobalValue = (baseImponible * discountGlobalPercentage) / 100
             } else {
-                // Es un valor fijo
-                discountGlobalValue = inputValue
-                discountGlobalPercentage = if (baseImponible > 0) (inputValue / baseImponible) * 100 else 0.0
+                // Aplicar como monto fijo (no puede ser mayor que el total)
+                discountGlobalValue = min(inputValue, baseImponible)
+                discountGlobalPercentage = if (baseImponible > 0) {
+                    (discountGlobalValue / baseImponible) * 100
+                } else {
+                    0.0
+                }
             }
         } else {
             discountGlobalValue = 0.0
@@ -129,7 +167,8 @@ fun NewInvoiceScreen(
     val totalDiscount = discountGlobalValue + discountForItem
 
     // Total a pagar considerando todos los descuentos
-    val totalToPay = totalAmount - totalDiscount
+//    val totalToPay = totalAmount - totalDiscount
+    val totalToPay = baseImponible + totalIgv - discountGlobalValue
 
     Scaffold(
         topBar = {
@@ -488,7 +527,31 @@ fun NewInvoiceScreen(
 
                         AnimatedVisibility(visible = applyGlobalDiscount) {
                             Column {
-                                Spacer(modifier = Modifier.height(8.dp))
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Checkbox(
+                                        checked = discountByPercentage,
+                                        onCheckedChange = {
+                                            discountByPercentage = it
+                                            // Resetear el valor cuando se cambia el tipo
+                                            discountGlobalString = "0.00"
+                                        },
+                                        colors = CheckboxDefaults.colors(
+                                            checkedColor = MaterialTheme.colorScheme.primary,
+                                            uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    )
+                                    Text(
+                                        "Descuento por porcentaje",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(2.dp))
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically
@@ -496,12 +559,25 @@ fun NewInvoiceScreen(
                                     OutlinedTextField(
                                         value = discountGlobalString,
                                         onValueChange = { discountGlobalString = it },
-                                        label = { Text("Valor del descuento") },
-                                        placeholder = { Text("% o monto en S/") },
+                                        label = { Text(
+                                            if (discountByPercentage) "Porcentaje descuento" else "Monto descuento (S/)"
+                                        )  },
+                                        placeholder = {
+                                            Text(
+                                                if (discountByPercentage) "Ej: 10.5" else "Ej: 50.00"
+                                            )
+                                        },
                                         modifier = Modifier.weight(1f),
                                         singleLine = true,
                                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                        shape = RoundedCornerShape(8.dp)
+                                        shape = RoundedCornerShape(8.dp),
+                                        suffix = {
+                                            Text(
+                                                if (discountByPercentage) "%" else "S/",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
                                     )
 
                                     Spacer(modifier = Modifier.width(12.dp))
@@ -525,7 +601,11 @@ fun NewInvoiceScreen(
 
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    "Ingrese un porcentaje (hasta 100) o un monto fijo en soles",
+                                    if (discountByPercentage) {
+                                        "Ingrese un porcentaje de descuento (ej: 10.5 para 10.5%)"
+                                    } else {
+                                        "Ingrese un monto fijo de descuento en soles (ej: 50.00)"
+                                    },
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -790,6 +870,7 @@ fun AddProductDialog(
     viewModel: NewInvoiceViewModel,
     subsidiaryId: Int = 0
 ) {
+    val decimalRegex = Regex("^\\d*(\\.\\d{0,4})?$")
     var searchQuery by remember { mutableStateOf("") }
     val searchState by viewModel.searchState.collectAsState()
     val selectedProduct by viewModel.selectedProduct.collectAsState()
@@ -817,19 +898,32 @@ fun AddProductDialog(
     val discountPercentage = if (priceWithoutIgvValue * qtyValue > 0)
         (discountValue / (priceWithoutIgvValue * qtyValue)) * 100 else 0.0
 
+    // Subtotal sin IGV (antes de descuentos)
+    val subtotalWithoutDiscount = priceWithoutIgvValue * qtyValue
+// Subtotal con descuento aplicado
+    val subtotalAfterDiscount = max(0.0, subtotalWithoutDiscount - discountValue)
+
     val igvPercentage = 0.18
     val subtotal = priceWithoutIgvValue * qtyValue
 
     // El IGV solo aplica para operaciones gravadas (tipo 1)
-    val igvAmount = if (selectedAffectationType == 1) subtotal * igvPercentage else 0.0
+//    val igvAmount = if (selectedAffectationType == 1) subtotal * igvPercentage else 0.0
+    val igvAmount = if (selectedAffectationType == 1) subtotalAfterDiscount * igvPercentage else 0.0
+
 
     // Total varía según el tipo de afectación
     val total = when (selectedAffectationType) {
-        1 -> subtotal + igvAmount - discountValue // Gravada
-        2, 3 -> subtotal - discountValue // Exonerada o Inafecta
-        4 -> 0.0 // Gratuita
-        else -> subtotal + igvAmount - discountValue
+        1 -> subtotalAfterDiscount + igvAmount // Gravada: (Base - Descuento) + IGV
+        2, 3 -> subtotalAfterDiscount          // Exonerada o Inafecta: Base - Descuento
+        4 -> 0.0                               // Gratuita
+        else -> subtotalAfterDiscount + igvAmount
     }
+//    val total = when (selectedAffectationType) {
+//        1 -> subtotal + igvAmount - discountValue // Gravada
+//        2, 3 -> subtotal - discountValue // Exonerada o Inafecta
+//        4 -> 0.0 // Gratuita
+//        else -> subtotal + igvAmount - discountValue
+//    }
 
     // Debounce para la búsqueda
     LaunchedEffect(searchQuery) {
@@ -1064,10 +1158,16 @@ fun AddProductDialog(
                                 OutlinedTextField(
                                     value = priceWithoutIgv,
                                     onValueChange = {
-                                        priceWithoutIgv = it
-                                        // Calcular precio con IGV
-                                        val withoutIgvValue = it.toDoubleOrNull() ?: 0.0
-                                        priceWithIgv = (withoutIgvValue * (1 + igvPercentage)).toString()
+                                        if (it.isEmpty() || it.matches(decimalRegex)) {
+                                            priceWithoutIgv = it
+                                            val withoutIgvValue = it.toDoubleOrNull() ?: 0.0
+                                            val withIgvValue  = (withoutIgvValue * (1 + igvPercentage))
+                                            priceWithIgv = String.format("%.4f", withIgvValue)
+                                        }
+//                                        priceWithoutIgv = it
+//                                        // Calcular precio con IGV
+//                                        val withoutIgvValue = it.toDoubleOrNull() ?: 0.0
+//                                        priceWithIgv = (withoutIgvValue * (1 + igvPercentage)).toString()
                                     },
                                     textStyle = MaterialTheme.typography.bodyMedium,
                                     label = { Text("Precio sin IGV") },
@@ -1080,10 +1180,16 @@ fun AddProductDialog(
                                 OutlinedTextField(
                                     value = priceWithIgv,
                                     onValueChange = {
-                                        priceWithIgv = it
-                                        // Calcular precio sin IGV
-                                        val withIgvValue = it.toDoubleOrNull() ?: 0.0
-                                        priceWithoutIgv = (withIgvValue / (1 + igvPercentage)).toString()
+                                        if (it.isEmpty() || it.matches(decimalRegex)) {
+                                            priceWithIgv = it
+                                            val priceWithIgvValue = it.toDoubleOrNull() ?: 0.0
+                                            val withoutIgvValue  = (priceWithIgvValue / (1 + igvPercentage))
+                                            priceWithoutIgv  = String.format("%.4f", withoutIgvValue )
+                                        }
+//                                        priceWithIgv = it
+//                                        // Calcular precio sin IGV
+//                                        val withIgvValue = it.toDoubleOrNull() ?: 0.0
+//                                        priceWithoutIgv = (withIgvValue / (1 + igvPercentage)).toString()
                                     },
                                     textStyle = MaterialTheme.typography.bodyMedium,
                                     label = { Text("Precio con IGV") },
@@ -1142,23 +1248,37 @@ fun AddProductDialog(
                                             unitValue = priceWithoutIgvValue,
                                             unitPrice = priceValue,
                                             totalDiscount = discountValue,
-                                            discountPercentage = if (subtotal > 0) (discountValue / subtotal) * 100 else 0.0,
+//                                            discountPercentage = if (subtotal > 0) (discountValue / subtotal) * 100 else 0.0,
+                                            discountPercentage = if (subtotalWithoutDiscount > 0) (discountValue / subtotalWithoutDiscount) * 100 else 0.0,
                                             igvPercentage = igvPercentage * 100,
                                             perceptionPercentage = 0.0,
                                             totalPerception = 0.0,
+//                                            totalValue = when (product.typeAffectationId) {
+//                                                1 -> subtotal  // Operación gravada
+//                                                2 -> subtotal  // Operación exonerada
+//                                                3 -> subtotal  // Operación inafecta
+//                                                4 -> 0.0       // Operación gratuita (valor comercial en totalValue)
+//                                                else -> subtotal
+//                                            },
                                             totalValue = when (product.typeAffectationId) {
-                                                1 -> subtotal  // Operación gravada
-                                                2 -> subtotal  // Operación exonerada
-                                                3 -> subtotal  // Operación inafecta
-                                                4 -> 0.0       // Operación gratuita (valor comercial en totalValue)
-                                                else -> subtotal
+                                                1 -> subtotalAfterDiscount  // Operación gravada (base neta)
+                                                2 -> subtotalAfterDiscount  // Operación exonerada
+                                                3 -> subtotalAfterDiscount  // Operación inafecta
+                                                4 -> 0.0                   // Operación gratuita (valor comercial en totalValue)
+                                                else -> subtotalAfterDiscount
                                             },
                                             totalIgv = if (product.typeAffectationId == 1) igvAmount else 0.0,
+//                                            totalAmount = when (product.typeAffectationId) {
+//                                                1 -> subtotal + igvAmount - discountValue  // Gravada: Base + IGV - Descuento
+//                                                2, 3 -> subtotal - discountValue           // Exonerada/Inafecta: Base - Descuento
+//                                                4 -> 0.0                                   // Gratuita: Se registra 0
+//                                                else -> subtotal + igvAmount - discountValue
+//                                            },
                                             totalAmount = when (product.typeAffectationId) {
-                                                1 -> subtotal + igvAmount - discountValue  // Gravada: Base + IGV - Descuento
-                                                2, 3 -> subtotal - discountValue           // Exonerada/Inafecta: Base - Descuento
-                                                4 -> 0.0                                   // Gratuita: Se registra 0
-                                                else -> subtotal + igvAmount - discountValue
+                                                1 -> subtotalAfterDiscount + igvAmount  // Gravada: (Base - Descuento) + IGV
+                                                2, 3 -> subtotalAfterDiscount           // Exonerada/Inafecta: Base - Descuento
+                                                4 -> 0.0                               // Gratuita: Se registra 0
+                                                else -> subtotalAfterDiscount + igvAmount
                                             },
                                             totalToPay = total
                                         )

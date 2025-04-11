@@ -3748,6 +3748,8 @@ type Mutation {
 
   annulInvoice(correlative: Int, serial: String): AnnulInvoiceMutation
 
+  createOperation(client: PersonInput!, correlative: Int = 0, currencyType: String!, discountForItem: Float = 0, discountGlobal: Float = 0, discountPercentageGlobal: Float = 0, documentType: String!, emitDate: String!, emitTime: String!, id: Int = 0, operationAction: String!, operationDate: String!, operationDetailSet: [OperationDetailInput]!, operationStatus: String!, operationType: String!, serial: String, subsidiaryId: Int!, totalAmount: Float = 0, totalDiscount: Float = 0, totalExonerated: Float = 0, totalFree: Float = 0, totalIgv: Float = 0, totalPayed: Float = 0, totalTaxed: Float = 0, totalToPay: Float = 0, totalUnaffected: Float = 0, userId: Int!): CreateOperationMutation
+
   createWarehouse(category: String, name: String, subsidiaryId: Int): CreateWarehouseMutation
 
   updateWarehouse(category: String, id: ID!, name: String, subsidiaryId: Int): UpdateWarehouseMutation
@@ -4043,6 +4045,84 @@ type AnnulInvoiceMutation {
   message: String
 
   success: Boolean
+}
+
+type CreateOperationMutation {
+  operation: OperationType
+
+  success: Boolean
+
+  message: String
+}
+
+input PersonInput {
+  id: Int
+
+  documentType: String
+
+  documentNumber: String
+
+  names: String
+
+  address: String
+
+  email: String
+
+  phone: String
+}
+
+input OperationDetailInput {
+  id: Int
+
+  tariff: TariffInput
+
+  typeAffectationId: Int
+
+  quantity: Float
+
+  unitValue: Float
+
+  unitPrice: Float
+
+  discountPercentage: Float
+
+  totalDiscount: Float
+
+  perceptionPercentage: Float
+
+  totalPerception: Float
+
+  igvPercentage: Float
+
+  totalValue: Float
+
+  totalIgv: Float
+
+  totalAmount: Float
+
+  totalToPay: Float
+}
+
+input TariffInput {
+  productId: Int
+
+  productCode: String
+
+  productName: String
+
+  unitId: Int
+
+  unitName: String
+
+  remainingQuantity: Float
+
+  priceWithIgv: Float
+
+  priceWithoutIgv: Float
+
+  productTariffId: Int
+
+  typeAffectationId: Int
 }
 
 type CreateWarehouseMutation {
