@@ -1,5 +1,6 @@
 package com.example.fibo.viewmodels
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fibo.QrScanMutation
@@ -110,23 +111,28 @@ class NewInvoiceViewModel @Inject constructor(
             _error.value = "Ingrese el nombre del cliente"
             return
         }
-
         if (operation.operationDetailSet.isEmpty()) {
             _error.value = "Agregue al menos un producto"
             return
         }
-
-        _isLoading.value = true
-
         viewModelScope.launch {
+            _isLoading.value = true
             try {
-                // Llama al repositorio para crear la factura
-                val invoiceId = operationRepository.createInvoice(operation)
-                onSuccess(invoiceId)
+                val result = operationRepository.createInvoice(operation)
+                result.fold(
+                    onSuccess = { operationId ->
+                        _isLoading.value = false
+                        onSuccess(operationId)
+                    },
+                    onFailure = { error ->
+                        _isLoading.value = false
+                        // Handle error - you might want to expose this through a flow
+                        Log.e("OperationViewModel", "Error creating invoice", error)
+                    }
+                )
             } catch (e: Exception) {
-                _error.value = "Error al crear la factura: ${e.message}"
-            } finally {
                 _isLoading.value = false
+                Log.e("OperationViewModel", "Exception creating invoice", e)
             }
         }
     }
