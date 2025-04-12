@@ -14,6 +14,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 // Extensión para DataStore
@@ -128,6 +129,9 @@ class PreferencesManager(context: Context) {
         dataStore.edit { preferences ->
             preferences.clear()
         }
+    }
+    suspend fun getRawPreferences(): Preferences {
+        return dataStore.data.first()
     }
 
     // Función para obtener todos los datos como IUserData

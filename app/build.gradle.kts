@@ -120,6 +120,17 @@ dependencies {
     implementation("com.google.mlkit:barcode-scanning:17.3.0")
 
     implementation("androidx.compose.material:material-icons-extended:1.6.3")
+
+    // PDF
+    implementation("com.itextpdf:itext7-core:7.2.5")
+    implementation("com.itextpdf:kernel:7.2.5")
+    implementation("com.itextpdf:io:7.2.5")
+    implementation("com.itextpdf:layout:7.2.5")
+
+    // QR - ZXing (versiones estables)
+    implementation("com.google.zxing:core:3.5.1")
+
+    implementation("com.github.mhiew:android-pdf-viewer:3.2.0-beta.3")
 }
 
 kapt {

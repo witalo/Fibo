@@ -61,6 +61,8 @@ type Query {
 
   clientById(clientId: ID): PersonType
 
+  operationById(id: Int): OperationType
+
   allWarehouses(subsidiaryId: Int, category: String): [WarehouseType]
 
   allUnits: [UnitType]
@@ -1879,6 +1881,8 @@ type OperationType {
   creditNoteReferences: String
 
   subsidiaryId: Int
+
+  userId: Int
 }
 
 """
@@ -3428,6 +3432,8 @@ type ProductTariffType {
 
   productId: Int
 
+  productCode: String
+
   productName: String
 
   unitId: Int
@@ -4020,8 +4026,6 @@ type SntMutation {
 }
 
 type PersonSunatType {
-  sntId: Int
-
   sntDocument: String
 
   sntNames: String

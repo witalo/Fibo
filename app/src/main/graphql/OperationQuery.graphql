@@ -61,3 +61,77 @@ query GetTariffByProductId($productId: Int!, $subsidiaryId: Int!) {
         typeAffectationId
     }
 }
+query GetOperationById($OperationId: Int!) {
+    operationById(id: $OperationId){
+        id
+        emitDate
+        emitTime
+        operationType
+        operationDate
+        operationAction
+        currencyType
+        documentType
+        documentTypeReadable
+        serial
+        correlative
+        discountGlobal
+        discountPercentageGlobal
+        discountForItem
+        totalAmount
+        totalTaxed
+        totalDiscount
+        totalExonerated
+        totalUnaffected
+        totalFree
+        totalIgv
+        totalToPay
+        totalPayed
+        operationStatus
+        operationStatusReadable
+        subsidiaryId
+        sendWhatsapp
+        linkXml
+        linkXmlLow
+        linkCdr
+        linkCdrLow
+        sunatStatus
+        sendSunat
+        sunatDescription
+        sunatDescriptionLow
+        codeHash
+        userId
+        client{
+            id
+            documentType
+            documentNumber
+            names
+            address
+            phone
+            email
+        }
+        operationdetailSet{
+            id
+            typeAffectationId
+            quantity
+            unitValue
+            unitPrice
+            discountPercentage
+            totalDiscount
+            perceptionPercentage
+            totalPerception
+            igvPercentage
+            totalValue
+            totalIgv
+            totalAmount
+            totalToPay
+            productTariff{
+                id
+                productId
+                productCode
+                productName
+                unitId
+                unitName
+            }
+        }
+    }
+}

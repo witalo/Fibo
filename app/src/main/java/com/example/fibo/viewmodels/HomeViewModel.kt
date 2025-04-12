@@ -34,6 +34,12 @@ class HomeViewModel @Inject constructor(
     private var currentUserId: Int? = null
     val subsidiaryData: StateFlow<ISubsidiary?> = preferencesManager.subsidiaryData
 
+    // Estado para el diálogo de PDF
+    private val _showPdfDialog = MutableStateFlow(false)
+    val showPdfDialog: StateFlow<Boolean> = _showPdfDialog
+    private val _currentInvoiceId = MutableStateFlow(0)
+    val currentInvoiceId: StateFlow<Int> = _currentInvoiceId
+
     init {
         // Set up user data collection
         viewModelScope.launch {
@@ -82,6 +88,16 @@ class HomeViewModel @Inject constructor(
         object Loading : InvoiceState()
         data class Success(val data: List<IOperation>) : InvoiceState()
         data class Error(val message: String) : InvoiceState()
+    }
+    // Función para mostrar el diálogo de PDF
+    fun showPdfDialog(invoiceId: Int) {
+        _currentInvoiceId.value = invoiceId
+        _showPdfDialog.value = true
+    }
+
+    // Función para cerrar el diálogo
+    fun closePdfDialog() {
+        _showPdfDialog.value = false
     }
 }
 //@HiltViewModel

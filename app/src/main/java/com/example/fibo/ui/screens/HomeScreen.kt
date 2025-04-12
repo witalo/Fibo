@@ -18,6 +18,7 @@ import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.outlined.Receipt
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,6 +42,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import com.example.fibo.R
 import com.example.fibo.model.IOperation
 import com.example.fibo.navigation.Screen
+import com.example.fibo.reports.PdfDialogViewModel
+import com.example.fibo.reports.PdfGenerator
+import com.example.fibo.reports.PdfViewerDialog
 import com.example.fibo.ui.components.AppTopBar
 import com.example.fibo.ui.components.SideMenu
 import com.example.fibo.utils.ColorGradients
@@ -192,9 +196,19 @@ fun InvoiceList(
 @Composable
 fun InvoiceItem(
     invoice: IOperation,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    homeViewModel: HomeViewModel = hiltViewModel(),
+    pdfViewModel: PdfDialogViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
+    // Observar el estado del diálogo
+    val showPdfDialog by homeViewModel.showPdfDialog.collectAsState()
+    val currentInvoiceId by homeViewModel.currentInvoiceId.collectAsState()
+
+    // Estado del PdfDialogViewModel
+    val pdfUiState by pdfViewModel.uiState.collectAsState()
+    val availablePrinters by pdfViewModel.availablePrinters.collectAsState()
+    val selectedPrinter by pdfViewModel.selectedPrinter.collectAsState()
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -276,11 +290,7 @@ fun InvoiceItem(
                 }
                 IconButton(
                     onClick = {
-                        Toast.makeText(
-                            context,
-                            "Abriendo el PDF",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        homeViewModel.showPdfDialog(invoice.id)
                     },
                     modifier = Modifier.size(40.dp) // Tamaño del área clickeable
                 ) {
@@ -301,6 +311,24 @@ fun InvoiceItem(
                 )
             }
         }
+    }
+    // Mostrar el diálogo cuando sea necesario
+    // Mostrar el diálogo PDF cuando showPdfDialog es true
+    if (showPdfDialog) {
+        // Cargar los datos de la operación cuando el diálogo se muestra
+        LaunchedEffect(currentInvoiceId) {
+            if (currentInvoiceId > 0) {
+                pdfViewModel.fetchOperationById(currentInvoiceId)
+            }
+        }
+
+        // Implementar el diálogo de PDF
+        // Mostrar el diálogo PdfViewerDialog cuando showPdfDialog es true
+        PdfViewerDialog(
+            isVisible = showPdfDialog,
+            operationId = currentInvoiceId,
+            onDismiss = { homeViewModel.closePdfDialog() }
+        )
     }
 }
 

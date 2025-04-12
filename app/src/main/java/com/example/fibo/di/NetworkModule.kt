@@ -9,6 +9,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 import com.apollographql.apollo3.ApolloClient
+import com.example.fibo.reports.PdfGenerator
 import com.example.fibo.apollo.ApolloClient as AppApolloClient
 
 @Module
@@ -25,5 +26,10 @@ object NetworkModule {
     @Singleton
     fun providePreferencesManager(@ApplicationContext context: Context): PreferencesManager {
         return PreferencesManager(context)
+    }
+    @Provides
+    @Singleton
+    fun providePdfGenerator(preferencesManager: PreferencesManager): PdfGenerator {
+        return PdfGenerator(preferencesManager)
     }
 }

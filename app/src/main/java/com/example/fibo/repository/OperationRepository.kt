@@ -6,11 +6,13 @@ import com.example.fibo.model.IOperation
 import com.apollographql.apollo3.ApolloClient
 import com.apollographql.apollo3.api.Optional
 import com.apollographql.apollo3.api.toInput
+import com.apollographql.apollo3.exception.ApolloException
 import com.example.fibo.CreateOperationMutation
 import com.example.fibo.GetOperationByDateAndUserIdQuery
 import com.example.fibo.GetTariffByProductIdQuery
 import com.example.fibo.SearchProductsQuery
 import com.example.fibo.SntPersonMutation
+import com.example.fibo.GetOperationByIdQuery
 import com.example.fibo.model.IOperationDetail
 import com.example.fibo.model.IPerson
 import com.example.fibo.model.IProduct
@@ -267,5 +269,91 @@ class OperationRepository @Inject constructor(
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    suspend fun getOperationById(operationId: Int): IOperation {
+        val query = GetOperationByIdQuery(OperationId = operationId)
+        val response = apolloClient.query(query).execute()
+        // Validar errores de la respuesta
+        if (response.hasErrors()) {
+            val errorMessage = response.errors?.firstOrNull()?.message ?: "Error desconocido"
+            throw ApolloException("Error en la consulta GraphQL: $errorMessage")
+        }
+        val operationData = response.data?.operationById
+            ?: throw ApolloException("No se encontró la operación con ID $operationId")
+
+        val clientData = operationData.client
+            ?: throw ApolloException("Los datos del cliente están vacíos")
+
+        // Mapear datos a modelos locales
+        val client = IPerson(
+            id = clientData.id.toInt(),
+            names = clientData.names,
+            documentType = clientData.documentType.toString(),
+            documentNumber = clientData.documentNumber,
+            email = clientData.email,
+            phone = clientData.phone,
+            address = clientData.address
+        )
+
+        val details = operationData.operationdetailSet.map { detail ->
+            IOperationDetail(
+                id = detail.id!!,
+                tariff = ITariff(
+                    productTariffId = detail.productTariff?.id!!.toInt(),
+                    productId = detail.productTariff.productId!!.toInt(),
+                    productCode = detail.productTariff.productCode.toString(),
+                    productName = detail.productTariff.productName.toString(),
+                    unitId = detail.productTariff.unitId!!.toInt(),
+                    unitName = detail.productTariff.unitName.toString(),
+                    typeAffectationId = detail.typeAffectationId!!.toInt()
+                ),
+                typeAffectationId = detail.typeAffectationId,
+                quantity = detail.quantity.toSafeDouble(),
+                unitValue = detail.unitValue.toSafeDouble(),
+                unitPrice = detail.unitPrice.toSafeDouble(),
+                discountPercentage = detail.discountPercentage.toSafeDouble(),
+                totalDiscount = detail.totalDiscount.toSafeDouble(),
+                perceptionPercentage = detail.perceptionPercentage.toSafeDouble(),
+                totalPerception = detail.totalPerception.toSafeDouble(),
+                igvPercentage = detail.igvPercentage.toSafeDouble(),
+                totalValue = detail.totalValue.toSafeDouble(),
+                totalIgv = detail.totalIgv.toSafeDouble(),
+                totalAmount = detail.totalAmount.toSafeDouble(),
+                totalToPay = detail.totalToPay.toSafeDouble()
+            )
+        }
+
+        val operation = IOperation(
+            id = operationData.id.toInt(),
+            serial = operationData.serial?:"",
+            correlative = operationData.correlative?:0,
+            operationType = operationData.operationType.toString(),
+            documentTypeReadable = operationData.documentTypeReadable.toString(),
+            operationStatus = operationData.operationStatus.toString(),
+            operationAction = operationData.operationAction.toString(),
+            documentType = operationData.documentType.toString(),
+            currencyType = operationData.currencyType.toString(),
+            operationDate = operationData.operationDate.toString(),
+            emitDate = operationData.emitDate.toString(),
+            emitTime = operationData.emitTime.toString(),
+            userId = operationData.userId!!,
+            client = client,
+            subsidiaryId = operationData.subsidiaryId!!,
+            discountGlobal = operationData.discountGlobal.toSafeDouble(),
+            discountPercentageGlobal = operationData.discountPercentageGlobal.toSafeDouble(),
+            discountForItem = operationData.discountForItem.toSafeDouble(),
+            totalDiscount = operationData.totalDiscount.toSafeDouble(),
+            totalTaxed = operationData.totalTaxed.toSafeDouble(),
+            totalUnaffected = operationData.totalUnaffected.toSafeDouble(),
+            totalExonerated = operationData.totalExonerated.toSafeDouble(),
+            totalIgv = operationData.totalIgv.toSafeDouble(),
+            totalFree = operationData.totalFree.toSafeDouble(),
+            totalAmount = operationData.totalAmount.toSafeDouble(),
+            totalToPay = operationData.totalToPay.toSafeDouble(),
+            totalPayed = operationData.totalPayed.toSafeDouble(),
+            operationDetailSet = details
+        )
+        return operation
     }
 }
