@@ -3,6 +3,7 @@ package com.example.fibo.model
 data class IPerson(
     val id: Int = 0,
     val names: String? = null,
+    val documentType: String? = null,
     val documentNumber: String? = null,
     val email: String? = null,
     val phone: String? = null,

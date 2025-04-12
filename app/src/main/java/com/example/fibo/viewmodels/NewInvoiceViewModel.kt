@@ -1,21 +1,19 @@
 package com.example.fibo.viewmodels
 
 import android.util.Log
-import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.fibo.QrScanMutation
 import com.example.fibo.datastore.PreferencesManager
+import com.example.fibo.model.ICompany
 import com.example.fibo.model.IOperation
 import com.example.fibo.model.IPerson
 import com.example.fibo.model.IProduct
-import com.example.fibo.model.IProductTariff
 import com.example.fibo.model.ISubsidiary
 import com.example.fibo.model.ITariff
 import com.example.fibo.model.IUser
 import com.example.fibo.repository.OperationRepository
+import com.example.fibo.utils.ProductSearchState
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,6 +32,7 @@ class NewInvoiceViewModel @Inject constructor(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    val companyData: StateFlow<ICompany?> = preferencesManager.companyData
     val subsidiaryData: StateFlow<ISubsidiary?> = preferencesManager.subsidiaryData
     val userData: StateFlow<IUser?> = preferencesManager.userData
     // Estados para la búsqueda de productos
@@ -149,21 +148,5 @@ class NewInvoiceViewModel @Inject constructor(
 
     fun clearProductSelection() {
         _selectedProduct.value = null
-    }
-}
-// Definición del estado de búsqueda
-sealed class ProductSearchState {
-    object Idle : ProductSearchState()
-    data class Loading(val query: String) : ProductSearchState()
-    data class Empty(val query: String) : ProductSearchState()
-    data class Error(val message: String, val query: String) : ProductSearchState()
-    data class Success(val products: List<IProduct>, val query: String) : ProductSearchState()
-
-    val currentQuery: String? get() = when (this) {
-        is Idle -> null
-        is Loading -> query
-        is Empty -> query
-        is Error -> query
-        is Success -> query
     }
 }

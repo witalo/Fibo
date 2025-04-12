@@ -28,6 +28,7 @@ class PreferencesManager(context: Context) {
         val COMPANY_ID = intPreferencesKey("company_id")
         val COMPANY_DOC = stringPreferencesKey("company_doc")
         val COMPANY_NAME = stringPreferencesKey("company_name")
+        val COMPANY_IGV = doublePreferencesKey("percentage_igv")
         val SUBSIDIARY_ID = intPreferencesKey("subsidiary_id")
         val SUBSIDIARY_SERIAL = stringPreferencesKey("subsidiary_serial")
         val SUBSIDIARY_NAME = stringPreferencesKey("subsidiary_name")
@@ -52,7 +53,8 @@ class PreferencesManager(context: Context) {
                 ICompany(
                     id = preferences[COMPANY_ID]!!,
                     doc = preferences[COMPANY_DOC] ?: "",
-                    businessName = preferences[COMPANY_NAME] ?: ""
+                    businessName = preferences[COMPANY_NAME] ?: "",
+                    percentageIgv = preferences[COMPANY_IGV] ?: 0.18
                 )
             } else {
                 null
@@ -107,6 +109,7 @@ class PreferencesManager(context: Context) {
                 preferences[COMPANY_ID] = company.id
                 preferences[COMPANY_DOC] = company.doc
                 preferences[COMPANY_NAME] = company.businessName
+                preferences[COMPANY_IGV] = company.percentageIgv
             }
             userData.subsidiary?.let { subsidiary ->
                 preferences[SUBSIDIARY_ID] = subsidiary.id
@@ -138,7 +141,8 @@ class PreferencesManager(context: Context) {
                         ICompany(
                             id = it,
                             doc = preferences[COMPANY_DOC] ?: "",
-                            businessName = preferences[COMPANY_NAME] ?: ""
+                            businessName = preferences[COMPANY_NAME] ?: "",
+                            percentageIgv = preferences[COMPANY_IGV] ?: 0.18
                         )
                     },
                     subsidiary = preferences[SUBSIDIARY_ID]?.let {

@@ -73,7 +73,8 @@ class AuthViewModel @Inject constructor(
                             ICompany(
                                 id = it.id!!,
                                 doc = it.doc!!,
-                                businessName = it.businessName!!
+                                businessName = it.businessName!!,
+                                percentageIgv = it.percentageIgv?.toDouble()!!
                             )
                         },
                         subsidiary = response.data?.qrScan?.subsidiary?.let {

@@ -208,6 +208,7 @@ class OperationRepository @Inject constructor(
             val clientInput = PersonInput(
                 id = Optional.present(operation.client.id as Int?),
                 names = Optional.present(operation.client.names),
+                documentType = Optional.present(operation.client.documentType),
                 documentNumber = Optional.present(operation.client.documentNumber),
                 email = Optional.present(operation.client.email),
                 phone = Optional.present(operation.client.phone),
