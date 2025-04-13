@@ -142,6 +142,8 @@ fun NewReceiptScreen(
     // Total a pagar considerando todos los descuentos
 //    val totalToPay = totalAmount - totalDiscount
     val totalToPay = baseImponible + totalIgv - discountGlobalValue
+    // Agrega este estado al inicio de tu composable
+    var showBoletaConfirmationDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -716,48 +718,8 @@ fun NewReceiptScreen(
                         ) {
                             Text("Cancelar", style = MaterialTheme.typography.labelLarge)
                         }
-
                         Button(
-                            onClick = {
-                                val operation = IOperation(
-                                    id = 0,
-                                    serial = "",
-                                    correlative = 0,
-                                    documentType = "03",
-                                    operationType = "0101",
-                                    operationStatus = "01",
-                                    operationAction = "E",
-                                    currencyType = "PEN",
-                                    operationDate = getCurrentFormattedDate(),
-                                    emitDate = getCurrentFormattedDate(),
-                                    emitTime = getCurrentFormattedTime(),
-                                    userId = userData?.id!!,
-                                    subsidiaryId = subsidiaryData?.id!!,
-                                    client = clientData ?: IPerson(),
-                                    operationDetailSet = operationDetails,
-                                    discountGlobal = discountGlobalValue,
-                                    discountPercentageGlobal = discountGlobalPercentage,
-                                    discountForItem = discountForItem,
-                                    totalDiscount = totalDiscount,
-                                    totalTaxed = totalTaxed,
-                                    totalUnaffected = totalUnaffected,
-                                    totalExonerated = totalExonerated,
-                                    totalIgv = totalIgv,
-                                    totalFree = totalFree,
-                                    totalAmount = totalAmount,
-                                    totalToPay = totalToPay,
-                                    totalPayed = totalToPay
-                                )
-//                                viewModel.createInvoice(operation) { operationId ->
-//                                    onInvoiceCreated(operationId.toString())
-//                                }
-                                viewModel.createInvoice(operation) { operationId, message ->
-                                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-                                    onBack()
-                                    // Alternatively, if you still want to navigate to invoice detail:
-                                    // onInvoiceCreated(operationId.toString())
-                                }
-                            },
+                            onClick = { showBoletaConfirmationDialog = true },
                             modifier = Modifier
                                 .weight(1f)
                                 .height(48.dp),
@@ -775,6 +737,136 @@ fun NewReceiptScreen(
                         ) {
                             Text("Emitir Boleta", style = MaterialTheme.typography.labelLarge)
                         }
+
+// Diálogo de confirmación para boleta
+                        if (showBoletaConfirmationDialog) {
+                            AlertDialog(
+                                onDismissRequest = { showBoletaConfirmationDialog = false },
+                                title = { Text(text = "Confirmar emisión", style = MaterialTheme.typography.titleMedium) },
+                                text = { Text("¿Está seguro que desea emitir esta boleta de venta?") },
+                                confirmButton = {
+                                    Button(
+                                        onClick = {
+                                            showBoletaConfirmationDialog = false
+                                            val operation = IOperation(
+                                                id = 0,
+                                                serial = "",
+                                                correlative = 0,
+                                                documentType = "03",
+                                                operationType = "0101",
+                                                operationStatus = "01",
+                                                operationAction = "E",
+                                                currencyType = "PEN",
+                                                operationDate = getCurrentFormattedDate(),
+                                                emitDate = getCurrentFormattedDate(),
+                                                emitTime = getCurrentFormattedTime(),
+                                                userId = userData?.id!!,
+                                                subsidiaryId = subsidiaryData?.id!!,
+                                                client = clientData ?: IPerson(),
+                                                operationDetailSet = operationDetails,
+                                                discountGlobal = discountGlobalValue,
+                                                discountPercentageGlobal = discountGlobalPercentage,
+                                                discountForItem = discountForItem,
+                                                totalDiscount = totalDiscount,
+                                                totalTaxed = totalTaxed,
+                                                totalUnaffected = totalUnaffected,
+                                                totalExonerated = totalExonerated,
+                                                totalIgv = totalIgv,
+                                                totalFree = totalFree,
+                                                totalAmount = totalAmount,
+                                                totalToPay = totalToPay,
+                                                totalPayed = totalToPay
+                                            )
+                                            viewModel.createInvoice(operation) { operationId, message ->
+                                                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                                                onBack()
+                                            }
+                                        },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                    ) {
+                                        Text("Confirmar", style = MaterialTheme.typography.labelMedium.copy(
+                                            color = Color.White,
+                                            fontWeight = FontWeight.SemiBold
+                                        ))
+                                    }
+                                },
+                                dismissButton = {
+                                    TextButton(
+                                        onClick = { showBoletaConfirmationDialog = false },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                                            contentColor = MaterialTheme.colorScheme.error
+                                        )
+                                    ) {
+                                        Text("Cancelar", style = MaterialTheme.typography.labelMedium.copy(
+                                            color = Color.White,
+                                            fontWeight = FontWeight.SemiBold
+                                        ))
+                                    }
+                                }
+                            )
+                        }
+//                        Button(
+//                            onClick = {
+//                                val operation = IOperation(
+//                                    id = 0,
+//                                    serial = "",
+//                                    correlative = 0,
+//                                    documentType = "03",
+//                                    operationType = "0101",
+//                                    operationStatus = "01",
+//                                    operationAction = "E",
+//                                    currencyType = "PEN",
+//                                    operationDate = getCurrentFormattedDate(),
+//                                    emitDate = getCurrentFormattedDate(),
+//                                    emitTime = getCurrentFormattedTime(),
+//                                    userId = userData?.id!!,
+//                                    subsidiaryId = subsidiaryData?.id!!,
+//                                    client = clientData ?: IPerson(),
+//                                    operationDetailSet = operationDetails,
+//                                    discountGlobal = discountGlobalValue,
+//                                    discountPercentageGlobal = discountGlobalPercentage,
+//                                    discountForItem = discountForItem,
+//                                    totalDiscount = totalDiscount,
+//                                    totalTaxed = totalTaxed,
+//                                    totalUnaffected = totalUnaffected,
+//                                    totalExonerated = totalExonerated,
+//                                    totalIgv = totalIgv,
+//                                    totalFree = totalFree,
+//                                    totalAmount = totalAmount,
+//                                    totalToPay = totalToPay,
+//                                    totalPayed = totalToPay
+//                                )
+////                                viewModel.createInvoice(operation) { operationId ->
+////                                    onInvoiceCreated(operationId.toString())
+////                                }
+//                                viewModel.createInvoice(operation) { operationId, message ->
+//                                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+//                                    onBack()
+//                                    // Alternatively, if you still want to navigate to invoice detail:
+//                                    // onInvoiceCreated(operationId.toString())
+//                                }
+//                            },
+//                            modifier = Modifier
+//                                .weight(1f)
+//                                .height(48.dp),
+//                            shape = RoundedCornerShape(8.dp),
+//                            colors = ButtonDefaults.buttonColors(
+//                                containerColor = MaterialTheme.colorScheme.inverseSurface,
+//                                contentColor = Color.White
+//                            ),
+//                            border = BorderStroke(1.dp, ColorGradients.blueButtonGradient),
+//                            elevation = ButtonDefaults.buttonElevation(
+//                                defaultElevation = 2.dp,
+//                                pressedElevation = 4.dp
+//                            ),
+//                            enabled = operationDetails.isNotEmpty() && clientData?.names?.isNotBlank() == true
+//                        ) {
+//                            Text("Emitir Boleta", style = MaterialTheme.typography.labelLarge)
+//                        }
                     }
                 }
             }

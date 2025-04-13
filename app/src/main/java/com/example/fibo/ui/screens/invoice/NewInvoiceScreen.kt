@@ -176,7 +176,8 @@ fun NewInvoiceScreen(
     // Total a pagar considerando todos los descuentos
 //    val totalToPay = totalAmount - totalDiscount
     val totalToPay = baseImponible + totalIgv - discountGlobalValue
-
+    // Agrega este estado al inicio de tu composable
+    var showConfirmationDialog by remember { mutableStateOf(false) }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -758,48 +759,8 @@ fun NewInvoiceScreen(
                         ) {
                             Text("Cancelar", style = MaterialTheme.typography.labelLarge)
                         }
-
                         Button(
-                            onClick = {
-                                val operation = IOperation(
-                                    id = 0,
-                                    serial = "",
-                                    correlative = 0,
-                                    documentType = "01",
-                                    operationType = "0101",
-                                    operationStatus = "01",
-                                    operationAction = "E",
-                                    currencyType = "PEN",
-                                    operationDate = getCurrentFormattedDate(),
-                                    emitDate = getCurrentFormattedDate(),
-                                    emitTime = getCurrentFormattedTime(),
-                                    userId = userData?.id!!,
-                                    subsidiaryId = subsidiaryData?.id!!,
-                                    client = clientData ?: IPerson(),
-                                    operationDetailSet = operationDetails,
-                                    discountGlobal = discountGlobalValue,
-                                    discountPercentageGlobal = discountGlobalPercentage,
-                                    discountForItem = discountForItem,
-                                    totalDiscount = totalDiscount,
-                                    totalTaxed = totalTaxed,
-                                    totalUnaffected = totalUnaffected,
-                                    totalExonerated = totalExonerated,
-                                    totalIgv = totalIgv,
-                                    totalFree = totalFree,
-                                    totalAmount = totalAmount,
-                                    totalToPay = totalToPay,
-                                    totalPayed = totalToPay
-                                )
-//                                viewModel.createInvoice(operation) { operationId ->
-//                                    onInvoiceCreated(operationId.toString())
-//                                }
-                                viewModel.createInvoice(operation) { operationId, message ->
-                                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-                                    onBack()
-                                    // Alternatively, if you still want to navigate to invoice detail:
-                                    // onInvoiceCreated(operationId.toString())
-                                }
-                            },
+                            onClick = { showConfirmationDialog = true },
                             modifier = Modifier
                                 .weight(1f)
                                 .height(48.dp),
@@ -817,6 +778,136 @@ fun NewInvoiceScreen(
                         ) {
                             Text("Emitir Factura", style = MaterialTheme.typography.labelLarge)
                         }
+
+// Diálogo de confirmación
+                        if (showConfirmationDialog) {
+                            AlertDialog(
+                                onDismissRequest = { showConfirmationDialog = false },
+                                title = { Text("Confirmar emisión") },
+                                text = { Text("¿Está seguro que desea emitir esta factura?") },
+                                confirmButton = {
+                                    Button(
+                                        onClick = {
+                                            showConfirmationDialog = false
+                                            val operation = IOperation(
+                                                id = 0,
+                                                serial = "",
+                                                correlative = 0,
+                                                documentType = "01",
+                                                operationType = "0101",
+                                                operationStatus = "01",
+                                                operationAction = "E",
+                                                currencyType = "PEN",
+                                                operationDate = getCurrentFormattedDate(),
+                                                emitDate = getCurrentFormattedDate(),
+                                                emitTime = getCurrentFormattedTime(),
+                                                userId = userData?.id!!,
+                                                subsidiaryId = subsidiaryData?.id!!,
+                                                client = clientData ?: IPerson(),
+                                                operationDetailSet = operationDetails,
+                                                discountGlobal = discountGlobalValue,
+                                                discountPercentageGlobal = discountGlobalPercentage,
+                                                discountForItem = discountForItem,
+                                                totalDiscount = totalDiscount,
+                                                totalTaxed = totalTaxed,
+                                                totalUnaffected = totalUnaffected,
+                                                totalExonerated = totalExonerated,
+                                                totalIgv = totalIgv,
+                                                totalFree = totalFree,
+                                                totalAmount = totalAmount,
+                                                totalToPay = totalToPay,
+                                                totalPayed = totalToPay
+                                            )
+                                            viewModel.createInvoice(operation) { operationId, message ->
+                                                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                                                onBack()
+                                            }
+                                        },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                    ) {
+                                        Text("Confirmar", style = MaterialTheme.typography.labelMedium.copy(
+                                            color = Color.White,
+                                            fontWeight = FontWeight.SemiBold
+                                        ))
+                                    }
+                                },
+                                dismissButton = {
+                                    Button(
+                                        onClick = { showConfirmationDialog = false },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                                            contentColor = MaterialTheme.colorScheme.error
+                                        )
+                                    ) {
+                                        Text("Cancelar", style = MaterialTheme.typography.labelMedium.copy(
+                                            color = Color.White,
+                                            fontWeight = FontWeight.SemiBold
+                                        ))
+                                    }
+                                }
+                            )
+                        }
+//                        Button(
+//                            onClick = {
+//                                val operation = IOperation(
+//                                    id = 0,
+//                                    serial = "",
+//                                    correlative = 0,
+//                                    documentType = "01",
+//                                    operationType = "0101",
+//                                    operationStatus = "01",
+//                                    operationAction = "E",
+//                                    currencyType = "PEN",
+//                                    operationDate = getCurrentFormattedDate(),
+//                                    emitDate = getCurrentFormattedDate(),
+//                                    emitTime = getCurrentFormattedTime(),
+//                                    userId = userData?.id!!,
+//                                    subsidiaryId = subsidiaryData?.id!!,
+//                                    client = clientData ?: IPerson(),
+//                                    operationDetailSet = operationDetails,
+//                                    discountGlobal = discountGlobalValue,
+//                                    discountPercentageGlobal = discountGlobalPercentage,
+//                                    discountForItem = discountForItem,
+//                                    totalDiscount = totalDiscount,
+//                                    totalTaxed = totalTaxed,
+//                                    totalUnaffected = totalUnaffected,
+//                                    totalExonerated = totalExonerated,
+//                                    totalIgv = totalIgv,
+//                                    totalFree = totalFree,
+//                                    totalAmount = totalAmount,
+//                                    totalToPay = totalToPay,
+//                                    totalPayed = totalToPay
+//                                )
+////                                viewModel.createInvoice(operation) { operationId ->
+////                                    onInvoiceCreated(operationId.toString())
+////                                }
+//                                viewModel.createInvoice(operation) { operationId, message ->
+//                                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+//                                    onBack()
+//                                    // Alternatively, if you still want to navigate to invoice detail:
+//                                    // onInvoiceCreated(operationId.toString())
+//                                }
+//                            },
+//                            modifier = Modifier
+//                                .weight(1f)
+//                                .height(48.dp),
+//                            shape = RoundedCornerShape(8.dp),
+//                            colors = ButtonDefaults.buttonColors(
+//                                containerColor = MaterialTheme.colorScheme.inverseSurface,
+//                                contentColor = Color.White
+//                            ),
+//                            border = BorderStroke(1.dp, ColorGradients.blueButtonGradient),
+//                            elevation = ButtonDefaults.buttonElevation(
+//                                defaultElevation = 2.dp,
+//                                pressedElevation = 4.dp
+//                            ),
+//                            enabled = operationDetails.isNotEmpty() && clientData?.names?.isNotBlank() == true
+//                        ) {
+//                            Text("Emitir Factura", style = MaterialTheme.typography.labelLarge)
+//                        }
                     }
                 }
             }
