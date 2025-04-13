@@ -26,6 +26,7 @@ import com.google.zxing.common.BitMatrix
 import com.google.zxing.qrcode.QRCodeWriter
 import com.itextpdf.io.image.ImageDataFactory
 import com.itextpdf.io.source.ByteArrayOutputStream
+import com.itextpdf.kernel.colors.ColorConstants
 import com.itextpdf.kernel.geom.PageSize
 import com.itextpdf.kernel.pdf.PdfDocument
 import com.itextpdf.kernel.pdf.PdfWriter
@@ -43,6 +44,7 @@ import com.itextpdf.layout.element.*
 import com.itextpdf.layout.properties.HorizontalAlignment
 import com.itextpdf.layout.borders.SolidBorder
 import com.itextpdf.kernel.colors.DeviceGray
+import com.itextpdf.kernel.colors.DeviceRgb
 import com.itextpdf.layout.properties.VerticalAlignment
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
@@ -52,7 +54,7 @@ import java.text.SimpleDateFormat
 import javax.inject.Inject
 import javax.inject.Singleton
 
-
+import com.itextpdf.layout.borders.Border
 @Singleton
 class PdfGenerator @Inject constructor(
     private val preferencesManager: PreferencesManager
@@ -208,26 +210,35 @@ class PdfGenerator @Inject constructor(
         }
 
         // Encabezados de tabla
-        productTable.addHeaderCell(createHeaderCell("Cant"))
-        productTable.addHeaderCell(createHeaderCell("Descripción"))
-        productTable.addHeaderCell(createHeaderCell("P.Unit"))
-        productTable.addHeaderCell(createHeaderCell("Dscto"))
-        productTable.addHeaderCell(createHeaderCell("Importe"))
+        productTable.addHeaderCell(createHeaderCell("Cant").setTextAlignment(TextAlignment.CENTER))
+        productTable.addHeaderCell(createHeaderCell("Descripción").setTextAlignment(TextAlignment.CENTER))
+        productTable.addHeaderCell(createHeaderCell("P.Unit").setTextAlignment(TextAlignment.CENTER))
+        productTable.addHeaderCell(createHeaderCell("Dscto").setTextAlignment(TextAlignment.CENTER))
+        productTable.addHeaderCell(createHeaderCell("Importe").setTextAlignment(TextAlignment.CENTER))
 
         // Añadir productos
         operation.operationDetailSet.forEach { detail ->
-            productTable.addCell(createCell(numberFormat.format(detail.quantity)))
-            productTable.addCell(createCell(detail.tariff.productName.take(25))) // Limitar longitud
-            productTable.addCell(createCell(numberFormat.format(detail.unitPrice)))
-            productTable.addCell(createCell(numberFormat.format(detail.totalDiscount)))
-            productTable.addCell(createCell(numberFormat.format(detail.totalAmount)))
+            // Cantidad (alineada a la derecha)
+            productTable.addCell(createCell(numberFormat.format(detail.quantity)).setTextAlignment(TextAlignment.RIGHT))
+
+            // Descripción (alineada a la izquierda por defecto)
+            productTable.addCell(createCell(detail.tariff.productName.take(25)))
+
+            // Precio Unitario (alineado a la derecha)
+            productTable.addCell(createCell(numberFormat.format(detail.unitPrice)).setTextAlignment(TextAlignment.RIGHT))
+
+            // Descuento (alineado a la derecha)
+            productTable.addCell(createCell(numberFormat.format(detail.totalDiscount)).setTextAlignment(TextAlignment.RIGHT))
+
+            // Importe (alineado a la derecha)
+            productTable.addCell(createCell(numberFormat.format(detail.totalAmount)).setTextAlignment(TextAlignment.RIGHT))
         }
 
         document.add(productTable)
         document.addDivider()
 
         // --- SECCIÓN QR + TOTALES MEJORADA ---
-        document.add(Paragraph("\n"))
+//        document.add(Paragraph("\n"))
 
         // Tabla de 2 columnas: QR a la izquierda, Totales a la derecha
         val qrTotalsTable = Table(UnitValue.createPercentArray(floatArrayOf(40f, 60f))).apply {
@@ -240,7 +251,7 @@ class PdfGenerator @Inject constructor(
             Cell().apply {
                 setPadding(2f)
                 setVerticalAlignment(VerticalAlignment.MIDDLE)
-                add(createQrCode("${operation.serial}|${operation.correlative}|${operation.totalAmount}"))
+                add(createQrCode("${operation.serial}|${operation.correlative}|${operation.totalAmount}|${operation.emitDate}|${operation.emitTime}|${operation.client.documentNumber}|${operation.client.names}"))
             }
         )
 
@@ -256,12 +267,12 @@ class PdfGenerator @Inject constructor(
         document.add(qrTotalsTable)
 
         // Pie de página compacto
-        document.add(Paragraph("\n"))
-        document.add(Paragraph("Gracias por su compra").apply {
+//        document.add(Paragraph("\n"))
+        document.add(Paragraph("4 SOLUCIONES").apply {
             setTextAlignment(TextAlignment.CENTER)
             setFontSize(7f)
         })
-        document.add(Paragraph("www.misistema.com").apply {
+        document.add(Paragraph("https://www.tuf4ct.com").apply {
             setTextAlignment(TextAlignment.CENTER)
             setFontSize(6f)
             setItalic()
@@ -292,8 +303,24 @@ class PdfGenerator @Inject constructor(
     }
 
     // Funciones auxiliares
-    private fun createHeaderCell(text: String): Cell {
-        return Cell().add(Paragraph(text).setBold().setFontSize(7f))
+//    private fun createHeaderCell(text: String): Cell {
+//        return Cell().add(Paragraph(text).setBold().setFontSize(7f))
+//    }
+    private fun createHeaderCell(text: String, alignment: TextAlignment = TextAlignment.CENTER): Cell {
+        val azulHeader = DeviceRgb(0, 120, 215) // Define el color una sola vez
+
+        return Cell().apply {
+            add(Paragraph(text).apply {
+                setFontSize(8f)
+                setBold()
+                setFontColor(ColorConstants.WHITE)
+            })
+            setTextAlignment(alignment)
+            setVerticalAlignment(VerticalAlignment.MIDDLE)
+            setBackgroundColor(azulHeader) // Fondo azul
+            setPadding(1f) // Aumenté el padding para mejor legibilidad
+            setBorder(SolidBorder(azulHeader, 1f)) // Borde del MISMO color azul
+        }
     }
 
     private fun createCell(text: String): Cell {
@@ -422,7 +449,7 @@ class PdfGenerator @Inject constructor(
         addTotalRow("INAFECTA:", operation.totalUnaffected ?: 0.0)
         addTotalRow("GRATUITA:", operation.totalFree ?: 0.0)
         addTotalRow("DESC. GLOBAL:", operation.totalDiscount)
-        addTotalRow("IGV:", operation.totalIgv)
+        addTotalRow("IGV(${company.percentageIgv}%):", operation.totalIgv)
         addTotalRow("TOTAL:", operation.totalAmount, true)
 
         return table
