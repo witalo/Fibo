@@ -135,7 +135,7 @@ class PdfGenerator @Inject constructor(
             document.add(logo)
             logoStream.close()
         } catch (e: Exception) {
-            document.add(Paragraph(company?.businessName ?: "MI EMPRESA").apply {
+            document.add(Paragraph(company.businessName).apply {
                 setTextAlignment(TextAlignment.CENTER)
                 setBold()
                 setFontSize(12f)
@@ -143,13 +143,13 @@ class PdfGenerator @Inject constructor(
         }
 
         // Datos de la empresa
-        document.add(Paragraph("RUC: ${company?.doc ?: "-"}").apply {
+        document.add(Paragraph("RUC: ${company.doc}").apply {
             setTextAlignment(TextAlignment.CENTER)
-            setFontSize(8f)
+            setFontSize(10f)
         })
-        document.add(Paragraph("DIRECCION: ${subsidiary?.address ?: "-"}").apply {
+        document.add(Paragraph("DIRECCION: ${subsidiary.address}").apply {
             setTextAlignment(TextAlignment.CENTER)
-            setFontSize(8f)
+            setFontSize(10f)
         })
 
         // Tipo de documento
@@ -164,7 +164,7 @@ class PdfGenerator @Inject constructor(
         })
 
         document.addDivider()
-        document.add(Paragraph("\n"))
+//        document.add(Paragraph("\n"))
 
         // --- SECCIÓN DE CLIENTE ---
         document.add(Paragraph("DATOS DEL CLIENTE").apply {
@@ -172,15 +172,30 @@ class PdfGenerator @Inject constructor(
             setFontSize(9f)
         })
         document.add(
-            Paragraph("${operation.client.documentType?.formatDocumentType() ?: "DOCUMENTO"}: ${operation.client.documentNumber ?: ""}")
+            Paragraph("${operation.client.documentType?.formatDocumentType() ?: "DOCUMENTO"}: ${operation.client.documentNumber ?: ""}").apply {
+                setBold()
+                setFontSize(8f)
+            }
         )
-        document.add(Paragraph("DENOMINACIÓN: ${operation.client.names ?: ""}"))
+        document.add(Paragraph("DENOMINACIÓN: ${operation.client.names ?: ""}").apply {
+            setBold()
+            setFontSize(8f)
+        })
         if (!operation.client.phone.isNullOrEmpty()) {
-            document.add(Paragraph("TELEFONO: ${operation.client.phone}"))
+            document.add(Paragraph("TELEFONO: ${operation.client.phone}").apply {
+                setBold()
+                setFontSize(8f)
+            })
         }
-        document.add(Paragraph("DIRECCION: ${operation.client.address ?: ""}"))
+        document.add(Paragraph("DIRECCION: ${operation.client.address ?: ""}").apply {
+            setBold()
+            setFontSize(8f)
+        })
         document.add(
-            Paragraph("FECHA: ${"${operation.emitDate} ${operation.emitTime}".formatToDisplayDateTime()}")
+            Paragraph("FECHA: ${"${operation.emitDate} ${operation.emitTime}".formatToDisplayDateTime()}").apply {
+                setBold()
+                setFontSize(8f)
+            }
         )
 
         document.addDivider()
