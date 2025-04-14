@@ -3,16 +3,16 @@ package com.example.fibo.reports
 // 7. Importaciones necesarias para Bluetooth
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
-import android.bluetooth.BluetoothDevice
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.os.Build
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import java.util.UUID
-
-// 8. Crear el Composable del Diálogo
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -37,6 +38,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -45,6 +47,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.fibo.utils.PdfDialogUiState
+import com.example.fibo.utils.showToast
 import com.github.barteksc.pdfviewer.PDFView
 import kotlinx.coroutines.delay
 import java.io.File
@@ -60,11 +63,52 @@ fun PdfViewerDialog(
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     val selectedPrinter by viewModel.selectedPrinter.collectAsState()
+    // 1. Creamos el handler con remember
 
-// Estado para mantener la referencia al archivo PDF generado
+    val bluetoothHandler = remember { ComposableBluetoothHandler(context) }
+    var isBluetoothActive by remember { mutableStateOf(false) }
+    var bluetoothEnabled by remember { mutableStateOf(false) }
+    var requestingBluetooth by remember { mutableStateOf(false) }
+    // 2. Nos aseguramos de limpiar cuando el composable se desmonte
+//    DisposableEffect(bluetoothHandler) {
+//        onDispose {
+//            bluetoothHandler.cleanup()
+//        }
+//    }
+    // En tu composable, añade este efecto:
+    DisposableEffect(Unit) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                if (intent.action == BluetoothAdapter.ACTION_STATE_CHANGED) {
+                    val state = intent.getIntExtra(
+                        BluetoothAdapter.EXTRA_STATE,
+                        BluetoothAdapter.ERROR
+                    )
+                    isBluetoothActive = state == BluetoothAdapter.STATE_ON
+                }
+            }
+        }
+
+        context.registerReceiver(
+            receiver,
+            IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED)
+        )
+
+        onDispose {
+            context.unregisterReceiver(receiver)
+        }
+    }
+
+    // Estado para rastrear la solicitud de permisos
+
+    var requestingPermissions by remember { mutableStateOf(false) }
+    // Estados necesarios
+    var isBluetoothEnabled by remember { mutableStateOf(false) }
+    var isScanningPrinters by remember { mutableStateOf(false) }
+    // Estado para mantener la referencia al archivo PDF generado
     var pdfFile by remember { mutableStateOf<File?>(null) }
 
-// Efecto para cargar los datos cuando el diálogo es visible
+    // Efecto para cargar los datos cuando el diálogo es visible
     LaunchedEffect(isVisible, operationId) {
         if (isVisible && operationId > 0) {
             viewModel.fetchOperationById(operationId)
@@ -100,7 +144,7 @@ fun PdfViewerDialog(
             ) {
                 Column(
                     modifier = Modifier
-                        .padding(16.dp)
+                        .padding(8.dp)
                         .fillMaxSize()
                 ) {
                     // Título del diálogo
@@ -152,7 +196,7 @@ fun PdfViewerDialog(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .weight(1f)
-                                            .padding(8.dp),
+                                            .padding(4.dp),
                                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                                         shape = MaterialTheme.shapes.medium
                                     ) {
@@ -178,29 +222,50 @@ fun PdfViewerDialog(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .padding(top = 8.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        // Botón de Bluetooth con icono
+                                        // Botón Bluetooth
                                         Button(
                                             onClick = {
-                                                if (ContextCompat.checkSelfPermission(
-                                                        context,
-                                                        Manifest.permission.BLUETOOTH_SCAN
-                                                    ) != PackageManager.PERMISSION_GRANTED
-                                                ) {
-                                                    // Manejar permisos
-                                                } else {
-                                                    viewModel.scanForPrinters(context)
+                                                if (!requestingPermissions) {  // Solo procede si no estamos ya solicitando permisos
+                                                    requestingPermissions = true
+                                                    bluetoothHandler.checkBluetoothPermissions(
+                                                        onPermissionsGranted = {
+                                                            bluetoothHandler.enableBluetooth(
+                                                                onBluetoothEnabled = {
+                                                                    viewModel.scanForPrinters(context)
+                                                                    requestingPermissions = false
+                                                                    isBluetoothActive = true
+                                                                },
+                                                                onBluetoothNotAvailable = {
+                                                                    requestingPermissions = false
+                                                                    context.showToast("Bluetooth no disponible en este dispositivo")
+                                                                },
+                                                                onBluetoothEnableDenied = {
+                                                                    requestingPermissions = false
+                                                                    context.showToast("Es necesario activar Bluetooth para continuar")
+                                                                },
+                                                                onPermissionsRequired = {
+                                                                    requestingPermissions = false
+                                                                    context.showToast("Se requieren permisos de Bluetooth")
+                                                                }
+                                                            )
+                                                        },
+                                                        onPermissionsDenied = {
+                                                            requestingPermissions = false
+                                                            context.showToast("Se requieren permisos de Bluetooth para esta función")
+                                                        }
+                                                    )
                                                 }
                                             },
                                             modifier = Modifier
                                                 .weight(1f)
-                                                .padding(end = 4.dp)
-                                                .height(60.dp),
+                                                .height(50.dp),
                                             colors = ButtonDefaults.buttonColors(
-                                                containerColor = Color.Transparent
+                                                containerColor = if (isBluetoothActive) Color(0xFF4CAF50) else Color.Transparent
                                             ),
-                                            shape = RoundedCornerShape(8.dp)
+                                            shape = RoundedCornerShape(8.dp),
+                                            enabled = !requestingPermissions
                                         ) {
                                             Box(
                                                 modifier = Modifier
@@ -208,7 +273,7 @@ fun PdfViewerDialog(
                                                     .background(
                                                         brush = Brush.horizontalGradient(
                                                             colors = listOf(
-                                                                Color(0xFF2196F3),
+                                                                if (isBluetoothActive) Color(0xFF4CAF50) else Color(0xFF2196F3),
                                                                 Color(0xFF1976D2)
                                                             )
                                                         ),
@@ -216,45 +281,65 @@ fun PdfViewerDialog(
                                                     ),
                                                 contentAlignment = Alignment.Center
                                             ) {
-                                                Row(  // <-- Este Row debe contener Icon, Spacer y Text
-                                                    verticalAlignment = Alignment.CenterVertically,
-                                                    horizontalArrangement = Arrangement.Center
-                                                ) {
-                                                    Icon(
-                                                        imageVector = Icons.Default.Bluetooth,
-                                                        contentDescription = "Bluetooth",
-                                                        tint = Color.White,
-                                                        modifier = Modifier.size(20.dp))
-                                                        Spacer(modifier = Modifier.width(4.dp))
-                                                        Text(text = "Bluetooth",
+                                                if (requestingPermissions) {
+                                                    // Muestra un indicador de progreso cuando se solicitan permisos
+                                                    CircularProgressIndicator(
                                                         color = Color.White,
-                                                        fontWeight = FontWeight.Medium,
-                                                        fontSize = 16.sp
+                                                        modifier = Modifier.size(20.dp),
+                                                        strokeWidth = 2.dp
                                                     )
+                                                } else {
+                                                    Row(
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        horizontalArrangement = Arrangement.Center
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = if (isBluetoothActive) Icons.Default.Check else Icons.Default.Bluetooth,
+                                                            contentDescription = if (isBluetoothActive) "Bluetooth Activado" else "Bluetooth",
+                                                            tint = Color.White,
+                                                            modifier = Modifier.size(20.dp)
+                                                        )
+                                                        Spacer(modifier = Modifier.width(8.dp))
+                                                        Text(
+                                                            text = if (isBluetoothActive) "Conectado" else "Bluetooth",
+                                                            color = Color.White,
+                                                            fontWeight = FontWeight.Medium,
+                                                            fontSize = 14.sp,
+                                                            maxLines = 1
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
 
-                                        // Botón de Imprimir con icono
+// Botón Imprimir
                                         Button(
                                             onClick = {
-                                                pdfFile?.let {
-                                                    if (ContextCompat.checkSelfPermission(
+                                                pdfFile?.let { file ->
+                                                    // Verificar permisos para Android S+
+                                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                                                        ContextCompat.checkSelfPermission(
                                                             context,
                                                             Manifest.permission.BLUETOOTH_CONNECT
                                                         ) != PackageManager.PERMISSION_GRANTED
                                                     ) {
-                                                        // Manejar permisos
+                                                        context.showToast("Se requiere permiso BLUETOOTH_CONNECT")
                                                     } else {
-                                                        viewModel.printPdf(context, it)
+                                                        // Verificar si Bluetooth está activo
+                                                        if (BluetoothAdapter.getDefaultAdapter()?.isEnabled == true) {
+                                                            viewModel.printOperation(context, file)
+                                                        } else {
+                                                            context.showToast("Active Bluetooth primero")
+                                                        }
                                                     }
+                                                } ?: run {
+                                                    context.showToast("No hay archivo PDF para imprimir")
                                                 }
                                             },
-                                            enabled = selectedPrinter != null && pdfFile != null,
+                                            enabled = selectedPrinter != null && pdfFile != null && isBluetoothActive,
                                             modifier = Modifier
                                                 .weight(1f)
-                                                .padding(start = 4.dp)
-                                                .height(60.dp),
+                                                .height(50.dp),
                                             colors = ButtonDefaults.buttonColors(
                                                 containerColor = Color.Transparent,
                                                 disabledContainerColor = Color.Transparent
@@ -272,7 +357,7 @@ fun PdfViewerDialog(
                                                             )
                                                         ),
                                                         shape = RoundedCornerShape(8.dp),
-                                                        alpha = if (selectedPrinter != null && pdfFile != null) 1f else 0.5f
+                                                        alpha = if (selectedPrinter != null && pdfFile != null && isBluetoothActive) 1f else 0.5f
                                                     ),
                                                 contentAlignment = Alignment.Center
                                             ) {
@@ -285,57 +370,20 @@ fun PdfViewerDialog(
                                                         contentDescription = "Imprimir",
                                                         tint = Color.White,
                                                         modifier = Modifier.size(20.dp))
-                                                    Spacer(modifier = Modifier.width(4.dp))
-                                                    Text(
+                                                        Spacer(modifier = Modifier.width(8.dp))
+                                                        Text(
                                                         text = "Imprimir",
                                                         color = Color.White,
                                                         fontWeight = FontWeight.Medium,
-                                                        fontSize = 16.sp
+                                                        fontSize = 14.sp,
+                                                        maxLines = 1
                                                     )
                                                 }
                                             }
                                         }
-//                                        Button(
-//                                            onClick = {
-//                                                if (ContextCompat.checkSelfPermission(
-//                                                        context,
-//                                                        Manifest.permission.BLUETOOTH_SCAN
-//                                                    ) != PackageManager.PERMISSION_GRANTED
-//                                                ) {
-//                                                    // Manejar permisos
-//                                                } else {
-//                                                    viewModel.scanForPrinters(context)
-//                                                }
-//                                            },
-//                                            modifier = Modifier
-//                                                .weight(1f)
-//                                                .padding(end = 4.dp)
-//                                        ) {
-//                                            Text("Bluetooth")
-//                                        }
-//
-//                                        Button(
-//                                            onClick = {
-//                                                pdfFile?.let {
-//                                                    if (ContextCompat.checkSelfPermission(
-//                                                            context,
-//                                                            Manifest.permission.BLUETOOTH_CONNECT
-//                                                        ) != PackageManager.PERMISSION_GRANTED
-//                                                    ) {
-//                                                        // Manejar permisos
-//                                                    } else {
-//                                                        viewModel.printPdf(context, it)
-//                                                    }
-//                                                }
-//                                            },
-//                                            enabled = selectedPrinter != null && pdfFile != null,
-//                                            modifier = Modifier
-//                                                .weight(1f)
-//                                                .padding(start = 4.dp)
-//                                        ) {
-//                                            Text("Imprimir")
-//                                        }
                                     }
+
+
 
                                     if (printers.isNotEmpty()) {
                                         Text(

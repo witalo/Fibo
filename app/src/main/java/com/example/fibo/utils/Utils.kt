@@ -1,6 +1,8 @@
 package com.example.fibo.utils
 
+import android.content.Context
 import android.os.Build
+import android.widget.Toast
 import androidx.compose.ui.graphics.Color
 import com.example.fibo.model.IProduct
 import java.text.SimpleDateFormat
@@ -45,4 +47,7 @@ fun getAffectationTypeShort(typeAffectationId: Int): String {
         4 -> "GRA"  // Gratuita
         else -> "N/D"
     }
+}
+fun Context.showToast(message: String, duration: Int = Toast.LENGTH_SHORT) {
+    Toast.makeText(this, message, duration).show()
 }
