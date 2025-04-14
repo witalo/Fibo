@@ -29,6 +29,7 @@ class PreferencesManager(context: Context) {
         val COMPANY_ID = intPreferencesKey("company_id")
         val COMPANY_DOC = stringPreferencesKey("company_doc")
         val COMPANY_NAME = stringPreferencesKey("company_name")
+        val COMPANY_LOGO = stringPreferencesKey("company_logo")
         val COMPANY_IGV = doublePreferencesKey("percentage_igv")
         val SUBSIDIARY_ID = intPreferencesKey("subsidiary_id")
         val SUBSIDIARY_SERIAL = stringPreferencesKey("subsidiary_serial")
@@ -55,7 +56,8 @@ class PreferencesManager(context: Context) {
                     id = preferences[COMPANY_ID]!!,
                     doc = preferences[COMPANY_DOC] ?: "",
                     businessName = preferences[COMPANY_NAME] ?: "",
-                    percentageIgv = preferences[COMPANY_IGV] ?: 0.18
+                    logo = preferences[COMPANY_LOGO] ?: "",
+                    percentageIgv = preferences[COMPANY_IGV] ?: 18.0,
                 )
             } else {
                 null
@@ -110,6 +112,7 @@ class PreferencesManager(context: Context) {
                 preferences[COMPANY_ID] = company.id
                 preferences[COMPANY_DOC] = company.doc
                 preferences[COMPANY_NAME] = company.businessName
+                preferences[COMPANY_LOGO] = company.logo
                 preferences[COMPANY_IGV] = company.percentageIgv
             }
             userData.subsidiary?.let { subsidiary ->
@@ -146,12 +149,13 @@ class PreferencesManager(context: Context) {
                             id = it,
                             doc = preferences[COMPANY_DOC] ?: "",
                             businessName = preferences[COMPANY_NAME] ?: "",
-                            percentageIgv = preferences[COMPANY_IGV] ?: 0.18
+                            logo = preferences[COMPANY_LOGO] ?: "",
+                            percentageIgv = preferences[COMPANY_IGV] ?: 18.0
                         )
                     },
                     subsidiary = preferences[SUBSIDIARY_ID]?.let {
                         ISubsidiary(
-                            id = it.toInt(),
+                            id = it,
                             serial = preferences[SUBSIDIARY_SERIAL] ?: "",
                             name = preferences[SUBSIDIARY_NAME] ?: "",
                             address = preferences[SUBSIDIARY_ADDRESS] ?: "",
@@ -159,7 +163,7 @@ class PreferencesManager(context: Context) {
                         )
                     },
                     user = preferences[USER_ID]?.let {
-                        IUser(id = it.toInt())
+                        IUser(id = it)
                     }
                 )
             } else {

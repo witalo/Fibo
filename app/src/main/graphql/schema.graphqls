@@ -43,7 +43,7 @@ type Query {
 
   cpeShippingQuery(operationId: Int, status: String): CpeType
 
-  allSales(subsidiaryId: Int, clientId: Int, startDate: Date, endDate: Date, documentType: String, page: Int, pageSize: Int): SalesSummaryType
+  allSales(subsidiaryId: Int, clientId: Int, startDate: Date, endDate: Date, documentType: String, page: Int, pageSize: Int, serial: String, correlative: Int): SalesSummaryType
 
   getSaleByParameters(doc: String, documentType: String, serial: String, correlative: String, totalToPay: String): OperationType
 

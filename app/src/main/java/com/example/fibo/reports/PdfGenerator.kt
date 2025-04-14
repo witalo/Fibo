@@ -75,7 +75,7 @@ class PdfGenerator @Inject constructor(
             id = prefs[COMPANY_ID] ?: throw IllegalStateException("COMPANY_ID no encontrado"),
             doc = prefs[COMPANY_DOC] ?: "",
             businessName = prefs[COMPANY_NAME] ?: "",
-            percentageIgv = prefs[COMPANY_IGV] ?: 0.18
+            percentageIgv = prefs[COMPANY_IGV] ?: 18.0
         )
     }
 

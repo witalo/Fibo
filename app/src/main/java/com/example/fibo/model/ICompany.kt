@@ -4,5 +4,6 @@ data class ICompany(
     val id: Int,
     val doc: String,
     val businessName: String,
+    val logo: String = "",
     val percentageIgv: Double = 0.18
 )

@@ -68,6 +68,8 @@ fun HomeScreen(
         subsidiaryData = subsidiaryData,
         onMenuItemSelected = { option ->
             when (option) {
+                "Inicio" -> navController.navigate(Screen.Home.route)
+                "Perfil" -> navController.navigate(Screen.Profile.route)
                 "Nueva Factura" -> navController.navigate(Screen.NewInvoice.route)
                 "Nueva Boleta" -> navController.navigate(Screen.NewReceipt.route)
 //                "Historial" -> navController.navigate(Screen.History.route)

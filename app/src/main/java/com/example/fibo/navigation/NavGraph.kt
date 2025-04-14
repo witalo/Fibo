@@ -3,13 +3,16 @@ package com.example.fibo.navigation
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.example.fibo.datastore.PreferencesManager
 import com.example.fibo.ui.screens.HomeScreen
 import com.example.fibo.ui.screens.QrScannerScreen
 import com.example.fibo.viewmodels.AuthViewModel
 import com.example.fibo.ui.screens.invoice.NewInvoiceScreen
+import com.example.fibo.ui.screens.profile.ProfileScreen
 import com.example.fibo.ui.screens.receipt.NewReceiptScreen
 
 @Composable
@@ -45,6 +48,14 @@ fun NavGraph(
                         popUpTo(navController.graph.id) { inclusive = true }
                     }
                 }
+            )
+        }
+
+        // Perfil
+        composable(Screen.Profile.route) {
+            ProfileScreen(
+                onBack = { navController.popBackStack() },
+                preferencesManager = PreferencesManager(LocalContext.current)
             )
         }
 

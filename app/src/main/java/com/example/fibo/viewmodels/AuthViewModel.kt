@@ -1,6 +1,7 @@
 package com.example.fibo.viewmodels
 
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.apollographql.apollo3.ApolloClient
@@ -66,6 +67,7 @@ class AuthViewModel @Inject constructor(
                 _scanResult.value = response
 
                 if (response.data?.qrScan?.success == true) {
+                    Log.d("Italo scan", response.data?.qrScan.toString())
                     val userData = IUserData(
                         success = response.data!!.qrScan?.success!!,
                         message = response.data!!.qrScan?.message ?: "",
@@ -74,6 +76,7 @@ class AuthViewModel @Inject constructor(
                                 id = it.id!!,
                                 doc = it.doc!!,
                                 businessName = it.businessName!!,
+                                logo = it.logo!!,
                                 percentageIgv = it.percentageIgv?.toDouble()!!
                             )
                         },
@@ -96,6 +99,7 @@ class AuthViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 setError(e.message ?: "Error de conexión")
+                Log.d("Italo scan", e.message.toString())
             } finally {
                 _isLoading.value = false
             }

@@ -11,9 +11,9 @@ sealed class Screen(
 ) {
     // Autenticación
     object QrScanner : Screen("qr_scanner")
-
     // Principal
     object Home : Screen("home")
+    object Profile : Screen("new_profile")
     object NewInvoice : Screen("new_invoice")
     object NewReceipt : Screen("new_receipt")
 

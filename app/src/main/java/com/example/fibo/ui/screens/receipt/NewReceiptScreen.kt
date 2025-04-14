@@ -945,8 +945,9 @@ fun AddReceiptProductDialog(
     onProductAdded: (IOperationDetail) -> Unit,
     viewModel: NewReceiptViewModel,
     subsidiaryId: Int = 0,
-    igvPercentage: Double = 0.18
+    igvPercentage: Double = 18.0
 ) {
+    val valueIgv = igvPercentage / 100
     val decimalRegex = Regex("^\\d*(\\.\\d{0,4})?$")
     var searchQuery by remember { mutableStateOf("") }
     val searchState by viewModel.searchState.collectAsState()
@@ -984,7 +985,7 @@ fun AddReceiptProductDialog(
 
     // El IGV solo aplica para operaciones gravadas (tipo 1)
 //    val igvAmount = if (selectedAffectationType == 1) subtotal * igvPercentage else 0.0
-    val igvAmount = if (selectedAffectationType == 1) subtotalAfterDiscount * igvPercentage else 0.0
+    val igvAmount = if (selectedAffectationType == 1) subtotalAfterDiscount * valueIgv else 0.0
 
 
     // Total varía según el tipo de afectación
@@ -1241,13 +1242,9 @@ fun AddReceiptProductDialog(
                                         if (it.isEmpty() || it.matches(decimalRegex)) {
                                             priceWithoutIgv = it
                                             val withoutIgvValue = it.toDoubleOrNull() ?: 0.0
-                                            val withIgvValue  = (withoutIgvValue * (1 + igvPercentage))
+                                            val withIgvValue  = (withoutIgvValue * (1 + valueIgv))
                                             priceWithIgv = String.format("%.4f", withIgvValue)
                                         }
-//                                        priceWithoutIgv = it
-//                                        // Calcular precio con IGV
-//                                        val withoutIgvValue = it.toDoubleOrNull() ?: 0.0
-//                                        priceWithIgv = (withoutIgvValue * (1 + igvPercentage)).toString()
                                     },
                                     textStyle = MaterialTheme.typography.bodyMedium,
                                     label = { Text("Precio sin IGV") },
@@ -1262,14 +1259,10 @@ fun AddReceiptProductDialog(
                                     onValueChange = {
                                         if (it.isEmpty() || it.matches(decimalRegex)) {
                                             priceWithIgv = it
-                                            val priceWithIgvValue = it.toDoubleOrNull() ?: 0.0
-                                            val withoutIgvValue  = (priceWithIgvValue / (1 + igvPercentage))
+                                            val withIgvValue = it.toDoubleOrNull() ?: 0.0
+                                            val withoutIgvValue  = (withIgvValue / (1 + valueIgv))
                                             priceWithoutIgv  = String.format("%.4f", withoutIgvValue )
                                         }
-//                                        priceWithIgv = it
-//                                        // Calcular precio sin IGV
-//                                        val withIgvValue = it.toDoubleOrNull() ?: 0.0
-//                                        priceWithoutIgv = (withIgvValue / (1 + igvPercentage)).toString()
                                     },
                                     textStyle = MaterialTheme.typography.bodyMedium,
                                     label = { Text("Precio con IGV") },
@@ -1332,7 +1325,7 @@ fun AddReceiptProductDialog(
                                             totalDiscount = discountValue,
 //                                            discountPercentage = if (subtotal > 0) (discountValue / subtotal) * 100 else 0.0,
                                             discountPercentage = if (subtotalWithoutDiscount > 0) (discountValue / subtotalWithoutDiscount) * 100 else 0.0,
-                                            igvPercentage = igvPercentage * 100,
+                                            igvPercentage = igvPercentage,
                                             perceptionPercentage = 0.0,
                                             totalPerception = 0.0,
 //                                            totalValue = when (product.typeAffectationId) {
@@ -1711,7 +1704,7 @@ private fun PurchaseReceiptSummary(
     igv: Double,
     discount: Double,
     total: Double,
-    igvPercentage: Double = 0.18
+    igvPercentage: Double = 18.0
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
