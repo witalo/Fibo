@@ -217,8 +217,44 @@ fun PdfViewerDialog(
                                     CircularProgressIndicator()
                                 }
                             }
-                            is PdfDialogUiState.Success -> {
-                                // Mostrar PDF
+//                            is PdfDialogUiState.Success -> {
+//                                // Mostrar PDF
+//                                if (pdfFile != null) {
+//                                    AndroidView(
+//                                        factory = { ctx ->
+//                                            PDFView(ctx, null).apply {
+//                                                fromFile(pdfFile)
+//                                                    .enableSwipe(true)
+//                                                    .swipeHorizontal(false)
+//                                                    .enableDoubletap(true)
+//                                                    .defaultPage(0)
+//                                                    .load()
+//                                            }
+//                                        },
+//                                        modifier = Modifier.fillMaxSize()
+//                                    )
+//                                } else {
+//                                    Box(
+//                                        modifier = Modifier.fillMaxSize(),
+//                                        contentAlignment = Alignment.Center
+//                                    ) {
+//                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+//                                            CircularProgressIndicator()
+//                                            Spacer(modifier = Modifier.height(8.dp))
+//                                            Text("Generando PDF...")
+//                                        }
+//                                    }
+//                                }
+//                            }
+                            is PdfDialogUiState.Error -> {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("Error: ${(uiState as PdfDialogUiState.Error).message}")
+                                }
+                            }
+                            else -> {
                                 if (pdfFile != null) {
                                     AndroidView(
                                         factory = { ctx ->
@@ -244,23 +280,6 @@ fun PdfViewerDialog(
                                             Text("Generando PDF...")
                                         }
                                     }
-                                }
-                            }
-                            is PdfDialogUiState.Error -> {
-                                Box(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text("Error: ${(uiState as PdfDialogUiState.Error).message}")
-                                }
-                            }
-                            else -> {
-                                // Manejar otros estados
-                                Box(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text("Cargando datos...")
                                 }
                             }
                         }
