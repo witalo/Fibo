@@ -66,6 +66,19 @@ class OperationRepository @Inject constructor(
     }
 
     // Funciones de extensión para conversión segura
+//    @SuppressLint("DefaultLocale")
+//    private fun Any?.toSafeDouble(): Double {
+//        val value = when (this) {
+//            is Double -> this
+//            is Float -> this.toDouble()
+//            is Int -> this.toDouble()
+//            is Long -> this.toDouble()
+//            is String -> this.toDoubleOrNull() ?: 0.0
+//            is Number -> this.toDouble()
+//            else -> 0.0
+//        }
+//        return String.format("%.2f", value).toDouble()
+//    }
     @SuppressLint("DefaultLocale")
     private fun Any?.toSafeDouble(): Double {
         val value = when (this) {
