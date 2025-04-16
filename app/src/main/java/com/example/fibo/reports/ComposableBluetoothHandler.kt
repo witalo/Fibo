@@ -3,6 +3,7 @@ package com.example.fibo.reports
 import android.Manifest
 import android.app.Activity
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
 import android.content.ActivityNotFoundException
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -13,6 +14,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
@@ -173,5 +175,51 @@ class ComposableBluetoothHandler(private val context: Context) {
         onBluetoothEnabled = null
         onBluetoothNotAvailable = null
         onBluetoothEnableDenied = null
+    }
+}
+class BluetoothManager(private val context: Context) {
+    fun isBluetoothSupported(): Boolean {
+        return try {
+            BluetoothAdapter.getDefaultAdapter() != null
+        } catch (e: Exception) {
+            Log.e("BluetoothManager", "Error verificando soporte", e)
+            false
+        }
+    }
+
+    fun isBluetoothEnabled(): Boolean {
+        return try {
+            val adapter = BluetoothAdapter.getDefaultAdapter()
+            adapter != null && adapter.isEnabled
+        } catch (e: Exception) {
+            Log.e("BluetoothManager", "Error verificando estado", e)
+            false
+        }
+    }
+
+    fun requestEnableBluetooth(activity: Activity, requestCode: Int): Boolean {
+        return try {
+            val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+            activity.startActivityForResult(enableBtIntent, requestCode)
+            true
+        } catch (e: Exception) {
+            Log.e("BluetoothManager", "Error solicitando activación", e)
+            Toast.makeText(context, "Error activando Bluetooth: ${e.message}", Toast.LENGTH_LONG).show()
+            false
+        }
+    }
+
+    fun getPairedDevices(): Set<BluetoothDevice> {
+        return try {
+            val adapter = BluetoothAdapter.getDefaultAdapter()
+            if (adapter != null && adapter.isEnabled) {
+                adapter.bondedDevices
+            } else {
+                emptySet()
+            }
+        } catch (e: Exception) {
+            Log.e("BluetoothManager", "Error obteniendo dispositivos", e)
+            emptySet()
+        }
     }
 }

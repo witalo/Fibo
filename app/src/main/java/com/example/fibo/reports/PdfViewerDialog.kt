@@ -23,13 +23,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
@@ -52,8 +56,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.fibo.utils.PdfDialogUiState
 import com.example.fibo.utils.showToast
 import com.github.barteksc.pdfviewer.PDFView
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 @SuppressLint("StateFlowValueCalledInComposition")
@@ -68,36 +74,50 @@ fun PdfViewerDialog(
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     // Check Bluetooth state on composition
-    val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
-    var isBluetoothActive by remember { mutableStateOf(bluetoothAdapter?.isEnabled == true) }
-
-    // Check Bluetooth state whenever the dialog is visible
-    LaunchedEffect(isVisible) {
-        if (isVisible) {
-            viewModel.fetchOperationById(operationId)
-
-            // Check if Bluetooth is enabled
-            val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
-            isBluetoothActive = bluetoothAdapter?.isEnabled == true
-        }
-    }
+    // Manejo seguro del estado Bluetooth
+    var isBluetoothActive by remember { mutableStateOf(false) }
     // Estado para mantener la referencia al archivo PDF generado
     var pdfFile by remember { mutableStateOf<File?>(null) }
 
-    // Efecto para cargar los datos cuando el diálogo es visible
-    LaunchedEffect(isVisible, operationId) {
-        if (isVisible && operationId > 0) {
+    // Efecto para verificar Bluetooth de forma segura
+    LaunchedEffect(Unit) {
+        try {
+            val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+            isBluetoothActive = bluetoothAdapter?.isEnabled == true
+
+            // Cargar datos iniciales
             viewModel.fetchOperationById(operationId)
+
+            // Verificación periódica más segura
+            while (true) {
+                try {
+                    delay(2000) // Verificar cada 2 segundos
+                    isBluetoothActive = bluetoothAdapter?.isEnabled == true
+                } catch (e: Exception) {
+                    Log.e("BluetoothCheck", "Error verificando estado", e)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("Bluetooth", "Error inicializando estado Bluetooth", e)
+            isBluetoothActive = false
         }
     }
-    // Generar el PDF cuando los datos están disponibles
+
+    // Generación segura del PDF
     LaunchedEffect(uiState) {
         if (uiState is PdfDialogUiState.Success) {
-            val operation = (uiState as PdfDialogUiState.Success).operation
             try {
-                pdfFile = pdfGenerator.generatePdf(context, operation)
+                val operation = (uiState as PdfDialogUiState.Success).operation
+                pdfFile = withContext(Dispatchers.IO) {
+                    try {
+                        pdfGenerator.generatePdf(context, operation)
+                    } catch (e: Exception) {
+                        Log.e("PDF", "Error generando PDF", e)
+                        null
+                    }
+                }
             } catch (e: Exception) {
-                // Manejar error en la generación del PDF
+                Log.e("PDF", "Error en LaunchedEffect", e)
             }
         }
     }
@@ -123,235 +143,82 @@ fun PdfViewerDialog(
                         .padding(8.dp)
                         .fillMaxSize()
                 ) {
-                    // Título del diálogo
-                    Text(
-                        text = "Comprobante",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(bottom = 4.dp)
-                    )
+                    // Barra superior con título y botón cerrar
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Vista previa PDF",
+                            style = MaterialTheme.typography.titleLarge
+                        )
 
-                    // Contenido según el estado
-                    when (uiState) {
-                        is PdfDialogUiState.Initial -> {
-                            // Estado inicial, no hacer nada
+                        IconButton(onClick = onDismiss) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Cerrar"
+                            )
                         }
+                    }
+                    Divider()
 
-                        is PdfDialogUiState.Loading -> {
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                CircularProgressIndicator()
-                            }
-                        }
-
-                        is PdfDialogUiState.Success -> {
-                            // Estado para controlar si el PDF está listo
-                            var isPdfReady by remember { mutableStateOf(false) }
-
-                            // Efecto para cargar el PDF solo una vez
-                            LaunchedEffect(Unit) {
-                                try {
-                                    val operation = (uiState as PdfDialogUiState.Success).operation
-                                    pdfFile = pdfGenerator.generatePdf(
-                                        context,
-                                        operation
-                                    ) // Usamos la instancia inyectada
-                                    isPdfReady = true
-                                } catch (e: Exception) {
-                                    // Manejar error si es necesario
-                                    Log.e("PdfViewerDialog", "Error al generar PDF", e)
-                                }
-                            }
-
-                            // Mostrar contenido basado en el estado
-                            if (isPdfReady && pdfFile != null && pdfFile!!.exists()) {
-                                Column(modifier = Modifier.fillMaxSize()) {
-                                    // Visor de PDF con borde
-                                    Card(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .weight(1f)
-                                            .padding(4.dp),
-                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                                        shape = MaterialTheme.shapes.medium
-                                    ) {
-                                        AndroidView(
-                                            factory = { context ->
-                                                PDFView(context, null).apply {
-                                                    fromFile(pdfFile)
-                                                        .enableSwipe(true)
-                                                        .swipeHorizontal(false)
-                                                        .enableDoubletap(true)
-                                                        .defaultPage(0)
-                                                        .load()
-                                                }
-                                            },
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                    }
-                                    // Sección de controles de impresión
-                                    PrintControlsSection(
-                                        viewModel = viewModel,
-                                        context = context,
-                                        pdfFile = pdfFile,
-                                        isBluetoothActive = isBluetoothActive,
-                                        onPrintSuccess = onDismiss
-                                    )
-                                }
-                            } else {
-                                // Espera 3 segundos antes de mostrar el error
-                                var showError by remember { mutableStateOf(false) }
-
-                                LaunchedEffect(Unit) {
-                                    delay(3000)
-                                    showError = true
-                                }
-                                // Muestra un indicador de carga en lugar del mensaje de error
+                    // Contenido principal - Visualizador PDF y controles
+                    Box(modifier = Modifier.weight(1f)) {
+                        when (uiState) {
+                            is PdfDialogUiState.Loading -> {
                                 Box(
                                     modifier = Modifier.fillMaxSize(),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    if (showError) {
-                                        Text("Error al generar el PDF")
-                                    } else {
-                                        CircularProgressIndicator()
-                                    }
-                                }
-                            }
-                        }
-
-                        is PdfDialogUiState.Error -> {
-                            Column(
-                                modifier = Modifier.fillMaxSize(),
-                                verticalArrangement = Arrangement.Center,
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    text = (uiState as PdfDialogUiState.Error).message,
-                                    color = Color.Red
-                                )
-                                Button(
-                                    onClick = { viewModel.fetchOperationById(operationId) },
-                                    modifier = Modifier.padding(top = 16.dp)
-                                ) {
-                                    Text("Intentar nuevamente")
-                                }
-                            }
-                        }
-
-                        is PdfDialogUiState.ScanningPrinters -> {
-                            // Mostrar el PDF si existe
-                            if (pdfFile != null && pdfFile!!.exists()) {
-                                AndroidView(
-                                    factory = { ctx ->
-                                        PDFView(ctx, null).apply {
-                                            fromFile(pdfFile)
-                                                .enableSwipe(true)
-                                                .swipeHorizontal(false)
-                                                .enableDoubletap(true)
-                                                .defaultPage(0)
-                                                .load()
-                                        }
-                                    },
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(150.dp)
-                            ) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
                                     CircularProgressIndicator()
-                                    Text(
-                                        text = "Buscando impresoras...",
-                                        modifier = Modifier.padding(top = 8.dp)
+                                }
+                            }
+                            is PdfDialogUiState.Success -> {
+                                // Mostrar PDF
+                                if (pdfFile != null) {
+                                    // Tu componente para mostrar PDF aquí
+                                    AndroidView(
+                                        factory = { ctx ->
+                                            PDFView(ctx, null).apply {
+                                                fromFile(pdfFile)
+                                                    .enableSwipe(true)
+                                                    .swipeHorizontal(false)
+                                                    .enableDoubletap(true)
+                                                    .defaultPage(0)
+                                                    .load()
+                                            }
+                                        },
+                                        modifier = Modifier.fillMaxSize()
                                     )
+                                } else {
+                                    Text("Generando PDF...")
                                 }
                             }
-                        }
-
-                        is PdfDialogUiState.PrintersFound -> {
-                            // Este estado debería ser manejado por Success después del primer escaneo
-                        }
-
-                        is PdfDialogUiState.BluetoothDisabled -> {
-                            Column(
-                                modifier = Modifier.fillMaxSize(),
-                                verticalArrangement = Arrangement.Center,
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    text = "Bluetooth desactivado",
-                                    color = Color.Red
-                                )
-                                Text(
-                                    text = "Por favor, activa el Bluetooth para buscar impresoras",
-                                    modifier = Modifier.padding(top = 8.dp)
-                                )
-                                Button(
-                                    onClick = {
-                                        // Verificar permisos antes de escanear
-                                        if (ContextCompat.checkSelfPermission(
-                                                context,
-                                                Manifest.permission.BLUETOOTH_SCAN
-                                            ) == PackageManager.PERMISSION_GRANTED
-                                        ) {
-                                            viewModel.scanForPrinters(context)
-                                        } else {
-                                            // Manejar caso cuando no hay permisos
-                                            // Puedes lanzar una solicitud de permisos o mostrar un mensaje
-                                            Toast.makeText(
-                                                context,
-                                                "Se necesitan permisos de Bluetooth",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                        }
-                                    },
-                                    modifier = Modifier.padding(top = 16.dp)
-                                ) {
-                                    Text("Intentar nuevamente")
-                                }
+                            is PdfDialogUiState.Error -> {
+                                Text("Error: ${(uiState as PdfDialogUiState.Error).message}")
+                            }
+                            else -> {
+                                // Manejar otros estados
+                                Text("Cargando datos...")
                             }
                         }
+                    }
 
-                        is PdfDialogUiState.Printing -> {
-                            Column(
-                                modifier = Modifier.fillMaxSize(),
-                                verticalArrangement = Arrangement.Center,
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                CircularProgressIndicator()
-                                Text(
-                                    text = "Imprimiendo documento...",
-                                    modifier = Modifier.padding(top = 8.dp)
-                                )
-                            }
-                        }
-
-                        is PdfDialogUiState.PrintComplete -> {
-                            Column(
-                                modifier = Modifier.fillMaxSize(),
-                                verticalArrangement = Arrangement.Center,
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    text = "¡Impresión completada!",
-                                    color = Color.Green
-                                )
-                                Button(
-                                    onClick = onDismiss,
-                                    modifier = Modifier.padding(top = 16.dp)
-                                ) {
-                                    Text("Cerrar")
-                                }
-                            }
-                        }
+                    // Controles de impresión al final
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        PrintControlsSection(
+                            viewModel = viewModel,
+                            context = context,
+                            pdfFile = pdfFile,
+                            isBluetoothActive = isBluetoothActive,
+                            onPrintSuccess = onDismiss
+                        )
                     }
                 }
             }
