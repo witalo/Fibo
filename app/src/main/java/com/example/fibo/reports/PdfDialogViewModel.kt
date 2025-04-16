@@ -1,6 +1,7 @@
 package com.example.fibo.reports
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothSocket
@@ -8,6 +9,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.contentcapture.ContentCaptureManager.Companion.isEnabled
 import androidx.core.content.ContextCompat
@@ -20,6 +22,7 @@ import com.example.fibo.utils.PdfDialogUiState
 import com.itextpdf.io.exceptions.IOException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,7 +31,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import java.io.BufferedWriter
 import java.io.File
+import java.io.OutputStream
+import java.io.OutputStreamWriter
 import java.text.DecimalFormat
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -50,7 +56,16 @@ class PdfDialogViewModel @Inject constructor(
 
     private val _selectedPrinter = MutableStateFlow<BluetoothDevice?>(null)
     val selectedPrinter: StateFlow<BluetoothDevice?> = _selectedPrinter.asStateFlow()
+
     private var currentOperation: IOperation? = null
+    private var scanPrintersJob: Job? = null
+    private var printOperationJob: Job? = null
+
+    override fun onCleared() {
+        super.onCleared()
+        scanPrintersJob?.cancel()
+        printOperationJob?.cancel()
+    }
 
     fun fetchOperationById(operationId: Int) {
         viewModelScope.launch {
@@ -69,39 +84,53 @@ class PdfDialogViewModel @Inject constructor(
 
     @OptIn(ExperimentalComposeUiApi::class)
     fun scanForPrinters(context: Context) {
+        // Cancelar trabajo anterior si existe
+        scanPrintersJob?.cancel()
+
         _uiState.value = PdfDialogUiState.ScanningPrinters
-        viewModelScope.launch(Dispatchers.IO) {
+
+        scanPrintersJob = viewModelScope.launch(Dispatchers.IO) {
             try {
                 Log.d("PrintViewModel", "Iniciando escaneo de impresoras...")
 
-                // Verificaciones de Bluetooth con manejo seguro de errores
+                // Verificar permisos de Android 12+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    val requiredPermissions = arrayOf(
+                        Manifest.permission.BLUETOOTH_CONNECT,
+                        Manifest.permission.BLUETOOTH_SCAN
+                    )
+
+                    val missingPermissions = requiredPermissions.filter {
+                        ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
+                    }
+
+                    if (missingPermissions.isNotEmpty()) {
+                        updateUiState(PdfDialogUiState.Error(
+                            "Se requieren permisos de Bluetooth para continuar"
+                        ))
+                        return@launch
+                    }
+                }
+
+                // Obtener adaptador Bluetooth con manejo de errores
                 val bluetoothAdapter = try {
                     BluetoothAdapter.getDefaultAdapter()
                 } catch (e: Exception) {
                     Log.e("Bluetooth", "Error obteniendo adapter", e)
                     null
                 }
+
                 if (bluetoothAdapter == null) {
-                    withContext(Dispatchers.Main) {
-                        _uiState.value = PdfDialogUiState.Error("Bluetooth no soportado")
-                    }
+                    updateUiState(PdfDialogUiState.Error("Bluetooth no soportado"))
                     return@launch
                 }
 
-//                if (!bluetoothAdapter.isEnabled) {
-//                    withContext(Dispatchers.Main) {
-//                        _uiState.value = PdfDialogUiState.BluetoothDisabled
-//                    }
-//                    return@launch
-//                }
-                if (!isEnabled) {
-                    withContext(Dispatchers.Main) {
-                        _uiState.value = PdfDialogUiState.BluetoothDisabled
-                    }
+                if (!bluetoothAdapter.isEnabled) {
+                    updateUiState(PdfDialogUiState.BluetoothDisabled)
                     return@launch
                 }
 
-                // 2. Verificar permisos
+                // Verificar permisos adicionales según versión Android
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     val missingPermissions = mutableListOf<String>()
                     if (ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) !=
@@ -114,41 +143,36 @@ class PdfDialogViewModel @Inject constructor(
                     }
 
                     if (missingPermissions.isNotEmpty()) {
-                        withContext(Dispatchers.Main) {
-                            _uiState.value = PdfDialogUiState.Error(
-                                "Se requieren permisos: ${missingPermissions.joinToString()}"
-                            )
-                        }
+                        updateUiState(PdfDialogUiState.Error(
+                            "Se requieren permisos: ${missingPermissions.joinToString()}"
+                        ))
                         return@launch
                     }
                 }
 
-                // Permiso de ubicación para versiones anteriores
+                // Verificar permisos para versiones anteriores
                 if (Build.VERSION.SDK_INT in Build.VERSION_CODES.M..Build.VERSION_CODES.R) {
                     if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) !=
                         PackageManager.PERMISSION_GRANTED) {
-                        withContext(Dispatchers.Main) {
-                            _uiState.value = PdfDialogUiState.Error(
-                                "Se requiere permiso de ubicación para escanear dispositivos Bluetooth"
-                            )
-                        }
+                        updateUiState(PdfDialogUiState.Error(
+                            "Se requiere permiso de ubicación para escanear dispositivos Bluetooth"
+                        ))
                         return@launch
                     }
                 }
-                // Obtener dispositivos emparejados con manejo seguro
+
+                // Obtener dispositivos con timeout
                 val pairedDevices = try {
                     withTimeout(5000) {
                         bluetoothAdapter.bondedDevices ?: emptySet()
                     }
                 } catch (e: Exception) {
                     Log.e("Bluetooth", "Error obteniendo dispositivos", e)
-                    withContext(Dispatchers.Main) {
-                        _uiState.value = PdfDialogUiState.Error("Error: ${e.message}")
-                    }
+                    updateUiState(PdfDialogUiState.Error("Error: ${e.message}"))
                     return@launch
                 }
 
-                // 4. Filtrar impresoras y priorizar
+                // Filtrar y ordenar impresoras
                 val printers = pairedDevices.sortedByDescending { device ->
                     val name = device.name?.lowercase() ?: ""
                     when {
@@ -159,7 +183,7 @@ class PdfDialogViewModel @Inject constructor(
                     }
                 }
 
-                // 5. Actualizar la UI en el hilo principal
+                // Actualizar la UI en el hilo principal
                 withContext(Dispatchers.Main) {
                     _availablePrinters.value = printers
 
@@ -170,7 +194,7 @@ class PdfDialogViewModel @Inject constructor(
                         _uiState.value = PdfDialogUiState.PrintersFound(printers)
                     }
 
-                    // Autoseleccionar la primera impresora si es Advance
+                    // Autoseleccionar la primera impresora preferida
                     printers.firstOrNull {
                         it.name?.contains("ADV", ignoreCase = true) == true ||
                                 it.name?.contains("Advance", ignoreCase = true) == true
@@ -181,9 +205,7 @@ class PdfDialogViewModel @Inject constructor(
 
             } catch (e: Exception) {
                 Log.e("PrintViewModel", "Error al escanear impresoras", e)
-                withContext(Dispatchers.Main) {
-                    _uiState.value = PdfDialogUiState.Error("Error: ${e.message}")
-                }
+                updateUiState(PdfDialogUiState.Error("Error: ${e.message}"))
             }
         }
     }
@@ -195,142 +217,6 @@ class PdfDialogViewModel @Inject constructor(
 
     fun selectPrinter(device: BluetoothDevice) {
         _selectedPrinter.value = device
-    }
-    fun printOperation(context: Context, pdfFile: File) {
-        // Actualizar estado inmediatamente
-        _uiState.value = PdfDialogUiState.Printing
-
-        viewModelScope.launch(Dispatchers.IO) {
-            var socket: BluetoothSocket? = null
-
-            try {
-                val printer = _selectedPrinter.value
-                val operation = currentOperation
-
-                // Validaciones previas
-                if (printer == null) {
-                    withContext(Dispatchers.Main) {
-                        _uiState.value = PdfDialogUiState.Error("No hay impresora seleccionada")
-                    }
-                    return@launch
-                }
-
-                if (operation == null) {
-                    withContext(Dispatchers.Main) {
-                        _uiState.value = PdfDialogUiState.Error("No hay operación para imprimir")
-                    }
-                    return@launch
-                }
-
-                // Verificar permisos
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                    ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) !=
-                    PackageManager.PERMISSION_GRANTED) {
-                    withContext(Dispatchers.Main) {
-                        _uiState.value = PdfDialogUiState.Error("Permiso BLUETOOTH_CONNECT requerido")
-                    }
-                    return@launch
-                }
-
-                // Conectar a la impresora con timeout
-                try {
-                    socket = withTimeout(10000) { // 10 segundos máximo para conectar
-                        printer.createRfcommSocketToServiceRecord(
-                            UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
-                        ).apply { connect() }
-                    }
-                } catch (e: TimeoutCancellationException) {
-                    withContext(Dispatchers.Main) {
-                        _uiState.value = PdfDialogUiState.Error("Tiempo de conexión agotado")
-                    }
-                    return@launch
-                } catch (e: IOException) {
-                    withContext(Dispatchers.Main) {
-                        _uiState.value = PdfDialogUiState.Error("Error conectando: ${e.message}")
-                    }
-                    return@launch
-                }
-
-                // Imprimir documento
-                try {
-                    val outputStream = socket.outputStream
-
-                    // Reiniciar impresora y usar configuración correcta
-                    outputStream.write(PrinterCommands.INIT)
-                    outputStream.write(PrinterCommands.ESC_ALIGN_CENTER) // Asegurar alineación central
-
-                    // 1. Encabezado
-                    outputStream.write(PrinterCommands.ESC_BOLD_ON)  // Inicio negrita
-                    outputStream.write("EMPRESA DEMO\n".toByteArray())
-                    outputStream.write(PrinterCommands.ESC_BOLD_OFF) // Fin negrita
-
-                    // 2. Datos del cliente
-                    outputStream.write(PrinterCommands.ESC_ALIGN_LEFT) // Cambiar a alineación izquierda
-                    outputStream.write("\n".toByteArray()) // Espacio
-                    outputStream.write("Cliente: ${operation.client.names}\n".toByteArray())
-                    outputStream.write("Fecha: ${getCurrentDateTime()}\n".toByteArray())
-                    outputStream.write("Operación #: ${operation.id}\n".toByteArray())
-
-                    // 3. Línea separadora
-                    outputStream.write("--------------------------------\n".toByteArray())
-
-                    // 4. Detalles de la operación
-                    // Asumiendo que tienes estos datos en tu objeto operation
-                    outputStream.write("DETALLES DE LA OPERACIÓN:\n".toByteArray())
-                    outputStream.write("Tipo: ${operation.operationType}\n".toByteArray())
-                    if (operation.operationStatus?.isNotEmpty() == true) {
-                        outputStream.write("Descripción: ${operation.operationStatus}\n".toByteArray())
-                    }
-
-                    // 5. Línea separadora
-                    outputStream.write("--------------------------------\n".toByteArray())
-
-                    // 6. Valores monetarios
-                    // Ajustar según tu modelo de datos
-                    outputStream.write("VALORES:\n".toByteArray())
-                    outputStream.write("Subtotal: $${formatCurrency(operation.totalAmount)}\n".toByteArray())
-                    outputStream.write("Total: $${formatCurrency(operation.totalAmount)}\n".toByteArray())
-
-                    // 7. Línea separadora
-                    outputStream.write("--------------------------------\n".toByteArray())
-
-                    // 8. Mensaje final
-                    outputStream.write(PrinterCommands.ESC_ALIGN_CENTER) // Centrar mensaje final
-                    outputStream.write("Gracias por su preferencia!\n\n".toByteArray())
-
-                    // 9. Avance de papel y corte
-                    outputStream.write(PrinterCommands.ESC_FEED_PAPER_AND_CUT)
-
-                    // Asegurar que todo se envíe
-                    outputStream.flush()
-
-                    // Pausa para asegurar que todo se envió
-                    delay(500)
-
-                    // Actualizar estado a completado
-                    withContext(Dispatchers.Main) {
-                        _uiState.value = PdfDialogUiState.PrintComplete
-                    }
-                } catch (e: Exception) {
-                    Log.e("PrintViewModel", "Error durante impresión", e)
-                    withContext(Dispatchers.Main) {
-                        _uiState.value = PdfDialogUiState.Error("Error imprimiendo: ${e.message}")
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("PrintViewModel", "Error general en impresión", e)
-                withContext(Dispatchers.Main) {
-                    _uiState.value = PdfDialogUiState.Error("Error: ${e.message}")
-                }
-            } finally {
-                // Cerrar conexión con seguridad
-                try {
-                    socket?.close()
-                } catch (e: Exception) {
-                    Log.e("PrintViewModel", "Error al cerrar socket", e)
-                }
-            }
-        }
     }
 
     // Helper para fecha actual
@@ -360,6 +246,266 @@ class PdfDialogViewModel @Inject constructor(
             outputFormat.format(date ?: return dateStr)
         } catch (e: Exception) {
             dateStr
+        }
+    }
+    fun resetState() {
+        _uiState.value = PdfDialogUiState.Initial
+        _selectedPrinter.value = null
+        _availablePrinters.value = emptyList()
+    }
+
+
+    fun printOperation(context: Context, pdfFile: File) {
+        _uiState.value = PdfDialogUiState.Printing
+
+        viewModelScope.launch(Dispatchers.IO) {
+            var socket: BluetoothSocket? = null
+            var outputStream: OutputStream? = null
+
+            try {
+                // Validaciones iniciales
+                val printer = _selectedPrinter.value ?: run {
+                    updateUiState(PdfDialogUiState.Error("No hay impresora seleccionada"))
+                    return@launch
+                }
+
+                val operation = currentOperation ?: run {
+                    updateUiState(PdfDialogUiState.Error("No hay operación para imprimir"))
+                    return@launch
+                }
+
+                // Verificación de permisos
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                    !hasBluetoothConnectPermission(context)) {
+                    updateUiState(PdfDialogUiState.Error("Permiso BLUETOOTH_CONNECT requerido"))
+                    return@launch
+                }
+
+                // Conexión con timeout
+                socket = connectWithTimeout(context, printer) ?: return@launch
+
+                // Configurar output stream
+                outputStream = socket.outputStream
+
+                // Generar y enviar contenido
+                sendPrintContent(outputStream, operation)
+
+                // Finalización exitosa
+                updateUiState(PdfDialogUiState.PrintComplete)
+            } catch (e: Exception) {
+                Log.e("PrintViewModel", "Error en impresión", e)
+                updateUiState(PdfDialogUiState.Error("Error al imprimir: ${e.message ?: "Desconocido"}"))
+            } finally {
+                closeResources(socket, outputStream)
+            }
+        }
+    }
+
+    // Funciones auxiliares
+    private suspend fun updateUiState(state: PdfDialogUiState) {
+        withContext(Dispatchers.Main) {
+            _uiState.value = state
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.S)
+    private fun hasBluetoothConnectPermission(context: Context): Boolean {
+        return ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.BLUETOOTH_CONNECT
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    @SuppressLint("MissingPermission")
+    private suspend fun connectWithTimeout(context: Context, printer: BluetoothDevice): BluetoothSocket? {
+        return try {
+            // Verificar permiso BLUETOOTH_CONNECT para Android 12+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.BLUETOOTH_CONNECT
+                    ) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    updateUiState(PdfDialogUiState.Error("Permiso BLUETOOTH_CONNECT requerido"))
+                    return null
+                }
+            }
+
+            withTimeout(15_000) { // 15 segundos para conexión
+                try {
+                    printer.createRfcommSocketToServiceRecord(
+                        UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
+                    ).apply {
+                        connect()
+                    }
+                } catch (e: SecurityException) {
+                    // Manejar específicamente la excepción de seguridad
+                    throw IOException("Permiso denegado: ${e.message}")
+                }
+            }
+        } catch (e: TimeoutCancellationException) {
+            updateUiState(PdfDialogUiState.Error("Tiempo de conexión agotado"))
+            null
+        } catch (e: IOException) {
+            updateUiState(PdfDialogUiState.Error("Error conectando: ${e.message}"))
+            null
+        } catch (e: SecurityException) {
+            updateUiState(PdfDialogUiState.Error("Permiso denegado: ${e.message}"))
+            null
+        }
+    }
+
+    private fun sendPrintContent(outputStream: OutputStream, operation: IOperation) {
+        // Usar buffer para escritura más eficiente
+        val writer = BufferedWriter(OutputStreamWriter(outputStream))
+        val numberFormat = DecimalFormat("#,##0.00")
+
+        try {
+            // Encabezado - Logo/Nombre de la empresa
+            outputStream.write(PrinterCommands.INIT)
+            outputStream.write(PrinterCommands.ESC_ALIGN_CENTER)
+            outputStream.write(PrinterCommands.ESC_BOLD_ON)
+            writer.write("${pdfGenerator.company.businessName}\n")
+            outputStream.write(PrinterCommands.ESC_BOLD_OFF)
+
+            // Datos de la empresa
+            writer.write("RUC: ${pdfGenerator.company.doc}\n")
+            writer.write("DIRECCION: ${pdfGenerator.subsidiary.address}\n\n")
+
+            // Tipo de documento
+            outputStream.write(PrinterCommands.ESC_BOLD_ON)
+            writer.write("${operation.documentTypeReadable}\n")
+            writer.write("${operation.serial}-${operation.correlative}\n")
+            outputStream.write(PrinterCommands.ESC_BOLD_OFF)
+
+            writer.write("--------------------------------\n")
+
+            // Sección de cliente
+            outputStream.write(PrinterCommands.ESC_ALIGN_LEFT)
+            outputStream.write(PrinterCommands.ESC_BOLD_ON)
+            writer.write("DATOS DEL CLIENTE\n")
+            writer.write("${operation.client.documentType?.formatDocumentType() ?: "DOCUMENTO"}: ${operation.client.documentNumber ?: ""}\n")
+            writer.write("DENOMINACION: ${operation.client.names ?: ""}\n")
+
+            if (!operation.client.phone.isNullOrEmpty()) {
+                writer.write("TELEFONO: ${operation.client.phone}\n")
+            }
+
+            writer.write("DIRECCION: ${operation.client.address ?: ""}\n")
+            writer.write("FECHA: ${"${operation.emitDate} ${operation.emitTime}".formatToDisplayDateTime()}\n")
+            outputStream.write(PrinterCommands.ESC_BOLD_OFF)
+
+            writer.write("--------------------------------\n")
+
+            // Tabla de productos
+            outputStream.write(PrinterCommands.ESC_ALIGN_CENTER)
+            writer.write("Cant  Descripcion       P.Unit  Dscto  Importe\n")
+            outputStream.write(PrinterCommands.ESC_ALIGN_LEFT)
+
+            // Añadir productos
+            operation.operationDetailSet.forEach { detail ->
+                val quantity = numberFormat.format(detail.quantity).padStart(5)
+                val product = detail.tariff.productName.take(15).padEnd(15)
+                val unitPrice = numberFormat.format(detail.unitPrice).padStart(7)
+                val discount = numberFormat.format(detail.totalDiscount).padStart(6)
+                val total = numberFormat.format(detail.totalAmount).padStart(8)
+
+                writer.write("$quantity $product $unitPrice $discount $total\n")
+            }
+
+            writer.write("--------------------------------\n")
+
+            // Sección de totales
+            outputStream.write(PrinterCommands.ESC_ALIGN_RIGHT)
+            outputStream.write(PrinterCommands.ESC_BOLD_ON)
+            writer.write("OP. GRAVADA: ${numberFormat.format(operation.totalTaxed)}\n")
+            writer.write("OP. INAFECTA: ${numberFormat.format(operation.totalUnaffected)}\n")
+            writer.write("OP. EXONERADA: ${numberFormat.format(operation.totalExonerated)}\n")
+            writer.write("IGV: ${numberFormat.format(operation.totalIgv)}\n")
+            writer.write("TOTAL: ${numberFormat.format(operation.totalAmount)}\n")
+            outputStream.write(PrinterCommands.ESC_BOLD_OFF)
+
+            // Pie de página
+            outputStream.write(PrinterCommands.ESC_ALIGN_CENTER)
+            writer.write("\n4 SOLUCIONES\n")
+            writer.write("https://www.tuf4ct.com\n\n")
+            writer.write("\n\n\n")
+
+            // Finalización
+            outputStream.write(PrinterCommands.ESC_FEED_PAPER_AND_CUT)
+            writer.flush()
+            outputStream.flush()
+        } finally {
+            writer.close()
+        }
+    }
+
+    private fun closeResources(socket: BluetoothSocket?, outputStream: OutputStream?) {
+        try {
+            outputStream?.close()
+        } catch (e: IOException) {
+            Log.e("PrintViewModel", "Error cerrando output stream", e)
+        }
+
+        try {
+            socket?.close()
+        } catch (e: IOException) {
+            Log.e("PrintViewModel", "Error cerrando socket", e)
+        }
+    }
+    // Función para formatear el tipo de documento
+    private fun String.formatDocumentType(): String {
+        return when (this.uppercase()) {
+            "DNI" -> "DNI"
+            "RUC" -> "RUC"
+            "CE" -> "CARNET DE EXTRANJERÍA"
+            "PAS" -> "PASAPORTE"
+            "CDI" -> "CÉDULA DE IDENTIDAD"
+            "OTR" -> "OTROS"
+            else -> this
+        }
+    }
+
+    // Función para formatear la fecha y hora en formato legible
+    private fun String.formatToDisplayDateTime(): String {
+        try {
+            // Asumiendo que el formato de entrada es "YYYY-MM-DD HH:MM:SS"
+            val parts = this.split(" ")
+            if (parts.size != 2) return this
+
+            val dateParts = parts[0].split("-")
+            val timeParts = parts[1].split(":")
+
+            if (dateParts.size != 3 || timeParts.size < 2) return this
+
+            val year = dateParts[0]
+            val month = dateParts[1]
+            val day = dateParts[2]
+
+            val hour = timeParts[0]
+            val minute = timeParts[1]
+
+            // Convertir mes numérico a nombre
+            val monthName = when (month) {
+                "01" -> "ENE"
+                "02" -> "FEB"
+                "03" -> "MAR"
+                "04" -> "ABR"
+                "05" -> "MAY"
+                "06" -> "JUN"
+                "07" -> "JUL"
+                "08" -> "AGO"
+                "09" -> "SEP"
+                "10" -> "OCT"
+                "11" -> "NOV"
+                "12" -> "DIC"
+                else -> month
+            }
+
+            return "$day-$monthName-$year $hour:$minute"
+        } catch (e: Exception) {
+            // En caso de error, devolver el string original
+            return this
         }
     }
 }

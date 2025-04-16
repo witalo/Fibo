@@ -57,7 +57,9 @@ import com.example.fibo.utils.PdfDialogUiState
 import com.example.fibo.utils.showToast
 import com.github.barteksc.pdfviewer.PDFView
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -70,32 +72,41 @@ fun PdfViewerDialog(
     onDismiss: () -> Unit,
     viewModel: PdfDialogViewModel = hiltViewModel(),
 ) {
+
+
     val pdfGenerator = viewModel.pdfGenerator
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     // Check Bluetooth state on composition
-    // Manejo seguro del estado Bluetooth
     var isBluetoothActive by remember { mutableStateOf(false) }
     // Estado para mantener la referencia al archivo PDF generado
     var pdfFile by remember { mutableStateOf<File?>(null) }
-
+    // Scope para gestionar corrutinas
+    val coroutineScope = rememberCoroutineScope()
+    var bluetoothCheckJob by remember { mutableStateOf<Job?>(null) }
     // Efecto para verificar Bluetooth de forma segura
     LaunchedEffect(Unit) {
         try {
             val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
             isBluetoothActive = bluetoothAdapter?.isEnabled == true
 
-            // Cargar datos iniciales
+            // Cargar datos iniciales solo una vez
             viewModel.fetchOperationById(operationId)
 
-            // Verificación periódica más segura
-            while (true) {
-                try {
-                    delay(2000) // Verificar cada 2 segundos
-                    isBluetoothActive = bluetoothAdapter?.isEnabled == true
-                } catch (e: Exception) {
-                    Log.e("BluetoothCheck", "Error verificando estado", e)
+            // Usar snapshotFlow para observar cambios en el estado Bluetooth de manera eficiente
+            bluetoothCheckJob = launch {
+                snapshotFlow {
+                    try {
+                        bluetoothAdapter?.isEnabled == true
+                    } catch (e: Exception) {
+                        Log.e("BluetoothCheck", "Error verificando estado", e)
+                        false
+                    }
                 }
+                    .distinctUntilChanged()
+                    .collect { enabled ->
+                        isBluetoothActive = enabled
+                    }
             }
         } catch (e: Exception) {
             Log.e("Bluetooth", "Error inicializando estado Bluetooth", e)
@@ -103,9 +114,9 @@ fun PdfViewerDialog(
         }
     }
 
-    // Generación segura del PDF
+    // Generación eficiente del PDF (solo si es necesario)
     LaunchedEffect(uiState) {
-        if (uiState is PdfDialogUiState.Success) {
+        if (uiState is PdfDialogUiState.Success && pdfFile == null) {
             try {
                 val operation = (uiState as PdfDialogUiState.Success).operation
                 pdfFile = withContext(Dispatchers.IO) {
@@ -121,10 +132,26 @@ fun PdfViewerDialog(
             }
         }
     }
-
+    // Limpiar recursos al cerrar
+    LaunchedEffect(isVisible) {
+        if (!isVisible) {
+            // Cancelar todas las operaciones en curso
+            bluetoothCheckJob?.cancel()
+            viewModel.resetState()
+            // Liberar referencias
+            pdfFile = null
+        }
+    }
     if (isVisible) {
         Dialog(
-            onDismissRequest = onDismiss,
+            onDismissRequest = {
+                // Cancelación personalizada para evitar cierres abruptos
+                coroutineScope.launch {
+                    bluetoothCheckJob?.cancel()
+                    delay(100) // Pequeña pausa para permitir limpieza
+                    onDismiss()
+                }
+            },
             properties = DialogProperties(
                 dismissOnBackPress = true,
                 dismissOnClickOutside = true,
@@ -179,7 +206,6 @@ fun PdfViewerDialog(
                             is PdfDialogUiState.Success -> {
                                 // Mostrar PDF
                                 if (pdfFile != null) {
-                                    // Tu componente para mostrar PDF aquí
                                     AndroidView(
                                         factory = { ctx ->
                                             PDFView(ctx, null).apply {
@@ -194,15 +220,34 @@ fun PdfViewerDialog(
                                         modifier = Modifier.fillMaxSize()
                                     )
                                 } else {
-                                    Text("Generando PDF...")
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            CircularProgressIndicator()
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Text("Generando PDF...")
+                                        }
+                                    }
                                 }
                             }
                             is PdfDialogUiState.Error -> {
-                                Text("Error: ${(uiState as PdfDialogUiState.Error).message}")
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("Error: ${(uiState as PdfDialogUiState.Error).message}")
+                                }
                             }
                             else -> {
                                 // Manejar otros estados
-                                Text("Cargando datos...")
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("Cargando datos...")
+                                }
                             }
                         }
                     }
