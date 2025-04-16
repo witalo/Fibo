@@ -73,7 +73,11 @@ class OperationRepository @Inject constructor(
             is Float -> this.toDouble()
             is Int -> this.toDouble()
             is Long -> this.toDouble()
-            is String -> this.toDoubleOrNull() ?: 0.0
+            is String -> {
+                // Reemplaza coma por punto para manejar formato "264,00"
+                val cleaned = this.replace(",", ".")
+                cleaned.toDoubleOrNull() ?: 0.0
+            }
             is Number -> this.toDouble()
             else -> 0.0
         }
