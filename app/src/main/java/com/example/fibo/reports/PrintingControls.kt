@@ -10,6 +10,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -48,6 +50,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -66,10 +69,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.example.fibo.utils.PdfDialogUiState
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.File
 import java.time.LocalDateTime
+import java.util.concurrent.CancellationException
 
 @SuppressLint("MissingPermission")
 @Composable
@@ -91,20 +97,66 @@ fun PrintControlsSection(
     var showBluetoothAlert by remember { mutableStateOf(false) }
     var showPermissionDialog by remember { mutableStateOf(false) }
     var isPrintingInProgress by remember { mutableStateOf(false) }
+    var isBluetoothOperationInProgress by remember { mutableStateOf(false) }
+
+    // Track Bluetooth state locally to ensure UI updates
+    var localBluetoothActive by remember { mutableStateOf(isBluetoothActive) }
 
     // Estados y permisos
     val bluetoothManager = LocalContext.current.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
     val bluetoothAdapter = remember { bluetoothManager?.adapter }
     val (hasPermissions, requestPermissions) = rememberBluetoothPermissionsState()
 
+    // Usar CoroutineScope limitado al tiempo de vida del composable
+    val composableScope = rememberCoroutineScope()
+
+    // Referencia al trabajo de monitoreo Bluetooth para poder cancelarlo
+    var bluetoothMonitorJob by remember { mutableStateOf<Job?>(null) }
+
+    // Continuous check for Bluetooth state with job reference for clean cancellation
+    LaunchedEffect(Unit) {
+        bluetoothMonitorJob = launch {
+            try {
+                while (isActive) { // isActive es una propiedad de la corrutina que indica si está activa
+                    localBluetoothActive = bluetoothAdapter?.isEnabled == true
+                    delay(1000) // Check every second
+                }
+            } catch (e: CancellationException) {
+                // Cancelación normal, no hacer nada
+            } catch (e: Exception) {
+                Log.e("Bluetooth", "Error checking Bluetooth state", e)
+            }
+        }
+    }
+    // Efecto de limpieza
+    DisposableEffect(Unit) {
+        onDispose {
+            bluetoothMonitorJob?.cancel()
+            Log.d("PrintControlsSection", "Disposable effect cleanup executed")
+        }
+    }
+
     val bluetoothLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            // Esperar un momento para asegurar que Bluetooth esté completamente inicializado
-            viewModel.scanForPrinters(context)
+        // Directly check current Bluetooth state instead of relying on result code
+        val isEnabled = bluetoothAdapter?.isEnabled == true
+        localBluetoothActive = isEnabled
+
+        if (isEnabled) {
+            // Use Handler to give Bluetooth system a moment to fully initialize
+            Handler(Looper.getMainLooper()).postDelayed({
+                try {
+                    viewModel.scanForPrinters(context)
+                } catch (e: Exception) {
+                    Log.e("Bluetooth", "Error scanning printers", e)
+                    errorMessage = "Error al buscar impresoras: ${e.message}"
+                    isBluetoothOperationInProgress = false
+                }
+            }, 500)
         } else {
             errorMessage = "Bluetooth no fue activado"
+            isBluetoothOperationInProgress = false
         }
     }
     // Función para activar Bluetooth con verificación de permisos
@@ -126,38 +178,59 @@ fun PrintControlsSection(
         } catch (e: SecurityException) {
             errorMessage = "Permiso denegado: ${e.message}"
             requestPermissions()
+            isBluetoothOperationInProgress = false
         } catch (e: Exception) {
             errorMessage = "Error: ${e.message}"
+            isBluetoothOperationInProgress = false
         }
     }
 
     // Manejo de estados del ViewModel - optimizado para manejar cambios de estado eficientemente
     LaunchedEffect(uiState) {
-        when (uiState) {
-            is PdfDialogUiState.Error -> {
-                errorMessage = (uiState as PdfDialogUiState.Error).message
-                if (errorMessage?.contains("permiso", ignoreCase = true) == true) {
-                    showPermissionDialog = true
-                }
-                isPrintingInProgress = false
-            }
-            is PdfDialogUiState.BluetoothDisabled -> {
-                showBluetoothAlert = true
-                isPrintingInProgress = false
-            }
-            is PdfDialogUiState.Printing -> {
-                isPrintingInProgress = true
-            }
-            is PdfDialogUiState.PrintComplete -> {
-                isPrintingInProgress = false
-                delay(500)
-                onPrintSuccess()
-            }
-            else -> {
-                if (uiState !is PdfDialogUiState.ScanningPrinters) {
+        try {
+            when (uiState) {
+                is PdfDialogUiState.Error -> {
+                    errorMessage = (uiState as PdfDialogUiState.Error).message
+                    if (errorMessage?.contains("permiso", ignoreCase = true) == true) {
+                        showPermissionDialog = true
+                    }
                     isPrintingInProgress = false
+                    isBluetoothOperationInProgress = false
+                }
+                is PdfDialogUiState.BluetoothDisabled -> {
+                    showBluetoothAlert = true
+                    isPrintingInProgress = false
+                    isBluetoothOperationInProgress = false
+                }
+                is PdfDialogUiState.Printing -> {
+                    isPrintingInProgress = true
+                }
+                is PdfDialogUiState.PrintComplete -> {
+                    isPrintingInProgress = false
+                    // Asegurarse de completar correctamente antes de llamar onPrintSuccess
+                    viewModel.resetState()
+                    delay(500)
+                    // Usar el scope del composable para el cierre seguro
+                    composableScope.launch {
+                        try {
+                            onPrintSuccess()
+                        } catch (e: Exception) {
+                            Log.e("PrintControlsSection", "Error en onPrintSuccess", e)
+                        }
+                    }
+                }
+                is PdfDialogUiState.ScanningPrinters -> {
+                    isBluetoothOperationInProgress = true
+                }
+                else -> {
+                    if (uiState !is PdfDialogUiState.ScanningPrinters) {
+                        isPrintingInProgress = false
+                        isBluetoothOperationInProgress = false
+                    }
                 }
             }
+        } catch (e: Exception) {
+            Log.e("PrintControlsSection", "Error en LaunchedEffect", e)
         }
     }
 
@@ -165,17 +238,32 @@ fun PrintControlsSection(
         // Botón Bluetooth/Permisos
         Button(
             onClick = {
-                when {
-                    !hasPermissions -> requestPermissions()
-                    !isBluetoothActive -> enableBluetooth()
-                    else -> viewModel.scanForPrinters(context)
+                try {
+                    when {
+                        !hasPermissions -> {
+                            isBluetoothOperationInProgress = true
+                            requestPermissions()
+                        }
+                        !localBluetoothActive -> {
+                            isBluetoothOperationInProgress = true
+                            enableBluetooth()
+                        }
+                        else -> {
+                            isBluetoothOperationInProgress = true
+                            viewModel.scanForPrinters(context)
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("PrintControlsSection", "Error en botón Bluetooth", e)
+                    errorMessage = "Error: ${e.message}"
+                    isBluetoothOperationInProgress = false
                 }
             },
             modifier = Modifier.fillMaxWidth(),
-            enabled = !isPrintingInProgress,
+            enabled = !isPrintingInProgress && !isBluetoothOperationInProgress,
             colors = ButtonDefaults.buttonColors(
                 containerColor = when {
-                    !isBluetoothActive -> Color(0xFFFF9800)
+                    !localBluetoothActive -> Color(0xFFFF9800)
                     !hasPermissions -> Color(0xFFFF5722)
                     else -> Color(0xFF2196F3)
                 }
@@ -191,7 +279,7 @@ fun PrintControlsSection(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
 
-                if (currentUiState is PdfDialogUiState.ScanningPrinters) {
+                if (currentUiState is PdfDialogUiState.ScanningPrinters || isBluetoothOperationInProgress) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(16.dp),
                         strokeWidth = 2.dp,
@@ -202,7 +290,7 @@ fun PrintControlsSection(
                 } else {
                     Text(
                         text = when {
-                            !isBluetoothActive -> "Activar Bluetooth"
+                            !localBluetoothActive -> "Activar Bluetooth"
                             !hasPermissions -> "Solicitar Permisos"
                             selectedPrinter != null -> "Impresora: ${selectedPrinter?.name?.take(10) ?: ""}..."
                             else -> "Buscar impresoras"
@@ -219,7 +307,7 @@ fun PrintControlsSection(
                 printers = printers,
                 selectedPrinter = selectedPrinter,
                 onPrinterSelected = { viewModel.selectPrinter(it) },
-                isLoading = currentUiState is PdfDialogUiState.ScanningPrinters,
+                isLoading = currentUiState is PdfDialogUiState.ScanningPrinters || isBluetoothOperationInProgress,
                 enabled = !isPrintingInProgress
             )
         }
@@ -229,17 +317,24 @@ fun PrintControlsSection(
         // Botón Imprimir
         Button(
             onClick = {
-                pdfFile?.let {
-                    isPrintingInProgress = true
-                    viewModel.printOperation(context, it)
+                try {
+                    pdfFile?.let {
+                        isPrintingInProgress = true
+                        viewModel.printOperation(context, it)
+                    }
+                } catch (e: Exception) {
+                    Log.e("PrintControlsSection", "Error en botón imprimir", e)
+                    errorMessage = "Error: ${e.message}"
+                    isPrintingInProgress = false
                 }
             },
             modifier = Modifier.fillMaxWidth(),
             enabled = selectedPrinter != null &&
                     pdfFile != null &&
-                    isBluetoothActive &&
+                    localBluetoothActive &&
                     hasPermissions &&
-                    !isPrintingInProgress,
+                    !isPrintingInProgress &&
+                    !isBluetoothOperationInProgress,
             colors = ButtonDefaults.buttonColors(
                 containerColor = if (selectedPrinter != null) Color(0xFF4CAF50) else Color(0xFF9E9E9E)
             )
@@ -279,18 +374,24 @@ fun PrintControlsSection(
     // Diálogo para activar Bluetooth - usando una variable independiente para controlar visibilidad
     if (showBluetoothAlert) {
         AlertDialog(
-            onDismissRequest = { showBluetoothAlert = false },
+            onDismissRequest = {
+                showBluetoothAlert = false
+                isBluetoothOperationInProgress = false
+            },
             title = { Text("Bluetooth Desactivado") },
             text = { Text("Es necesario activar el Bluetooth para buscar impresoras. ¿Desea activarlo ahora?") },
             confirmButton = {
                 Button(
                     onClick = {
-                        showBluetoothAlert = false
                         try {
+                            showBluetoothAlert = false
+                            isBluetoothOperationInProgress = true
                             val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
                             bluetoothLauncher.launch(enableBtIntent)
                         } catch (e: Exception) {
+                            Log.e("PrintControlsSection", "Error activando Bluetooth", e)
                             errorMessage = "Error: ${e.message}"
+                            isBluetoothOperationInProgress = false
                         }
                     }
                 ) {
@@ -298,7 +399,10 @@ fun PrintControlsSection(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showBluetoothAlert = false }) {
+                TextButton(onClick = {
+                    showBluetoothAlert = false
+                    isBluetoothOperationInProgress = false
+                }) {
                     Text("Cancelar")
                 }
             }
@@ -308,48 +412,40 @@ fun PrintControlsSection(
     // Diálogo para permisos faltantes
     if (showPermissionDialog) {
         AlertDialog(
-            onDismissRequest = { showPermissionDialog = false },
+            onDismissRequest = {
+                showPermissionDialog = false
+                isBluetoothOperationInProgress = false
+            },
             title = { Text("Permisos Requeridos") },
             text = { Text("La aplicación necesita permisos de Bluetooth para buscar impresoras") },
             confirmButton = {
                 Button(
                     onClick = {
-                        showPermissionDialog = false
-                        requestPermissions()
+                        try {
+                            showPermissionDialog = false
+                            requestPermissions()
+                        } catch (e: Exception) {
+                            Log.e("PrintControlsSection", "Error en diálogo de permisos", e)
+                            isBluetoothOperationInProgress = false
+                        }
                     }
                 ) {
                     Text("Conceder Permisos")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showPermissionDialog = false }) {
+                TextButton(onClick = {
+                    showPermissionDialog = false
+                    isBluetoothOperationInProgress = false
+                }) {
                     Text("Cancelar")
                 }
             }
         )
     }
 
-    // Diálogo de impresión en progreso - utilizamos un estado local para controlar esto
-    if (isPrintingInProgress) {
-        AlertDialog(
-            onDismissRequest = { /* No cerrar */ },
-            title = { Text("Imprimiendo...") },
-            text = {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    CircularProgressIndicator()
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text("Enviando datos a ${selectedPrinter?.name ?: "la impresora"}")
-                }
-            },
-            confirmButton = { /* Sin botones */ }
-        )
-    }
-
     // Diálogo de impresión en progreso
-    if (currentUiState is PdfDialogUiState.Printing) {
+    if (isPrintingInProgress && currentUiState is PdfDialogUiState.Printing) {
         AlertDialog(
             onDismissRequest = { /* No cerrar */ },
             title = { Text("Imprimiendo...") },

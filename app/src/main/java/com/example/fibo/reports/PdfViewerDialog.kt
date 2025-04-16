@@ -1,33 +1,11 @@
 package com.example.fibo.reports
 
-// 7. Importaciones necesarias para Bluetooth
-import android.Manifest
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
-import android.content.pm.PackageManager
-import android.os.Build
 import android.util.Log
-import android.widget.Toast
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Bluetooth
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Print
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -35,7 +13,6 @@ import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -77,6 +54,7 @@ fun PdfViewerDialog(
     val pdfGenerator = viewModel.pdfGenerator
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
+
     // Check Bluetooth state on composition
     var isBluetoothActive by remember { mutableStateOf(false) }
     // Estado para mantener la referencia al archivo PDF generado
@@ -84,6 +62,9 @@ fun PdfViewerDialog(
     // Scope para gestionar corrutinas
     val coroutineScope = rememberCoroutineScope()
     var bluetoothCheckJob by remember { mutableStateOf<Job?>(null) }
+
+    // Flag para controlar si se está cerrando el diálogo
+    var isDialogClosing by remember { mutableStateOf(false) }
     // Efecto para verificar Bluetooth de forma segura
     LaunchedEffect(Unit) {
         try {
@@ -113,6 +94,38 @@ fun PdfViewerDialog(
             isBluetoothActive = false
         }
     }
+    // Función segura para cerrar el diálogo
+    fun safelyDismissDialog() {
+        if (isDialogClosing) return // Evitar múltiples cierres
+
+        isDialogClosing = true
+
+        coroutineScope.launch {
+            try {
+                // Cancelar jobs y limpiar recursos
+                bluetoothCheckJob?.cancel()
+                bluetoothCheckJob = null
+
+                // Resetear ViewModel
+                viewModel.resetState()
+
+                // Pequeña pausa para permitir que finalicen las operaciones
+                delay(100)
+
+                // Liberar referencia del archivo
+                pdfFile = null
+
+                // Finalmente llamar al callback de cierre
+                onDismiss()
+            } catch (e: Exception) {
+                Log.e("PdfViewerDialog", "Error al cerrar diálogo", e)
+                // Asegurar que se cierre incluso con error
+                onDismiss()
+            } finally {
+                isDialogClosing = false
+            }
+        }
+    }
 
     // Generación eficiente del PDF (solo si es necesario)
     LaunchedEffect(uiState) {
@@ -134,23 +147,25 @@ fun PdfViewerDialog(
     }
     // Limpiar recursos al cerrar
     LaunchedEffect(isVisible) {
-        if (!isVisible) {
-            // Cancelar todas las operaciones en curso
+        if (!isVisible && !isDialogClosing) {
+            safelyDismissDialog()
+        }
+    }
+    // Efecto de limpieza para asegurar que se limpie todo al desmontar el composable
+    DisposableEffect(Unit) {
+        onDispose {
             bluetoothCheckJob?.cancel()
+            bluetoothCheckJob = null
             viewModel.resetState()
-            // Liberar referencias
             pdfFile = null
+            Log.d("PdfViewerDialog", "DisposableEffect cleanup executed")
         }
     }
     if (isVisible) {
         Dialog(
             onDismissRequest = {
-                // Cancelación personalizada para evitar cierres abruptos
-                coroutineScope.launch {
-                    bluetoothCheckJob?.cancel()
-                    delay(100) // Pequeña pausa para permitir limpieza
-                    onDismiss()
-                }
+                // Uso de nuestra función segura para cerrar
+                safelyDismissDialog()
             },
             properties = DialogProperties(
                 dismissOnBackPress = true,
@@ -179,7 +194,7 @@ fun PdfViewerDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Vista previa PDF",
+                            text = "Comprobante",
                             style = MaterialTheme.typography.titleLarge
                         )
 
@@ -191,7 +206,6 @@ fun PdfViewerDialog(
                         }
                     }
                     Divider()
-
                     // Contenido principal - Visualizador PDF y controles
                     Box(modifier = Modifier.weight(1f)) {
                         when (uiState) {
@@ -262,7 +276,7 @@ fun PdfViewerDialog(
                             context = context,
                             pdfFile = pdfFile,
                             isBluetoothActive = isBluetoothActive,
-                            onPrintSuccess = onDismiss
+                            onPrintSuccess = { safelyDismissDialog() }
                         )
                     }
                 }

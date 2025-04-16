@@ -40,6 +40,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
+import java.util.concurrent.CancellationException
 import javax.inject.Inject
 
 @HiltViewModel
@@ -248,17 +249,39 @@ class PdfDialogViewModel @Inject constructor(
             dateStr
         }
     }
+    // Mejora el método resetState en el PdfDialogViewModel
     fun resetState() {
-        _uiState.value = PdfDialogUiState.Initial
-        _selectedPrinter.value = null
-        _availablePrinters.value = emptyList()
+        viewModelScope.launch {
+            try {
+                // Cancelar operaciones en curso
+                scanPrintersJob?.cancel()
+                scanPrintersJob = null
+
+                printOperationJob?.cancel()
+                printOperationJob = null
+
+                // Liberar recursos
+                currentOperation = null
+
+                // Restablecer estados
+                _uiState.value = PdfDialogUiState.Initial
+                _selectedPrinter.value = null
+                _availablePrinters.value = emptyList()
+
+                Log.d("PdfDialogViewModel", "Estado reseteado correctamente")
+            } catch (e: Exception) {
+                Log.e("PdfDialogViewModel", "Error al resetear estado", e)
+            }
+        }
     }
 
 
     fun printOperation(context: Context, pdfFile: File) {
         _uiState.value = PdfDialogUiState.Printing
+        // Cancelar job anterior si existe
+        printOperationJob?.cancel()
 
-        viewModelScope.launch(Dispatchers.IO) {
+        printOperationJob = viewModelScope.launch(Dispatchers.IO) {
             var socket: BluetoothSocket? = null
             var outputStream: OutputStream? = null
 
@@ -292,6 +315,11 @@ class PdfDialogViewModel @Inject constructor(
 
                 // Finalización exitosa
                 updateUiState(PdfDialogUiState.PrintComplete)
+            }  catch (e: CancellationException) {
+                // Manejar cancelación explícitamente
+                Log.d("PrintViewModel", "Operación de impresión cancelada normalmente")
+                closeResources(socket, outputStream)
+                updateUiState(PdfDialogUiState.Initial)
             } catch (e: Exception) {
                 Log.e("PrintViewModel", "Error en impresión", e)
                 updateUiState(PdfDialogUiState.Error("Error al imprimir: ${e.message ?: "Desconocido"}"))
@@ -380,11 +408,12 @@ class PdfDialogViewModel @Inject constructor(
 
             writer.write("--------------------------------\n")
 
-            // Sección de cliente
+            // Sección de cliente - Todo alineado a la izquierda
             outputStream.write(PrinterCommands.ESC_ALIGN_LEFT)
             outputStream.write(PrinterCommands.ESC_BOLD_ON)
             writer.write("DATOS DEL CLIENTE\n")
-            writer.write("${operation.client.documentType?.formatDocumentType() ?: "DOCUMENTO"}: ${operation.client.documentNumber ?: ""}\n")
+            outputStream.write(PrinterCommands.ESC_BOLD_OFF)
+            writer.write("${formatDocumentType(operation.client.documentType)}: ${operation.client.documentNumber ?: ""}\n")
             writer.write("DENOMINACION: ${operation.client.names ?: ""}\n")
 
             if (!operation.client.phone.isNullOrEmpty()) {
@@ -393,41 +422,68 @@ class PdfDialogViewModel @Inject constructor(
 
             writer.write("DIRECCION: ${operation.client.address ?: ""}\n")
             writer.write("FECHA: ${"${operation.emitDate} ${operation.emitTime}".formatToDisplayDateTime()}\n")
+
+            writer.write("--------------------------------\n")
+
+            // Encabezado de productos
+            outputStream.write(PrinterCommands.ESC_BOLD_ON)
+            writer.write("DETALLE DE PRODUCTOS\n")
             outputStream.write(PrinterCommands.ESC_BOLD_OFF)
 
+            // Encabezado de columnas para la segunda línea
+            writer.write("CANT   P.UNIT   DSCTO   IMPORTE\n")
             writer.write("--------------------------------\n")
 
-            // Tabla de productos
-            outputStream.write(PrinterCommands.ESC_ALIGN_CENTER)
-            writer.write("Cant  Descripcion       P.Unit  Dscto  Importe\n")
-            outputStream.write(PrinterCommands.ESC_ALIGN_LEFT)
-
-            // Añadir productos
+            // Añadir productos - Formato ajustado según requerimiento
             operation.operationDetailSet.forEach { detail ->
-                val quantity = numberFormat.format(detail.quantity).padStart(5)
-                val product = detail.tariff.productName.take(15).padEnd(15)
-                val unitPrice = numberFormat.format(detail.unitPrice).padStart(7)
-                val discount = numberFormat.format(detail.totalDiscount).padStart(6)
-                val total = numberFormat.format(detail.totalAmount).padStart(8)
+                // Primera línea: Descripción completa del producto
+                outputStream.write(PrinterCommands.ESC_ALIGN_LEFT)
+                writer.write("${detail.tariff.productName}\n")
 
-                writer.write("$quantity $product $unitPrice $discount $total\n")
+                // Segunda línea: Datos numéricos alineados a la derecha
+                outputStream.write(PrinterCommands.ESC_ALIGN_RIGHT)
+
+                // Formateamos cada valor con el ancho adecuado para alineación
+                val quantity = numberFormat.format(detail.quantity).padStart(4)
+                val unitPrice = numberFormat.format(detail.unitPrice).padStart(7)
+                val discount = numberFormat.format(detail.totalDiscount).padStart(7)
+                val total = numberFormat.format(detail.totalAmount).padStart(7)
+
+                writer.write("$quantity $unitPrice $discount $total\n")
+
+                // Separador entre productos
+                writer.write("----------------------------\n")
             }
 
-            writer.write("--------------------------------\n")
-
-            // Sección de totales
+            // Sección de totales - Todo alineado a la derecha
             outputStream.write(PrinterCommands.ESC_ALIGN_RIGHT)
             outputStream.write(PrinterCommands.ESC_BOLD_ON)
-            writer.write("OP. GRAVADA: ${numberFormat.format(operation.totalTaxed)}\n")
-            writer.write("OP. INAFECTA: ${numberFormat.format(operation.totalUnaffected)}\n")
-            writer.write("OP. EXONERADA: ${numberFormat.format(operation.totalExonerated)}\n")
-            writer.write("IGV: ${numberFormat.format(operation.totalIgv)}\n")
-            writer.write("TOTAL: ${numberFormat.format(operation.totalAmount)}\n")
+            writer.write("RESUMEN\n")
+            outputStream.write(PrinterCommands.ESC_BOLD_OFF)
+
+            // Formatear los montos para que queden alineados
+            val labelWidth = 15 // Ancho para las etiquetas
+
+            val opGravada = "OP. GRAVADA:".padEnd(labelWidth) + numberFormat.format(operation.totalTaxed).padStart(10)
+            val opInafecta = "OP. INAFECTA:".padEnd(labelWidth) + numberFormat.format(operation.totalUnaffected).padStart(10)
+            val opExonerada = "OP. EXONERADA:".padEnd(labelWidth) + numberFormat.format(operation.totalExonerated).padStart(10)
+            val igv = "IGV:".padEnd(labelWidth) + numberFormat.format(operation.totalIgv).padStart(10)
+
+            // Total con formato destacado
+            val total = "TOTAL:".padEnd(labelWidth) + numberFormat.format(operation.totalAmount).padStart(10)
+
+            writer.write("$opGravada\n")
+            writer.write("$opInafecta\n")
+            writer.write("$opExonerada\n")
+            writer.write("$igv\n")
+            outputStream.write(PrinterCommands.ESC_BOLD_ON)
+            writer.write("$total\n")
             outputStream.write(PrinterCommands.ESC_BOLD_OFF)
 
             // Pie de página
             outputStream.write(PrinterCommands.ESC_ALIGN_CENTER)
-            writer.write("\n4 SOLUCIONES\n")
+            writer.write("\nGracias por su compra\n")
+            writer.write("4 SOLUCIONES\n")
             writer.write("https://www.tuf4ct.com\n\n")
             writer.write("\n\n\n")
 
@@ -453,19 +509,29 @@ class PdfDialogViewModel @Inject constructor(
             Log.e("PrintViewModel", "Error cerrando socket", e)
         }
     }
-    // Función para formatear el tipo de documento
-    private fun String.formatDocumentType(): String {
-        return when (this.uppercase()) {
-            "DNI" -> "DNI"
-            "RUC" -> "RUC"
-            "CE" -> "CARNET DE EXTRANJERÍA"
-            "PAS" -> "PASAPORTE"
-            "CDI" -> "CÉDULA DE IDENTIDAD"
+    // Función actualizada para manejar los tipos de documento
+    private fun formatDocumentType(documentType: String?): String {
+        // Si es nulo, retornamos DOCUMENTO directamente
+        if (documentType == null) return "DOCUMENTO"
+
+        // Procesamos el código para quitar el prefijo A_ si existe
+        val processedType = if (documentType.startsWith("A_")) {
+            documentType.substring(2) // Quita los primeros 2 caracteres (A_)
+        } else {
+            documentType
+        }
+
+        // Procesamos el tipo de documento usando el valor limpio
+        return when (processedType.uppercase()) {
+            "01", "1" -> "DNI"
+            "06", "6" -> "RUC"
+            "07", "7", "CE" -> "CARNET DE EXTRANJERÍA"
+            "08", "8", "PAS" -> "PASAPORTE"
+            "09", "9", "CDI" -> "CÉDULA DE IDENTIDAD"
             "OTR" -> "OTROS"
-            else -> this
+            else -> processedType
         }
     }
-
     // Función para formatear la fecha y hora en formato legible
     private fun String.formatToDisplayDateTime(): String {
         try {

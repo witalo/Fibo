@@ -58,6 +58,7 @@ import androidx.compose.ui.unit.*
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.media3.transformer.DefaultDecoderFactory
+import com.example.fibo.utils.ColorGradients
 import com.example.fibo.utils.rememberCameraPermission
 import com.journeyapps.barcodescanner.BarcodeView
 import com.journeyapps.barcodescanner.Size
@@ -192,11 +193,25 @@ fun QrScannerScreen(
 
             // Mensajes de estado
             if (!hasPermission && !showScanner) {
-                Text(
-                    text = "Se necesita permiso de cámara para escanear",
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Se necesita permiso de cámara para escanear",
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier
+                            .background(
+                                color = MaterialTheme.colorScheme.error.copy(alpha = 0.1f),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
 
             if (isLoading) {
@@ -304,6 +319,9 @@ fun QrScannerView(
 
         Text(
             text = "Enfoca el código QR dentro del marco",
+            style = MaterialTheme.typography.titleSmall.copy(
+                brush = ColorGradients.orangeFire
+            ),
             color = Color.White,
             fontSize = 12.sp,
             modifier = Modifier

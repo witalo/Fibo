@@ -2,14 +2,21 @@ package com.example.fibo.reports
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffXfermode
+import android.graphics.Rect
+import android.graphics.RectF
 import android.os.Environment
+import android.util.Log
 import com.example.fibo.datastore.PreferencesManager
 import com.example.fibo.datastore.PreferencesManager.Companion.COMPANY_DOC
 import com.example.fibo.datastore.PreferencesManager.Companion.COMPANY_ID
 import com.example.fibo.datastore.PreferencesManager.Companion.COMPANY_IGV
+import com.example.fibo.datastore.PreferencesManager.Companion.COMPANY_LOGO
 import com.example.fibo.datastore.PreferencesManager.Companion.COMPANY_NAME
 import com.example.fibo.datastore.PreferencesManager.Companion.SUBSIDIARY_ADDRESS
 import com.example.fibo.datastore.PreferencesManager.Companion.SUBSIDIARY_ID
@@ -75,6 +82,7 @@ class PdfGenerator @Inject constructor(
             id = prefs[COMPANY_ID] ?: throw IllegalStateException("COMPANY_ID no encontrado"),
             doc = prefs[COMPANY_DOC] ?: "",
             businessName = prefs[COMPANY_NAME] ?: "",
+            logo = prefs[COMPANY_LOGO] ?: "",
             percentageIgv = prefs[COMPANY_IGV] ?: 18.0
         )
     }
@@ -116,7 +124,7 @@ class PdfGenerator @Inject constructor(
 
         // 1. Primero calculamos el contenido para determinar la altura
         val contentHeight = estimateContentHeight(operation)
-        val pageSize = PageSize(226f, contentHeight + 50) // 226px ≈ 80mm + margen
+        val pageSize = PageSize(226f, contentHeight + 30) // 226px ≈ 80mm + margen
 
         val pdfWriter = PdfWriter(FileOutputStream(file))
         val pdf = PdfDocument(pdfWriter)
@@ -127,22 +135,90 @@ class PdfGenerator @Inject constructor(
         // --- SECCIÓN DE ENCABEZADO ---
         // Logo de la empresa
         try {
-            val logoStream = context.assets.open("logo.png")
-            val logoBytes = logoStream.readBytes()
-            val logo = Image(ImageDataFactory.create(logoBytes)).apply {
-                setWidth(60f)
-                setHorizontalAlignment(HorizontalAlignment.CENTER)
-                setMarginBottom(5f)
+            if (company.logo != "") {
+                // Check if logo contains the data URL prefix and remove it
+                val logoData = company.logo
+                val base64Data = if (logoData.contains("data:image")) {
+                    logoData.substring(logoData.indexOf(",") + 1)
+                } else {
+                    logoData
+                }
+
+                // Decode base64 to bytes
+                val logoBytes = android.util.Base64.decode(base64Data, android.util.Base64.DEFAULT)
+
+                // Create a bitmap from the logo bytes
+                val bitmap = BitmapFactory.decodeByteArray(logoBytes, 0, logoBytes.size)
+
+                // Create a rounded bitmap
+                val roundedBitmap = getRoundedBitmap(bitmap)
+
+                // Convert back to bytes for iText
+                val outputStream = ByteArrayOutputStream()
+                roundedBitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+                val roundedLogoBytes = outputStream.toByteArray()
+
+                val logo = Image(ImageDataFactory.create(roundedLogoBytes)).apply {
+                    setWidth(80f) // Increased from 60f to 80f
+                    setHorizontalAlignment(HorizontalAlignment.CENTER)
+                    setMarginBottom(5f)
+                }
+                document.add(logo)
+                document.add(Paragraph(company.businessName).apply {
+                    setTextAlignment(TextAlignment.CENTER)
+                    setBold()
+                    setFontSize(12f)
+                })
+            } else {
+                // Fallback to text if logo is null
+                document.add(Paragraph(company.businessName).apply {
+                    setTextAlignment(TextAlignment.CENTER)
+                    setBold()
+                    setFontSize(12f)
+                })
             }
-            document.add(logo)
-            logoStream.close()
         } catch (e: Exception) {
+            // Error handling - fallback to text
             document.add(Paragraph(company.businessName).apply {
                 setTextAlignment(TextAlignment.CENTER)
                 setBold()
                 setFontSize(12f)
             })
         }
+//        try {
+//            if (company.logo != "") {
+//                // Check if logo contains the data URL prefix and remove it
+//                val logoData = company.logo
+//                val base64Data = if (logoData.contains("data:image")) {
+//                    logoData.substring(logoData.indexOf(",") + 1)
+//                } else {
+//                    logoData
+//                }
+//
+//                // Decode base64 to bytes
+//                val logoBytes = android.util.Base64.decode(base64Data, android.util.Base64.DEFAULT)
+//                val logo = Image(ImageDataFactory.create(logoBytes)).apply {
+//                    setWidth(60f)
+//                    setHorizontalAlignment(HorizontalAlignment.CENTER)
+//                    setMarginBottom(5f)
+//                }
+//                document.add(logo)
+//            } else {
+//                // Fallback to text if logo is null
+//                document.add(Paragraph(company.businessName).apply {
+//                    setTextAlignment(TextAlignment.CENTER)
+//                    setBold()
+//                    setFontSize(12f)
+//                })
+//            }
+//        } catch (e: Exception) {
+//            // Error handling - fallback to text
+//            document.add(Paragraph(company.businessName).apply {
+//                setTextAlignment(TextAlignment.CENTER)
+//                setBold()
+//                setFontSize(12f)
+//            })
+//        }
 
         // Datos de la empresa
         document.add(Paragraph("RUC: ${company.doc}").apply {
@@ -280,6 +356,26 @@ class PdfGenerator @Inject constructor(
 
         document.close()
         return file
+    }
+    private fun getRoundedBitmap(bitmap: Bitmap): Bitmap {
+        val width = bitmap.width
+        val height = bitmap.height
+        val outputBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(outputBitmap)
+        val paint = Paint()
+        val rect = Rect(0, 0, width, height)
+        val rectF = RectF(rect)
+        val roundPx = width.coerceAtMost(height) / 2f
+
+        paint.isAntiAlias = true
+        canvas.drawARGB(0, 0, 0, 0)
+        paint.color = Color.BLACK
+        canvas.drawRoundRect(rectF, roundPx, roundPx, paint)
+
+        paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
+        canvas.drawBitmap(bitmap, rect, rect, paint)
+
+        return outputBitmap
     }
     fun String.formatDocumentType(): String {
         return when (this.removePrefix("A_")) {
