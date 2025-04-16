@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -44,6 +45,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role.Companion.Button
@@ -66,6 +68,21 @@ fun PrintControlsSection(
     val selectedPrinter by viewModel.selectedPrinter.collectAsState()
     val printers by viewModel.availablePrinters.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
+
+    // Check if bluetooth is scanning
+    val isScanning = uiState is PdfDialogUiState.ScanningPrinters
+    // LaunchedEffect to handle print complete
+    LaunchedEffect(uiState) {
+        when (uiState) {
+            is PdfDialogUiState.PrintComplete -> {
+                onPrintSuccess()
+            }
+            is PdfDialogUiState.Error -> {
+                Toast.makeText(context, (uiState as PdfDialogUiState.Error).message, Toast.LENGTH_SHORT).show()
+            }
+            else -> {}
+        }
+    }
 
     // Lanzador para activar Bluetooth
     val bluetoothLauncher = rememberLauncherForActivityResult(
@@ -93,20 +110,31 @@ fun PrintControlsSection(
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(
                 containerColor = if (isBluetoothActive) Color(0xFF2196F3) else Color(0xFFFF9800)
-            )
+            ),
+            enabled = !isScanning && uiState !is PdfDialogUiState.Printing
         ) {
             Icon(
                 imageVector = Icons.Default.Bluetooth,
                 contentDescription = "Bluetooth"
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = when {
-                    isBluetoothActive && selectedPrinter != null -> "Impresora: ${selectedPrinter?.name?.take(10)}..."
-                    isBluetoothActive -> "Buscar impresoras"
-                    else -> "Activar Bluetooth"
-                }
-            )
+            if (isScanning) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp,
+                    color = Color.White
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Buscando impresoras...")
+            } else {
+                Text(
+                    text = when {
+                        isBluetoothActive && selectedPrinter != null -> "Impresora: ${selectedPrinter?.name?.take(10)}..."
+                        isBluetoothActive -> "Buscar impresoras"
+                        else -> "Activar Bluetooth"
+                    }
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -119,7 +147,8 @@ fun PrintControlsSection(
                 }
             },
             modifier = Modifier.fillMaxWidth(),
-            enabled = selectedPrinter != null && pdfFile != null && isBluetoothActive,
+            enabled = selectedPrinter != null && pdfFile != null && isBluetoothActive &&
+                    !isScanning && uiState !is PdfDialogUiState.Printing,
             colors = ButtonDefaults.buttonColors(
                 containerColor = if (selectedPrinter != null) Color(0xFF4CAF50) else Color(0xFF9E9E9E)
             )
@@ -153,28 +182,18 @@ fun PrintControlsSection(
     }
 
     // Manejar estados de impresión
-    when (uiState) {
-        is PdfDialogUiState.Printing -> {
-            AlertDialog(
-                onDismissRequest = {}, // No permite cerrar haciendo clic fuera
-                title = { Text("Imprimiendo...") },
-                text = { LinearProgressIndicator() },
-                confirmButton = {
-                    // Botón de confirmación (opcional)
-                },
-                dismissButton = {
-                    // Botón de cancelar (opcional)
+    if (uiState is PdfDialogUiState.Printing) {
+        AlertDialog(
+            onDismissRequest = {}, // No permite cerrar haciendo clic fuera
+            title = { Text("Imprimiendo...") },
+            text = {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator()
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Enviando datos a la impresora...")
                 }
-            )
-        }
-        is PdfDialogUiState.PrintComplete -> {
-            LaunchedEffect(Unit) {
-                onPrintSuccess()
-            }
-        }
-        is PdfDialogUiState.Error -> {
-            Toast.makeText(context, (uiState as PdfDialogUiState.Error).message, Toast.LENGTH_SHORT).show()
-        }
-        else -> {}
+            },
+            confirmButton = {}
+        )
     }
 }

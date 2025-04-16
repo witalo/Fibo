@@ -67,49 +67,20 @@ fun PdfViewerDialog(
     val pdfGenerator = viewModel.pdfGenerator
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
+    // Check Bluetooth state on composition
+    val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+    var isBluetoothActive by remember { mutableStateOf(bluetoothAdapter?.isEnabled == true) }
 
-    val availablePrinters by viewModel.availablePrinters.collectAsState()
-    var isScanning by remember { mutableStateOf(false) }
-    val selectedPrinter by viewModel.selectedPrinter.collectAsState()
-    val coroutineScope = rememberCoroutineScope()
+    // Check Bluetooth state whenever the dialog is visible
+    LaunchedEffect(isVisible) {
+        if (isVisible) {
+            viewModel.fetchOperationById(operationId)
 
-    // 1. Creamos el handler con remember
-
-    val bluetoothHandler = remember { ComposableBluetoothHandler(context) }
-    // Estado de Bluetooth
-    var isBluetoothActive by remember { mutableStateOf(false) }
-
-    // Verificar estado de Bluetooth
-    LaunchedEffect(Unit) {
-        val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
-        isBluetoothActive = bluetoothAdapter?.isEnabled == true
-    }
-    DisposableEffect(Unit) {
-        val receiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context, intent: Intent) {
-                if (intent.action == BluetoothAdapter.ACTION_STATE_CHANGED) {
-                    val state = intent.getIntExtra(
-                        BluetoothAdapter.EXTRA_STATE,
-                        BluetoothAdapter.ERROR
-                    )
-                    isBluetoothActive = state == BluetoothAdapter.STATE_ON
-                }
-            }
-        }
-
-        context.registerReceiver(
-            receiver,
-            IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED)
-        )
-
-        onDispose {
-            context.unregisterReceiver(receiver)
+            // Check if Bluetooth is enabled
+            val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+            isBluetoothActive = bluetoothAdapter?.isEnabled == true
         }
     }
-
-    // Estado para rastrear la solicitud de permisos
-
-    var requestingPermissions by remember { mutableStateOf(false) }
     // Estado para mantener la referencia al archivo PDF generado
     var pdfFile by remember { mutableStateOf<File?>(null) }
 
@@ -222,7 +193,7 @@ fun PdfViewerDialog(
                                     // Sección de controles de impresión
                                     PrintControlsSection(
                                         viewModel = viewModel,
-                                        context = LocalContext.current,
+                                        context = context,
                                         pdfFile = pdfFile,
                                         isBluetoothActive = isBluetoothActive,
                                         onPrintSuccess = onDismiss
