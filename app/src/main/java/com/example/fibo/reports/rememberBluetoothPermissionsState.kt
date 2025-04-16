@@ -3,6 +3,7 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -22,7 +23,12 @@ fun rememberBluetoothPermissionsState(): Pair<Boolean, () -> Unit> {
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        hasPermissions = permissions.all { it.value }
+        // Actualizar estado de permisos después de la respuesta
+        val allGranted = permissions.all { it.value }
+        hasPermissions = allGranted
+
+        // Registrar en log para depuración
+        Log.d("BluetoothPermissions", "Permisos actualizados: $allGranted")
     }
 
     val requestPermissions = remember {
@@ -48,6 +54,7 @@ fun rememberBluetoothPermissionsState(): Pair<Boolean, () -> Unit> {
         }
     }
 
+    // Verificar permisos al inicio
     LaunchedEffect(Unit) {
         hasPermissions = checkBluetoothPermissions(context)
     }

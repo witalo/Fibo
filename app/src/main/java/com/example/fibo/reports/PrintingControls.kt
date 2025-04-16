@@ -135,6 +135,23 @@ fun PrintControlsSection(
             Log.d("PrintControlsSection", "Disposable effect cleanup executed")
         }
     }
+    // Añadir este efecto en PrintControlsSection
+    LaunchedEffect(hasPermissions) {
+        // Si los permisos han sido concedidos, detener el indicador de progreso
+        if (hasPermissions && isBluetoothOperationInProgress) {
+            isBluetoothOperationInProgress = false
+
+            // Si también tenemos Bluetooth activo, podemos iniciar el escaneo automáticamente
+            if (localBluetoothActive) {
+                try {
+                    viewModel.scanForPrinters(context)
+                } catch (e: Exception) {
+                    Log.e("Bluetooth", "Error escaneando después de permiso", e)
+                    errorMessage = "Error al buscar impresoras: ${e.message}"
+                }
+            }
+        }
+    }
 
     val bluetoothLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
