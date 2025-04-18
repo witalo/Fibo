@@ -306,7 +306,12 @@ class OperationRepository @Inject constructor(
         val client = IPerson(
             id = clientData.id.toInt(),
             names = clientData.names,
-            documentType = clientData.documentType.toString(),
+            documentType = try {
+                clientData.documentType.toString()
+            } catch (e: Exception) {
+                // Si hay un error al convertir el enum, usar el valor directamente como string
+                clientData.documentType?.toString() ?: ""
+            },
             documentNumber = clientData.documentNumber,
             email = clientData.email,
             phone = clientData.phone,

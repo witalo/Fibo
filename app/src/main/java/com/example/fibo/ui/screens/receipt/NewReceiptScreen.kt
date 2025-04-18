@@ -21,6 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Error
@@ -51,21 +52,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavController
 import com.example.fibo.model.IOperation
 import com.example.fibo.model.IOperationDetail
 import com.example.fibo.model.IPerson
 import com.example.fibo.model.IProduct
 import com.example.fibo.model.ITariff
-import com.example.fibo.ui.screens.invoice.AddProductDialog
-import com.example.fibo.ui.screens.invoice.ResumenRow
 import com.example.fibo.utils.ColorGradients
 import com.example.fibo.utils.ProductSearchState
 import com.example.fibo.utils.getAffectationColor
 import com.example.fibo.utils.getAffectationTypeShort
 import com.example.fibo.utils.getCurrentFormattedDate
 import com.example.fibo.utils.getCurrentFormattedTime
-import com.example.fibo.viewmodels.NewInvoiceViewModel
 import com.example.fibo.viewmodels.NewReceiptViewModel
 import kotlinx.coroutines.delay
 import kotlin.math.max
@@ -95,9 +92,9 @@ fun NewReceiptScreen(
     var discountGlobalString by remember { mutableStateOf("0.00") }
     var applyGlobalDiscount by remember { mutableStateOf(false) }
 
-    // Calcular totales basados en typeAffectationId
-    val totalTaxed = operationDetails.filter { it.typeAffectationId == 1 }
-        .sumOf { it.totalValue }
+    // 2. CALCULAR TOTALES POR TIPO DE OPERACIÓN (ANTES DE DESCUENTOS)
+    val totalTaxedBeforeDiscount = operationDetails.filter { it.typeAffectationId == 1 }
+        .sumOf { it.totalValue } // Suma de valores gravados
     val totalExonerated = operationDetails.filter { it.typeAffectationId == 2 }
         .sumOf { it.totalValue }
     val totalUnaffected = operationDetails.filter { it.typeAffectationId == 3 }
@@ -105,28 +102,42 @@ fun NewReceiptScreen(
     val totalFree = operationDetails.filter { it.typeAffectationId == 4 }
         .sumOf { it.totalValue }
 
-    // Suma de descuentos por ítem
-    val discountForItem = operationDetails.sumOf { it.totalDiscount }
+    val igvPercentage =
+        companyData?.percentageIgv ?: 18.0 // Valor por defecto 18% si no está definido
+    val igvFactor = igvPercentage / 100.0
 
-    // Total general sin descuento global
-    val totalIgv = operationDetails.filter { it.typeAffectationId == 1 }
-        .sumOf { it.totalIgv }
+    // 3. CALCULAR DESCUENTOS
+    val discountForItem = operationDetails.sumOf { it.totalDiscount } // Descuentos por ítem
+    // Aplicar descuento global solo a operaciones gravadas (tipo 1)
+    val effectiveGlobalDiscount = if (applyGlobalDiscount) {
+        min(
+            discountGlobalValue,
+            totalTaxedBeforeDiscount
+        ) // No puede ser mayor que el total gravado
+    } else {
+        0.0
+    }
+    // 4. CALCULAR VALORES DESPUÉS DE DESCUENTOS
+    val totalTaxedAfterDiscount = max(0.0, totalTaxedBeforeDiscount - effectiveGlobalDiscount)
+    val totalIgv =
+        totalTaxedAfterDiscount * igvFactor // IGV solo sobre lo gravado después de descuento
 
-    val baseImponible = totalTaxed + totalExonerated + totalUnaffected
+    // 5. CALCULAR TOTALES FINALES
+    val baseImponible = totalTaxedAfterDiscount + totalExonerated + totalUnaffected
     val totalAmount = baseImponible + totalIgv
+    val totalToPay = totalAmount // En una boleta normal, el total a pagar es igual al totalAmount
     var discountByPercentage by remember { mutableStateOf(false) } //  Controla si el descuento es por porcentaje o monto
+    // 6. CÁLCULO DEL DESCUENTO GLOBAL (para mostrar en UI)
     LaunchedEffect(discountGlobalString, applyGlobalDiscount, discountByPercentage, baseImponible) {
         if (applyGlobalDiscount) {
             val inputValue = discountGlobalString.toDoubleOrNull() ?: 0.0
             if (discountByPercentage) {
-                // Solo aplicar como porcentaje (validar que no sea mayor a 100)
                 discountGlobalPercentage = min(inputValue, 100.0)
-                discountGlobalValue = (baseImponible * discountGlobalPercentage) / 100
+                discountGlobalValue = (totalTaxedBeforeDiscount * discountGlobalPercentage) / 100
             } else {
-                // Aplicar como monto fijo (no puede ser mayor que el total)
-                discountGlobalValue = min(inputValue, baseImponible)
-                discountGlobalPercentage = if (baseImponible > 0) {
-                    (discountGlobalValue / baseImponible) * 100
+                discountGlobalValue = min(inputValue, totalTaxedBeforeDiscount)
+                discountGlobalPercentage = if (totalTaxedBeforeDiscount > 0) {
+                    (discountGlobalValue / totalTaxedBeforeDiscount) * 100
                 } else {
                     0.0
                 }
@@ -138,10 +149,6 @@ fun NewReceiptScreen(
     }
     // Total de descuentos (global + por ítem)
     val totalDiscount = discountGlobalValue + discountForItem
-
-    // Total a pagar considerando todos los descuentos
-//    val totalToPay = totalAmount - totalDiscount
-    val totalToPay = baseImponible + totalIgv - discountGlobalValue
     // Agrega este estado al inicio de tu composable
     var showBoletaConfirmationDialog by remember { mutableStateOf(false) }
 
@@ -555,12 +562,14 @@ fun NewReceiptScreen(
                                     OutlinedTextField(
                                         value = discountGlobalString,
                                         onValueChange = { discountGlobalString = it },
-                                        label = { Text(
-                                            if (discountByPercentage) "Porcentaje descuento" else "Monto descuento (S/)"
-                                        )  },
+                                        label = {
+                                            Text(
+                                                if (discountByPercentage) "Porcentaje descuento" else "Monto descuento (S/)"
+                                            )
+                                        },
                                         placeholder = {
                                             Text(
-                                                if (discountByPercentage) "Ej: 10.5" else "Ej: 50.00"
+                                                if (discountByPercentage) "Ej: 10.50" else "Ej: 50.00"
                                             )
                                         },
                                         modifier = Modifier.weight(1f),
@@ -621,18 +630,18 @@ fun NewReceiptScreen(
                         .padding(12.dp)
                         .fillMaxWidth()
                 ) {
+                    // Título del resumen
                     Text(
                         "Resumen",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
-
-                    // Mostrar los diferentes tipos según SUNAT
-                    if (totalTaxed > 0) {
+                    // Mostrar los diferentes tipos según SUNAT (con valores después de descuentos)
+                    if (totalTaxedAfterDiscount > 0) {
                         ResumenReceiptRow(
                             label = "Op. Gravadas:",
-                            value = totalTaxed,
+                            value = totalTaxedAfterDiscount,
                             color = getAffectationColor(1)
                         )
                     }
@@ -661,40 +670,50 @@ fun NewReceiptScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(4.dp))
+                    // Descuentos globales (si existen)
                     if (totalDiscount > 0) {
+                        Spacer(modifier = Modifier.height(4.dp))
                         ResumenReceiptRow(
-                            label = "Descuentos:",
+                            label = "Descuentos Globales:",
                             value = -totalDiscount,
-                            color = Color(0xFFFF5722)
+                            color = Color(0xFFFF5722) // Color naranja/rojo para destacar
                         )
                     }
-                    Spacer(modifier = Modifier.height(4.dp))
 
+                    // IGV (solo aplicable a operaciones gravadas)
+                    Spacer(modifier = Modifier.height(4.dp))
                     ResumenReceiptRow(
-                        label = "IGV (${companyData?.percentageIgv}%):",
-                        value = totalIgv
+                        label = "IGV (${igvPercentage}%):",
+                        value = totalIgv,
+                        color = getAffectationColor(1) // Mismo color que operaciones gravadas
                     )
 
+                    // Línea divisoria
                     Spacer(modifier = Modifier.height(4.dp))
-                    Divider(thickness = 0.5.dp)
+                    Divider(
+                        thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                    )
                     Spacer(modifier = Modifier.height(4.dp))
 
+                    // Total a pagar
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "TOTAL:",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold
+                            "TOTAL A PAGAR:",
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                fontWeight = FontWeight.ExtraBold
+                            )
                         )
                         Text(
                             "S/ ${String.format("%.2f", totalToPay)}",
                             style = MaterialTheme.typography.titleMedium.copy(
-                                brush = ColorGradients.goldLuxury
-                            ),
-                            fontWeight = FontWeight.Bold,
+                                brush = ColorGradients.goldLuxury,
+                                fontWeight = FontWeight.Bold
+                            )
                         )
                     }
 
@@ -738,7 +757,7 @@ fun NewReceiptScreen(
                             Text("Emitir Boleta", style = MaterialTheme.typography.labelLarge)
                         }
 
-// Diálogo de confirmación para boleta
+                        // Diálogo de confirmación para boleta
                         if (showBoletaConfirmationDialog) {
                             AlertDialog(
                                 onDismissRequest = { showBoletaConfirmationDialog = false },
@@ -748,6 +767,16 @@ fun NewReceiptScreen(
                                     Button(
                                         onClick = {
                                             showBoletaConfirmationDialog = false
+                                            // Validaciones adicionales antes de crear la operación
+                                            if (clientData?.documentNumber.isNullOrBlank()) {
+                                                Toast.makeText(context, "Ingrese el DNI del cliente", Toast.LENGTH_SHORT).show()
+                                                return@Button
+                                            }
+
+                                            if (operationDetails.isEmpty()) {
+                                                Toast.makeText(context, "Agregue al menos un producto", Toast.LENGTH_SHORT).show()
+                                                return@Button
+                                            }
                                             val operation = IOperation(
                                                 id = 0,
                                                 serial = "",
@@ -760,37 +789,83 @@ fun NewReceiptScreen(
                                                 operationDate = getCurrentFormattedDate(),
                                                 emitDate = getCurrentFormattedDate(),
                                                 emitTime = getCurrentFormattedTime(),
-                                                userId = userData?.id!!,
-                                                subsidiaryId = subsidiaryData?.id!!,
-                                                client = clientData ?: IPerson(),
-                                                operationDetailSet = operationDetails,
-                                                discountGlobal = discountGlobalValue,
-                                                discountPercentageGlobal = discountGlobalPercentage,
-                                                discountForItem = discountForItem,
-                                                totalDiscount = totalDiscount,
-                                                totalTaxed = totalTaxed,
-                                                totalUnaffected = totalUnaffected,
-                                                totalExonerated = totalExonerated,
-                                                totalIgv = totalIgv,
-                                                totalFree = totalFree,
-                                                totalAmount = totalAmount,
-                                                totalToPay = totalToPay,
-                                                totalPayed = totalToPay
+                                                userId = userData?.id ?: 0,
+                                                subsidiaryId = subsidiaryData?.id ?: 0,
+                                                client = clientData?.copy(
+                                                    documentType = "01", // Forzar RUC (6)
+                                                    documentNumber = clientData!!.documentNumber?.trim(),
+                                                    names = clientData!!.names?.trim()?.uppercase(),
+                                                    address = clientData!!.address?.trim(),
+                                                    email = clientData!!.email,
+                                                    phone = clientData!!.phone
+                                                ) ?: run {
+                                                    Toast.makeText(context, "Complete datos del cliente", Toast.LENGTH_SHORT).show()
+                                                    return@Button
+                                                },
+                                                operationDetailSet = operationDetails.map { detail ->
+                                                    detail.copy(
+                                                        // Asegurar valores positivos
+                                                        id = 0,
+                                                        typeAffectationId = max(1, detail.typeAffectationId),
+                                                        tariff = detail.tariff,
+                                                        quantity = max(0.0, detail.quantity),
+                                                        unitValue = max(0.0, detail.unitValue),
+                                                        unitPrice = max(0.0, detail.unitPrice),
+                                                        discountPercentage = max(0.0, detail.discountPercentage),
+                                                        totalDiscount = max(0.0, detail.totalDiscount),
+                                                        perceptionPercentage = max(0.0, detail.perceptionPercentage),
+                                                        totalPerception = max(0.0, detail.totalPerception),
+                                                        igvPercentage = max(0.0, detail.igvPercentage),
+                                                        totalValue = max(0.0, detail.totalValue),
+                                                        totalIgv = max(0.0, detail.totalIgv),
+                                                        totalAmount = max(0.0, detail.totalAmount),
+                                                        totalToPay = max(0.0, detail.totalToPay)
+                                                    )
+                                                },
+                                                discountGlobal = max(0.0, discountGlobalValue),
+                                                discountPercentageGlobal = max(0.0, min(discountGlobalPercentage, 100.0)),
+                                                discountForItem = max(0.0, discountForItem),
+                                                totalDiscount = max(0.0, totalDiscount),
+                                                totalTaxed = max(0.0, totalTaxedAfterDiscount), // Usar valor después de descuento
+                                                totalUnaffected = max(0.0, totalUnaffected),
+                                                totalExonerated = max(0.0, totalExonerated),
+                                                totalIgv = max(0.0, totalIgv),
+                                                totalFree = max(0.0, totalFree),
+                                                totalAmount = max(0.0, totalAmount),
+                                                totalToPay = max(0.0, totalToPay),
+                                                totalPayed = max(0.0, totalToPay) // Asumimos que se paga completo
                                             )
                                             viewModel.createInvoice(operation) { operationId, message ->
-                                                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                                                Toast.makeText(
+                                                    context,
+                                                    if (operationId > 0) "Boleta $message creada" else operationId.toString(),
+                                                    Toast.LENGTH_LONG
+                                                ).show()
+
+                                                if (operationId > 0) {
+                                                    onReceiptCreated(operationId.toString()) // Notificar éxito
+                                                }
                                                 onBack()
                                             }
                                         },
                                         colors = ButtonDefaults.buttonColors(
                                             containerColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                        )
+                                            contentColor = Color.White
+                                        ),
+                                        modifier = Modifier.height(48.dp)
                                     ) {
-                                        Text("Confirmar", style = MaterialTheme.typography.labelMedium.copy(
-                                            color = Color.White,
-                                            fontWeight = FontWeight.SemiBold
-                                        ))
+                                        Icon(
+                                            imageVector = Icons.Default.CheckCircle,
+                                            contentDescription = "Confirmar",
+                                            modifier = Modifier.size(20.dp))
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            "Confirmar Boleta",
+                                            style = MaterialTheme.typography.labelMedium.copy(
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color.White
+                                            )
+                                        )
                                     }
                                 },
                                 dismissButton = {
@@ -801,72 +876,17 @@ fun NewReceiptScreen(
                                             contentColor = MaterialTheme.colorScheme.error
                                         )
                                     ) {
-                                        Text("Cancelar", style = MaterialTheme.typography.labelMedium.copy(
-                                            color = Color.White,
-                                            fontWeight = FontWeight.SemiBold
-                                        ))
+                                        Text(
+                                            "Cancelar",
+                                            style = MaterialTheme.typography.labelMedium.copy(
+                                                color = Color.White,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                        )
                                     }
                                 }
                             )
                         }
-//                        Button(
-//                            onClick = {
-//                                val operation = IOperation(
-//                                    id = 0,
-//                                    serial = "",
-//                                    correlative = 0,
-//                                    documentType = "03",
-//                                    operationType = "0101",
-//                                    operationStatus = "01",
-//                                    operationAction = "E",
-//                                    currencyType = "PEN",
-//                                    operationDate = getCurrentFormattedDate(),
-//                                    emitDate = getCurrentFormattedDate(),
-//                                    emitTime = getCurrentFormattedTime(),
-//                                    userId = userData?.id!!,
-//                                    subsidiaryId = subsidiaryData?.id!!,
-//                                    client = clientData ?: IPerson(),
-//                                    operationDetailSet = operationDetails,
-//                                    discountGlobal = discountGlobalValue,
-//                                    discountPercentageGlobal = discountGlobalPercentage,
-//                                    discountForItem = discountForItem,
-//                                    totalDiscount = totalDiscount,
-//                                    totalTaxed = totalTaxed,
-//                                    totalUnaffected = totalUnaffected,
-//                                    totalExonerated = totalExonerated,
-//                                    totalIgv = totalIgv,
-//                                    totalFree = totalFree,
-//                                    totalAmount = totalAmount,
-//                                    totalToPay = totalToPay,
-//                                    totalPayed = totalToPay
-//                                )
-////                                viewModel.createInvoice(operation) { operationId ->
-////                                    onInvoiceCreated(operationId.toString())
-////                                }
-//                                viewModel.createInvoice(operation) { operationId, message ->
-//                                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-//                                    onBack()
-//                                    // Alternatively, if you still want to navigate to invoice detail:
-//                                    // onInvoiceCreated(operationId.toString())
-//                                }
-//                            },
-//                            modifier = Modifier
-//                                .weight(1f)
-//                                .height(48.dp),
-//                            shape = RoundedCornerShape(8.dp),
-//                            colors = ButtonDefaults.buttonColors(
-//                                containerColor = MaterialTheme.colorScheme.inverseSurface,
-//                                contentColor = Color.White
-//                            ),
-//                            border = BorderStroke(1.dp, ColorGradients.blueButtonGradient),
-//                            elevation = ButtonDefaults.buttonElevation(
-//                                defaultElevation = 2.dp,
-//                                pressedElevation = 4.dp
-//                            ),
-//                            enabled = operationDetails.isNotEmpty() && clientData?.names?.isNotBlank() == true
-//                        ) {
-//                            Text("Emitir Boleta", style = MaterialTheme.typography.labelLarge)
-//                        }
                     }
                 }
             }
@@ -881,7 +901,7 @@ fun NewReceiptScreen(
                 },
                 viewModel = viewModel,
                 subsidiaryId = subsidiaryData?.id ?: 0,
-                igvPercentage = companyData?.percentageIgv ?: 0.18
+                igvPercentage = igvPercentage
             )
         }
         // Indicador de carga
@@ -949,18 +969,20 @@ fun AddReceiptProductDialog(
 ) {
     val valueIgv = igvPercentage / 100
     val decimalRegex = Regex("^\\d*(\\.\\d{0,4})?$")
+
+    // Estados de búsqueda
     var searchQuery by remember { mutableStateOf("") }
     val searchState by viewModel.searchState.collectAsState()
     val selectedProduct by viewModel.selectedProduct.collectAsState()
 
-    // Estados para el producto seleccionado
+    // Estados del producto seleccionado
     var quantity by remember { mutableStateOf("1") }
     var discount by remember { mutableStateOf("0.00") }
     var selectedAffectationType by remember(selectedProduct) {
         mutableStateOf(selectedProduct?.typeAffectationId ?: 1)
     }
 
-    // Precios con IGV y sin IGV (se actualizan cuando se selecciona un producto)
+    // Precios
     var priceWithIgv by remember(selectedProduct) {
         mutableStateOf(selectedProduct?.priceWithIgv?.toString() ?: "0.00")
     }
@@ -968,39 +990,43 @@ fun AddReceiptProductDialog(
         mutableStateOf(selectedProduct?.priceWithoutIgv?.toString() ?: "0.00")
     }
 
-    // Cálculos para el resumen
+    // Convertir valores a números
     val qtyValue = quantity.toDoubleOrNull() ?: 1.0
-    val priceValue = priceWithIgv.toDoubleOrNull() ?: 0.0
+    val priceWithIgvValue = priceWithIgv.toDoubleOrNull() ?: 0.0
     val priceWithoutIgvValue = priceWithoutIgv.toDoubleOrNull() ?: 0.0
     val discountValue = discount.toDoubleOrNull() ?: 0.0
-    val discountPercentage = if (priceWithoutIgvValue * qtyValue > 0)
-        (discountValue / (priceWithoutIgvValue * qtyValue)) * 100 else 0.0
 
-    // Subtotal sin IGV (antes de descuentos)
+    // CÁLCULOS CORRECTOS SEGÚN SUNAT:
+    // 1. Calcular valores base
     val subtotalWithoutDiscount = priceWithoutIgvValue * qtyValue
-// Subtotal con descuento aplicado
-    val subtotalAfterDiscount = max(0.0, subtotalWithoutDiscount - discountValue)
+    val maxPossibleDiscount = subtotalWithoutDiscount
 
-    val subtotal = priceWithoutIgvValue * qtyValue
+    // 2. Aplicar descuento (no puede superar el valor del ítem)
+    val effectiveDiscount = min(discountValue, maxPossibleDiscount)
+    val subtotalAfterDiscount = max(0.0, subtotalWithoutDiscount - effectiveDiscount)
 
-    // El IGV solo aplica para operaciones gravadas (tipo 1)
-//    val igvAmount = if (selectedAffectationType == 1) subtotal * igvPercentage else 0.0
-    val igvAmount = if (selectedAffectationType == 1) subtotalAfterDiscount * valueIgv else 0.0
+    // 3. Calcular IGV solo para operaciones gravadas (tipo 1) y después del descuento
+    val igvAmount = if (selectedAffectationType == 1) {
+        subtotalAfterDiscount * valueIgv
+    } else {
+        0.0
+    }
 
-
-    // Total varía según el tipo de afectación
-    val total = when (selectedAffectationType) {
-        1 -> subtotalAfterDiscount + igvAmount // Gravada: (Base - Descuento) + IGV
-        2, 3 -> subtotalAfterDiscount          // Exonerada o Inafecta: Base - Descuento
-        4 -> 0.0                               // Gratuita
+    // 4. Calcular total según tipo de operación
+    val totalAmount = when (selectedAffectationType) {
+        1 -> subtotalAfterDiscount + igvAmount  // Gravada: (Base - Descuento) + IGV
+        2, 3 -> subtotalAfterDiscount           // Exonerada/Inafecta: Base - Descuento
+        4 -> 0.0                               // Gratuita (valor comercial = 0)
         else -> subtotalAfterDiscount + igvAmount
     }
-//    val total = when (selectedAffectationType) {
-//        1 -> subtotal + igvAmount - discountValue // Gravada
-//        2, 3 -> subtotal - discountValue // Exonerada o Inafecta
-//        4 -> 0.0 // Gratuita
-//        else -> subtotal + igvAmount - discountValue
-//    }
+
+    // 5. Porcentaje de descuento real aplicado
+    val actualDiscountPercentage = if (subtotalWithoutDiscount > 0) {
+        (effectiveDiscount / subtotalWithoutDiscount) * 100
+    } else {
+        0.0
+    }
+
 
     // Debounce para la búsqueda
     LaunchedEffect(searchQuery) {
@@ -1013,7 +1039,7 @@ fun AddReceiptProductDialog(
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
-            dismissOnClickOutside = false, // <- esto evita el cierre al hacer clic fuera
+            dismissOnClickOutside = false, // <- esto evita el cierre al hacer click fuera
             usePlatformDefaultWidth = false
         )
 //        properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -1277,10 +1303,10 @@ fun AddReceiptProductDialog(
 
                             // Resumen de la venta
                             PurchaseReceiptSummary(
-                                subtotal = subtotal,
+                                subtotal = subtotalAfterDiscount,
                                 igv = igvAmount,
-                                discount = discountValue,
-                                total = total,
+                                discount = effectiveDiscount,
+                                total = totalAmount,
                                 igvPercentage = igvPercentage
                             )
 
@@ -1321,41 +1347,16 @@ fun AddReceiptProductDialog(
                                             typeAffectationId = product.typeAffectationId,
                                             quantity = qtyValue,
                                             unitValue = priceWithoutIgvValue,
-                                            unitPrice = priceValue,
-                                            totalDiscount = discountValue,
-//                                            discountPercentage = if (subtotal > 0) (discountValue / subtotal) * 100 else 0.0,
-                                            discountPercentage = if (subtotalWithoutDiscount > 0) (discountValue / subtotalWithoutDiscount) * 100 else 0.0,
-                                            igvPercentage = igvPercentage,
+                                            unitPrice = priceWithIgvValue,
+                                            totalDiscount = effectiveDiscount,
+                                            discountPercentage = actualDiscountPercentage,
+                                            igvPercentage = if (selectedAffectationType == 1) igvPercentage else 0.0,
+                                            totalValue = subtotalAfterDiscount, // Base imponible después de descuento
+                                            totalIgv = igvAmount,
+                                            totalAmount = totalAmount,
+                                            totalToPay = totalAmount,
                                             perceptionPercentage = 0.0,
-                                            totalPerception = 0.0,
-//                                            totalValue = when (product.typeAffectationId) {
-//                                                1 -> subtotal  // Operación gravada
-//                                                2 -> subtotal  // Operación exonerada
-//                                                3 -> subtotal  // Operación inafecta
-//                                                4 -> 0.0       // Operación gratuita (valor comercial en totalValue)
-//                                                else -> subtotal
-//                                            },
-                                            totalValue = when (product.typeAffectationId) {
-                                                1 -> subtotalAfterDiscount  // Operación gravada (base neta)
-                                                2 -> subtotalAfterDiscount  // Operación exonerada
-                                                3 -> subtotalAfterDiscount  // Operación inafecta
-                                                4 -> 0.0                   // Operación gratuita (valor comercial en totalValue)
-                                                else -> subtotalAfterDiscount
-                                            },
-                                            totalIgv = if (product.typeAffectationId == 1) igvAmount else 0.0,
-//                                            totalAmount = when (product.typeAffectationId) {
-//                                                1 -> subtotal + igvAmount - discountValue  // Gravada: Base + IGV - Descuento
-//                                                2, 3 -> subtotal - discountValue           // Exonerada/Inafecta: Base - Descuento
-//                                                4 -> 0.0                                   // Gratuita: Se registra 0
-//                                                else -> subtotal + igvAmount - discountValue
-//                                            },
-                                            totalAmount = when (product.typeAffectationId) {
-                                                1 -> subtotalAfterDiscount + igvAmount  // Gravada: (Base - Descuento) + IGV
-                                                2, 3 -> subtotalAfterDiscount           // Exonerada/Inafecta: Base - Descuento
-                                                4 -> 0.0                               // Gratuita: Se registra 0
-                                                else -> subtotalAfterDiscount + igvAmount
-                                            },
-                                            totalToPay = total
+                                            totalPerception = 0.0
                                         )
 
                                         onProductAdded(operationDetail)
@@ -1700,11 +1701,11 @@ private fun MinimumSearchReceiptInfo() {
 
 @Composable
 private fun PurchaseReceiptSummary(
-    subtotal: Double,
-    igv: Double,
-    discount: Double,
-    total: Double,
-    igvPercentage: Double = 18.0
+    subtotal: Double,         // Base imponible después de descuento (subtotalAfterDiscount)
+    igv: Double,              // IGV calculado (solo si es gravado)
+    discount: Double,         // Descuento aplicado (efectivo)
+    total: Double,            // Total según tipo de operación
+    igvPercentage: Double    // % de IGV (ej: 18%)
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -1725,32 +1726,38 @@ private fun PurchaseReceiptSummary(
             )
 
             Spacer(modifier = Modifier.height(8.dp))
-
+            // 1. Subtotal (base después de descuento)
             SummaryReceiptRow(
-                label = "Subtotal:",
-                value = subtotal
+                label = "Base Imponible:",
+                value = subtotal,
+                showCurrency = true
             )
-
-            SummaryReceiptRow(
-                label = "IGV (${igvPercentage}%):",
-                value = igv
-            )
-
+            // 2. Descuento (si existe)
             SummaryReceiptRow(
                 label = "Descuento:",
-                value = -discount,
-                valueColor = if (discount > 0) MaterialTheme.colorScheme.tertiary else null
+                value = -discount, // Mostrar como negativo
+                showCurrency = true,
+                valueColor = if (discount > 0) Color(0xFFFF5722) else null
             )
-
+            // 3. IGV (solo si es operación gravada)
+            if (igv > 0) {
+                SummaryReceiptRow(
+                    label = "IGV (${igvPercentage}%):",
+                    value = igv,
+                    showCurrency = true
+                )
+            }
+            // 4. Línea divisoria
             Divider(
                 modifier = Modifier.padding(vertical = 10.dp),
                 thickness = 1.dp,
                 color = MaterialTheme.colorScheme.outlineVariant
             )
-
+            // 5. Total
             SummaryReceiptRow(
                 label = "TOTAL:",
                 value = total,
+                showCurrency = true,
                 isTotal = true
             )
         }
@@ -1761,8 +1768,9 @@ private fun PurchaseReceiptSummary(
 private fun SummaryReceiptRow(
     label: String,
     value: Double,
-    isTotal: Boolean = false,
-    valueColor: Color? = null
+    showCurrency: Boolean = true,
+    valueColor: Color? = null,
+    isTotal: Boolean = false
 ) {
     Row(
         modifier = Modifier
@@ -1773,22 +1781,18 @@ private fun SummaryReceiptRow(
     ) {
         Text(
             text = label,
-            style = if (isTotal) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium,
-            fontWeight = if (isTotal) FontWeight.Bold else FontWeight.Normal
+            style = if (isTotal) MaterialTheme.typography.titleSmall.copy(
+                fontWeight = FontWeight.Bold
+            ) else MaterialTheme.typography.bodyMedium
         )
-
         Text(
-            text = "S/ ${String.format("%.2f", value)}",
-//            style = if (isTotal) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium,
-            style = MaterialTheme.typography.titleMedium.copy(
-                brush = if (isTotal) ColorGradients.orangeFire else ColorGradients.orangeSunset
-            ),
-            fontWeight = if (isTotal) FontWeight.Bold else FontWeight.Normal,
-            color = when {
-                valueColor != null -> valueColor
-                isTotal -> MaterialTheme.colorScheme.primary
-                else -> MaterialTheme.colorScheme.onSurface
-            }
+            text = if (showCurrency) "S/ ${"%.2f".format(value)}"
+            else "%.2f".format(value),
+            style = if (isTotal) MaterialTheme.typography.titleSmall.copy(
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            ) else MaterialTheme.typography.bodyMedium,
+            color = valueColor ?: MaterialTheme.colorScheme.onSurface
         )
     }
 }

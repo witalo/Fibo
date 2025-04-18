@@ -19,14 +19,14 @@ data class IOperation(
     val discountGlobal: Double = 0.0, //Descuento Global
     val discountPercentageGlobal: Double = 0.0, //Porcentaje del descuento global
     val discountForItem: Double = 0.0,  //Total descuento por item la suma total de descuentos de los items
-    val totalDiscount: Double = 0.0,  //Total descuento por item la suma total de descuentos de los items
-    val totalTaxed: Double = 0.0, //Total Gravada
-    val totalUnaffected: Double = 0.0, //Total Inafecta
-    val totalExonerated: Double = 0.0, //Total Exonerada
-    val totalIgv: Double = 0.0, //Total IGV
-    val totalFree: Double = 0.0, //Total Gratuita
-    val totalAmount: Double = 0.0, //Total
-    val totalToPay: Double = 0.0, //Total a pagar=Total
-    val totalPayed: Double = 0.0, //Total pagado=Total
+    val totalDiscount: Double = 0.0,  // Suma de todos los descuentos (global + por ítem)
+    val totalTaxed: Double = 0.0, // Operaciones gravadas después de descuentos
+    val totalUnaffected: Double = 0.0, // Operaciones inafectas
+    val totalExonerated: Double = 0.0, // Operaciones exoneradas
+    val totalIgv: Double = 0.0, // IGV calculado sobre totalTaxed
+    val totalFree: Double = 0.0, // Operaciones gratuitas
+    val totalAmount: Double = 0.0, // Suma de bases imponibles + IGV
+    val totalToPay: Double = 0.0, // Total a pagar (debe ser igual a totalAmount)
+    val totalPayed: Double = 0.0, // Total pagado
     val operationDetailSet: List<IOperationDetail> = emptyList()
 )
