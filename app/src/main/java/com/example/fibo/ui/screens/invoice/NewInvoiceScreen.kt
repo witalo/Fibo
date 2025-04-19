@@ -867,6 +867,7 @@ fun NewInvoiceScreen(
                                             containerColor = MaterialTheme.colorScheme.onPrimaryContainer,
                                             contentColor = Color.White
                                         ),
+
                                         modifier = Modifier.height(48.dp)
                                     ) {
                                         Icon(
@@ -1042,8 +1043,40 @@ fun AddProductDialog(
     } else {
         0.0
     }
+    //--------------------------------------------------
+    // Lista de tipos de afectación
+    val affectationTypes = listOf(
+        AffectationType(1, "Gravada"),
+        AffectationType(2, "Exonerada"),
+        AffectationType(3, "Inafecta"),
+        AffectationType(4, "Gratuita")
+    )
 
+    // Estado para controlar si el dropdown está expandido
+    var expandedAffectationType by remember { mutableStateOf(false) }
+    LaunchedEffect(selectedProduct) {
+        selectedProduct?.let { product ->
+            selectedAffectationType = product.typeAffectationId
 
+            // Ajustar precios según tipo de afectación
+            when (selectedAffectationType) {
+                1 -> { // Gravado
+                    priceWithoutIgv = String.format("%.4f", product.priceWithoutIgv)
+                    priceWithIgv = String.format("%.4f", product.priceWithIgv)
+                }
+                4 -> { // Gratuito
+                    priceWithoutIgv = "0.00"
+                    priceWithIgv = "0.00"
+                }
+                else -> { // Exonerado o Inafecto
+                    priceWithoutIgv = String.format("%.4f", product.priceWithoutIgv)
+                    priceWithIgv = String.format("%.4f", product.priceWithoutIgv) // Mismo valor
+                }
+            }
+        }
+    }
+
+    //--------------------------------------------------
     // Debounce para la búsqueda
     LaunchedEffect(searchQuery) {
         if (searchQuery.length >= 3) {
@@ -1289,12 +1322,24 @@ fun AddProductDialog(
                                 OutlinedTextField(
                                     value = priceWithoutIgv,
                                     onValueChange = {
+//                                        if (it.isEmpty() || it.matches(decimalRegex)) {
+//                                            priceWithoutIgv = it
+//                                            val withoutIgvValue = it.toDoubleOrNull() ?: 0.0
+//                                            val withIgvValue = (withoutIgvValue * (1 + valueIgv))
+//                                            priceWithIgv = String.format("%.4f", withIgvValue)
+//                                        }
+                                        //------------------------------------------------
                                         if (it.isEmpty() || it.matches(decimalRegex)) {
                                             priceWithoutIgv = it
                                             val withoutIgvValue = it.toDoubleOrNull() ?: 0.0
-                                            val withIgvValue = (withoutIgvValue * (1 + valueIgv))
-                                            priceWithIgv = String.format("%.4f", withIgvValue)
+                                            // Actualizar precio con IGV según el tipo de afectación
+                                            priceWithIgv = when (selectedAffectationType) {
+                                                1 -> String.format("%.4f", withoutIgvValue * (1 + valueIgv)) // Gravado
+                                                4 -> "0.00" // Gratuito
+                                                else -> String.format("%.4f", withoutIgvValue) // Exonerado o Inafecto
+                                            }
                                         }
+                                        //--------------------------------------------
                                     },
                                     textStyle = MaterialTheme.typography.bodyMedium,
                                     label = { Text("Precio sin IGV") },
@@ -1312,12 +1357,25 @@ fun AddProductDialog(
                                 OutlinedTextField(
                                     value = priceWithIgv,
                                     onValueChange = {
+//                                        if (it.isEmpty() || it.matches(decimalRegex)) {
+//                                            priceWithIgv = it
+//                                            val withIgvValue = it.toDoubleOrNull() ?: 0.0
+//                                            val withoutIgvValue = (withIgvValue / (1 + valueIgv))
+//                                            priceWithoutIgv = String.format("%.4f", withoutIgvValue)
+//                                        }
+                                        //---------------------------------------------
                                         if (it.isEmpty() || it.matches(decimalRegex)) {
                                             priceWithIgv = it
                                             val withIgvValue = it.toDoubleOrNull() ?: 0.0
-                                            val withoutIgvValue = (withIgvValue / (1 + valueIgv))
-                                            priceWithoutIgv = String.format("%.4f", withoutIgvValue)
+
+                                            // Actualizar precio sin IGV según el tipo de afectación
+                                            priceWithoutIgv = when (selectedAffectationType) {
+                                                1 -> String.format("%.4f", withIgvValue / (1 + valueIgv)) // Gravado
+                                                4 -> "0.00" // Gratuito
+                                                else -> priceWithIgv // Exonerado o Inafecto (mismo valor)
+                                            }
                                         }
+                                        //---------------------------------------------
                                     },
                                     textStyle = MaterialTheme.typography.bodyMedium,
                                     label = { Text("Precio con IGV") },
@@ -1333,7 +1391,75 @@ fun AddProductDialog(
                                 )
                             }
 
-                            Spacer(modifier = Modifier.height(15.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            // Selector de tipo de afectación
+                            ExposedDropdownMenuBox(
+                                expanded = expandedAffectationType,
+                                onExpandedChange = { expandedAffectationType = it },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                OutlinedTextField(
+                                    value = affectationTypes.find { it.id == selectedAffectationType }?.name ?: "Gravada",
+                                    onValueChange = { },
+                                    readOnly = true,
+                                    label = { Text("Tipo de Afectación") },
+                                    trailingIcon = {
+                                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedAffectationType)
+                                    },
+                                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .menuAnchor(),
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+
+                                ExposedDropdownMenu(
+                                    expanded = expandedAffectationType,
+                                    onDismissRequest = { expandedAffectationType = false }
+                                ) {
+                                    affectationTypes.forEach { affectationType ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(
+                                                    text = affectationType.name,
+                                                    style = MaterialTheme.typography.bodyMedium
+                                                )
+                                            },
+                                            onClick = {
+                                                selectedAffectationType = affectationType.id
+                                                expandedAffectationType = false
+
+                                                // Actualizar cálculos según el tipo de afectación
+                                                if (affectationType.id == 4) { // Gratuita
+                                                    priceWithoutIgv = "0.00"
+                                                    priceWithIgv = "0.00"
+                                                } else if (affectationType.id != 1) { // Exonerada o Inafecta
+                                                    // Para exonerada o inafecta, mantener el precio pero no aplicar IGV
+                                                    val withoutIgvValue = priceWithoutIgv.toDoubleOrNull() ?: 0.0
+                                                    priceWithIgv = String.format("%.4f", withoutIgvValue)
+                                                } else { // Gravada
+                                                    // Restaurar el cálculo normal con IGV
+                                                    val withoutIgvValue = priceWithoutIgv.toDoubleOrNull() ?: 0.0
+                                                    val withIgvValue = (withoutIgvValue * (1 + valueIgv))
+                                                    priceWithIgv = String.format("%.4f", withIgvValue)
+                                                }
+                                            },
+                                            leadingIcon = {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(12.dp)
+                                                        .background(
+                                                            color = getAffectationColor(affectationType.id),
+                                                            shape = CircleShape
+                                                        )
+                                                )
+                                            },
+                                            contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                                        )
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
 
                             // Resumen de la venta
                             PurchaseSummary(
@@ -1378,7 +1504,8 @@ fun AddProductDialog(
                                         val operationDetail = IOperationDetail(
                                             id = 0,
                                             tariff = tariff,
-                                            typeAffectationId = product.typeAffectationId,
+                                            //typeAffectationId = product.typeAffectationId,
+                                            typeAffectationId = selectedAffectationType, // Usar el tipo seleccionado, no el del producto
                                             quantity = qtyValue,
                                             unitValue = priceWithoutIgvValue, // Precio unitario sin IGV
                                             unitPrice = priceWithIgvValue,    // Precio unitario con IGV
@@ -1831,3 +1958,5 @@ private fun SummaryRow(
         )
     }
 }
+
+data class AffectationType(val id: Int, val name: String)
