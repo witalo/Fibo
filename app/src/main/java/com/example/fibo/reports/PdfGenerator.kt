@@ -250,7 +250,7 @@ class PdfGenerator @Inject constructor(
             setFontSize(9f)
         })
         document.add(
-            Paragraph("${operation.client.documentType?.formatDocumentType() ?: "DOCUMENTO"}: ${operation.client.documentNumber ?: ""}").apply {
+            Paragraph("${formatDocumentType(operation.client.documentType) ?: "DOCUMENTO"}: ${operation.client.documentNumber ?: ""}").apply {
                 setBold()
                 setFontSize(8f)
             }
@@ -377,11 +377,26 @@ class PdfGenerator @Inject constructor(
 
         return outputBitmap
     }
-    fun String.formatDocumentType(): String {
-        return when (this.removePrefix("A_")) {
-            "6" -> "RUC"
-            "1" -> "DNI"
-            else -> this  // Opcional: devolver el valor original si no coincide
+    private fun formatDocumentType(documentType: String?): String {
+        // Si es nulo, retornamos DOCUMENTO directamente
+        if (documentType == null) return "DOCUMENTO"
+
+        // Procesamos el código para quitar el prefijo A_ si existe
+        val processedType = if (documentType.startsWith("A_")) {
+            documentType.substring(2) // Quita los primeros 2 caracteres (A_)
+        } else {
+            documentType
+        }
+
+        // Procesamos el tipo de documento usando el valor limpio
+        return when (processedType.uppercase()) {
+            "01", "1" -> "DNI"
+            "06", "6" -> "RUC"
+            "07", "7", "CE" -> "CARNET DE EXTRANJERÍA"
+            "08", "8", "PAS" -> "PASAPORTE"
+            "09", "9", "CDI" -> "CÉDULA DE IDENTIDAD"
+            "OTR" -> "OTROS"
+            else -> processedType
         }
     }
     fun String.formatToDisplayDateTime(): String {

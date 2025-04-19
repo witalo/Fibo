@@ -323,7 +323,7 @@ type PersonType {
 
   economicActivityMain: OperationsPersonEconomicActivityMainChoices!
 
-  documentType: OperationsPersonDocumentTypeChoices!
+  documentType: String
 
   documentNumber: String
 
@@ -409,66 +409,6 @@ enum OperationsPersonEconomicActivityMainChoices {
   TRANSPORTE DE CARGA POR CARRETERA
   """
   A_4923
-}
-
-"""
-An enumeration.
-"""
-enum OperationsPersonDocumentTypeChoices {
-  """
-  SIN DOCUMENTO
-  """
-  A_0
-
-  """
-  DNI
-  """
-  A_1
-
-  """
-  RUC
-  """
-  A_6
-
-  """
-  CARNET DE EXTRANJERIA
-  """
-  A_4
-
-  """
-  PASAPORTE
-  """
-  A_7
-
-  """
-  CED.DIPLOMÁTICA DE IDENTIDAD
-  """
-  A
-
-  """
-  DOCUMENTO IDENTIDAD PAÍS RESIDENCIA-NO.D
-  """
-  B
-
-  """
-  TAX IDENTIFICACIÓN NUMBER - TIN DOC TRIB PP.NN
-  """
-  C
-
-  """
-  IDENTIFICATION NUMBER - IN DOC TRIB PP.JJ
-  """
-  D
-
-  """
-  TAM- TARJETA ANDINA DE MIGRACIÓN
-  """
-  E
-
-  """
-  PERMISO TEMPORAL DE PERMANENCIA PTP
-  """
-  F
 }
 
 """
