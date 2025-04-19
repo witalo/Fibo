@@ -857,9 +857,9 @@ fun NewInvoiceScreen(
                                                     Toast.LENGTH_LONG
                                                 ).show()
 
-                                                if (operationId > 0) {
-                                                    onInvoiceCreated(operationId.toString()) // Notificar éxito
-                                                }
+//                                                if (operationId > 0) {
+//                                                    onInvoiceCreated(operationId.toString()) // Notificar éxito
+//                                                }
                                                 onBack()
                                             }
                                         },

@@ -842,9 +842,9 @@ fun NewReceiptScreen(
                                                     Toast.LENGTH_LONG
                                                 ).show()
 
-                                                if (operationId > 0) {
-                                                    onReceiptCreated(operationId.toString()) // Notificar éxito
-                                                }
+//                                                if (operationId > 0) {
+//                                                    onReceiptCreated(operationId.toString()) // Notificar éxito
+//                                                }
                                                 onBack()
                                             }
                                         },
