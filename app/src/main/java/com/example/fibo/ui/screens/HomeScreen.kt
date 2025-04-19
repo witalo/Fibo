@@ -206,11 +206,6 @@ fun InvoiceItem(
     // Observar el estado del diálogo
     val showPdfDialog by homeViewModel.showPdfDialog.collectAsState()
     val currentInvoiceId by homeViewModel.currentInvoiceId.collectAsState()
-
-    // Estado del PdfDialogViewModel
-    val pdfUiState by pdfViewModel.uiState.collectAsState()
-    val availablePrinters by pdfViewModel.availablePrinters.collectAsState()
-    val selectedPrinter by pdfViewModel.selectedPrinter.collectAsState()
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -273,23 +268,23 @@ fun InvoiceItem(
                         else -> ColorGradients.greenNature
                     }
                 )
-                IconButton(
-                    onClick = {
-                        Toast.makeText(
-                            context,
-                            "Compartiendo por WhatsApp",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    },
-                    modifier = Modifier.size(40.dp) // Tamaño del área clickeable
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_whasap),
-                        contentDescription = "PDF",
-                        modifier = Modifier.size(30.dp),
-                        contentScale = ContentScale.Fit
-                    )
-                }
+//                IconButton(
+//                    onClick = {
+//                        Toast.makeText(
+//                            context,
+//                            "Compartiendo por WhatsApp",
+//                            Toast.LENGTH_SHORT
+//                        ).show()
+//                    },
+//                    modifier = Modifier.size(40.dp) // Tamaño del área clickeable
+//                ) {
+//                    Image(
+//                        painter = painterResource(id = R.drawable.ic_whasap),
+//                        contentDescription = "PDF",
+//                        modifier = Modifier.size(30.dp),
+//                        contentScale = ContentScale.Fit
+//                    )
+//                }
                 IconButton(
                     onClick = {
                         homeViewModel.showPdfDialog(invoice.id)

@@ -118,7 +118,7 @@ class PdfGenerator @Inject constructor(
     }
 
     fun generatePdf(context: Context, operation: IOperation): File {
-        val fileName = "ticket_${operation.serial}-${operation.correlative}.pdf"
+        val fileName = "${operation.documentTypeReadable} ${operation.serial}-${operation.correlative}.pdf"
         val path = context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)
         val file = File(path, fileName)
 

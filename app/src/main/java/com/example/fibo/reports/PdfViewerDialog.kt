@@ -2,14 +2,22 @@ package com.example.fibo.reports
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
+import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.Intent
 import android.util.Log
+import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -29,6 +37,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.fibo.utils.PdfDialogUiState
 import com.example.fibo.utils.showToast
@@ -173,6 +182,7 @@ fun PdfViewerDialog(
                 usePlatformDefaultWidth = false
             )
         ) {
+            Box {
             Surface(
                 modifier = Modifier
                     .fillMaxWidth(0.9f)
@@ -300,6 +310,90 @@ fun PdfViewerDialog(
                     }
                 }
             }
+                // Botón flotante para compartir
+                if (pdfFile != null) {
+                    FloatingActionButton(
+                        onClick = {
+                            sharePdfViaWhatsApp(context, pdfFile!!)
+                        },
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(8.dp)
+                            .size(48.dp),
+                        shape = CircleShape,
+                        containerColor = Color.Transparent,
+                        contentColor = Color.White
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    brush = Brush.radialGradient(
+                                        colors = listOf(
+                                            Color(0xFF4CAF50), // Verde claro
+                                            Color(0xFF2E7D32)  // Verde oscuro
+                                        ),
+                                        radius = 100f
+                                    )
+                                )
+                                .fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = "Compartir por WhatsApp",
+                                tint = Color.White,  // Icono blanco
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+//                    FloatingActionButton(
+//                        onClick = {
+//                            sharePdfViaWhatsApp(context, pdfFile!!)
+//                        },
+//                        modifier = Modifier
+//                            .align(Alignment.TopEnd)
+//                            .padding(16.dp),
+//                        containerColor = MaterialTheme.colorScheme.primaryContainer, // Cambiado a containerColor
+//                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer // Ajustado para coincidir
+//                    ) {
+//                        Icon(
+//                            imageVector = Icons.Default.Share,
+//                            contentDescription = "Compartir por WhatsApp"
+//                        )
+//                    }
+                }
+            }
         }
+    }
+}
+// Función para compartir el PDF por WhatsApp
+private fun sharePdfViaWhatsApp(context: Context, pdfFile: File) {
+    try {
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.provider",
+            pdfFile
+        )
+
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "application/pdf"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            // Opcional: Especificar WhatsApp directamente
+            // setPackage("com.whatsapp")
+        }
+//        context.startActivity(Intent.createChooser(shareIntent, "Compartir PDF via"))
+        try {
+            context.startActivity(Intent.createChooser(shareIntent, "Compartir PDF via"))
+        } catch (e: ActivityNotFoundException) {
+            Toast.makeText(context, "WhatsApp no está instalado", Toast.LENGTH_SHORT).show()
+        }
+    } catch (e: Exception) {
+        Toast.makeText(
+            context,
+            "Error al compartir el PDF: ${e.message}",
+            Toast.LENGTH_LONG
+        ).show()
+        Log.e("SharePDF", "Error sharing PDF", e)
     }
 }

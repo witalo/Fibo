@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Para archivos en el directorio Documents/ de almacenamiento externo -->
+    <external-files-path
+        name="documents"
+        path="Documents/" />
+
+    <!-- Opcional: Para cache temporal -->
+    <cache-path
+        name="cache"
+        path="/" />
+
+    <!-- Opcional: Para archivos en el directorio de archivos externos -->
+    <external-path
+        name="external_files"
+        path="." />
+</paths>
