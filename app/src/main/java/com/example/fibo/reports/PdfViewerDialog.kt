@@ -196,26 +196,26 @@ fun PdfViewerDialog(
                         .fillMaxSize()
                 ) {
                     // Barra superior con título y botón cerrar
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Comprobante",
-                            style = MaterialTheme.typography.titleLarge
-                        )
-
-                        IconButton(onClick = onDismiss) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Cerrar"
-                            )
-                        }
-                    }
-                    Divider()
+//                    Row(
+//                        modifier = Modifier
+//                            .fillMaxWidth()
+//                            .padding(8.dp),
+//                        horizontalArrangement = Arrangement.SpaceBetween,
+//                        verticalAlignment = Alignment.CenterVertically
+//                    ) {
+//                        Text(
+//                            text = "Comprobante",
+//                            style = MaterialTheme.typography.titleLarge
+//                        )
+//
+//                        IconButton(onClick = onDismiss) {
+//                            Icon(
+//                                imageVector = Icons.Default.Close,
+//                                contentDescription = "Cerrar"
+//                            )
+//                        }
+//                    }
+//                    Divider()
                     // Contenido principal - Visualizador PDF y controles
                     Box(modifier = Modifier.weight(1f)) {
                         when (uiState) {
