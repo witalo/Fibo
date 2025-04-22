@@ -8,6 +8,7 @@ import com.example.fibo.model.ICompany
 import com.example.fibo.model.IOperation
 import com.example.fibo.model.IPerson
 import com.example.fibo.model.IProduct
+import com.example.fibo.model.ISerialAssigned
 import com.example.fibo.model.ISubsidiary
 import com.example.fibo.model.ITariff
 import com.example.fibo.model.IUser
@@ -44,6 +45,12 @@ class NewReceiptViewModel @Inject constructor(
 
     private val _searchResults = MutableStateFlow<List<IProduct>>(emptyList())
     val searchResults: StateFlow<List<IProduct>> = _searchResults.asStateFlow()
+    // Estado para las series
+    private val _serials = MutableStateFlow<List<ISerialAssigned>>(emptyList())
+    val serials: StateFlow<List<ISerialAssigned>> = _serials.asStateFlow()
+    // Estado para la serie seleccionada
+    private val _selectedSerial = MutableStateFlow<ISerialAssigned?>(null)
+    val selectedSerial: StateFlow<ISerialAssigned?> = _selectedSerial.asStateFlow()
 
     fun fetchClientData(document: String, onSuccess: (IPerson) -> Unit) {
         if (document.isBlank()) {
@@ -137,6 +144,36 @@ class NewReceiptViewModel @Inject constructor(
                 Log.e("Italo", "Exception creating receipt", e)
             }
         }
+    }
+    // Método para cargar las series
+    fun loadSerials(subsidiaryId: Int) {
+        if (subsidiaryId == 0) {
+            _error.value = "No se ha seleccionado una sucursal válida"
+            return
+        }
+
+        _isLoading.value = true
+        viewModelScope.launch {
+            try {
+                val serials = operationRepository.getAllSerialsByIdSubsidiary(
+                    subsidiaryId = subsidiaryId,
+                    documentType = "03" // "01" para boletas
+                )
+                _serials.value = serials
+                _selectedSerial.value = serials.firstOrNull()
+                _error.value = null
+            } catch (e: Exception) {
+                _error.value = "Error al cargar series: ${e.message}"
+                _serials.value = emptyList()
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    // Método para cambiar la serie seleccionada
+    fun selectSerial(serial: ISerialAssigned) {
+        _selectedSerial.value = serial
     }
 
     fun clearError() {

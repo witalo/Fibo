@@ -135,3 +135,9 @@ query GetOperationById($OperationId: Int!) {
         }
     }
 }
+query GetAllSerialsById($subsidiaryId: Int!, $documentType: String!) {
+    allSerialsByType(subsidiaryId: $subsidiaryId, documentType: $documentType) {
+        id
+        serial
+    }
+}

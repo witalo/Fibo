@@ -8,6 +8,7 @@ import com.apollographql.apollo3.api.Optional
 import com.apollographql.apollo3.api.toInput
 import com.apollographql.apollo3.exception.ApolloException
 import com.example.fibo.CreateOperationMutation
+import com.example.fibo.GetAllSerialsByIdQuery
 import com.example.fibo.GetOperationByDateAndUserIdQuery
 import com.example.fibo.GetTariffByProductIdQuery
 import com.example.fibo.SearchProductsQuery
@@ -16,6 +17,7 @@ import com.example.fibo.GetOperationByIdQuery
 import com.example.fibo.model.IOperationDetail
 import com.example.fibo.model.IPerson
 import com.example.fibo.model.IProduct
+import com.example.fibo.model.ISerialAssigned
 import com.example.fibo.model.ITariff
 import com.example.fibo.type.OperationDetailInput
 import com.example.fibo.type.PersonInput
@@ -377,5 +379,29 @@ class OperationRepository @Inject constructor(
             operationDetailSet = details
         )
         return operation
+    }
+
+    suspend fun getAllSerialsByIdSubsidiary(subsidiaryId: Int, documentType: String): List<ISerialAssigned> {
+        return try {
+            val response = apolloClient.query(
+                GetAllSerialsByIdQuery(subsidiaryId = subsidiaryId, documentType = documentType)
+            ).execute()
+
+            if (response.hasErrors()) {
+                val errorMessage =
+                    response.errors?.joinToString { it.message } ?: "Error desconocido"
+                throw Exception("Error no se encontraron series: $errorMessage")
+            }
+
+            response.data?.allSerialsByType?.filterNotNull()?.map { sa ->
+                ISerialAssigned(
+                    id = sa.id!!,
+                    serial = sa.serial.orEmpty()
+                )
+            } ?: emptyList()
+        } catch (e: Exception) {
+            println("Error en series: ${e.message}")
+            emptyList()
+        }
     }
 }

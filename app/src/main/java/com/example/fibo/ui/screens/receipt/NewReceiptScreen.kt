@@ -57,6 +57,7 @@ import com.example.fibo.model.IOperationDetail
 import com.example.fibo.model.IPerson
 import com.example.fibo.model.IProduct
 import com.example.fibo.model.ITariff
+import com.example.fibo.ui.components.DateSelector
 import com.example.fibo.utils.ColorGradients
 import com.example.fibo.utils.ProductSearchState
 import com.example.fibo.utils.getAffectationColor
@@ -149,6 +150,21 @@ fun NewReceiptScreen(
     }
     // Total de descuentos (global + por ítem)
     val totalDiscount = discountGlobalValue + discountForItem
+
+    // Estados para serie y fecha
+    var receiptDate by remember { mutableStateOf(getCurrentFormattedDate()) }
+    var showSerialsDialog by remember { mutableStateOf(false) }
+
+    // Obtener series del ViewModel
+    val serials by viewModel.serials.collectAsState()
+    val selectedSerial by viewModel.selectedSerial.collectAsState()
+
+    // Cargar series al iniciar o cuando cambie la sucursal
+    LaunchedEffect(subsidiaryData) {
+        subsidiaryData?.id?.let { subsidiaryId ->
+            viewModel.loadSerials(subsidiaryId)
+        }
+    }
     // Agrega este estado al inicio de tu composable
     var showBoletaConfirmationDialog by remember { mutableStateOf(false) }
 
@@ -177,6 +193,75 @@ fun NewReceiptScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
+            // NUEVO CARD PARA SERIE Y FECHA
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(12.dp)
+                        .fillMaxWidth()
+                ) {
+                    Text(
+                        "Configuración de Factura",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        // Selector de Series
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Serie",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { showSerialsDialog = true }
+                                    .border(
+                                        1.dp,
+                                        MaterialTheme.colorScheme.outline,
+                                        RoundedCornerShape(8.dp)
+                                    )
+                                    .padding(horizontal = 12.dp, vertical = 14.dp)
+                            ) {
+                                Text(
+                                    selectedSerial?.serial ?: "Seleccionar serie",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        // Selector de Fecha (usando tu componente reutilizable)
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "  Fecha",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            DateSelector(
+                                currentDate = receiptDate,
+                                onDateSelected = { receiptDate = it }
+                            )
+                        }
+                    }
+                }
+            }
             // CARD CABECERA - Información del Cliente
             Card(
                 modifier = Modifier
@@ -494,7 +579,47 @@ fun NewReceiptScreen(
                     }
                 }
             }
-
+            // Diálogo para seleccionar serie
+            if (showSerialsDialog) {
+                AlertDialog(
+                    onDismissRequest = { showSerialsDialog = false },
+                    title = { Text("Seleccionar Serie") },
+                    text = {
+                        Column {
+                            serials.forEach { serial ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            viewModel.selectSerial(serial)
+                                            showSerialsDialog = false
+                                        }
+                                        .padding(vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    RadioButton(
+                                        selected = serial.id == selectedSerial?.id,
+                                        onClick = {
+                                            viewModel.selectSerial(serial)
+                                            showSerialsDialog = false
+                                        }
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = serial.serial,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { showSerialsDialog = false }) {
+                            Text("Cancelar")
+                        }
+                    }
+                )
+            }
             // CARD DESCUENTO GLOBAL
             if (operationDetails.isNotEmpty()) {
                 Card(
@@ -779,7 +904,7 @@ fun NewReceiptScreen(
                                             }
                                             val operation = IOperation(
                                                 id = 0,
-                                                serial = "",
+                                                serial = selectedSerial?.serial ?: "", // Serie seleccionada
                                                 correlative = 0,
                                                 documentType = "03",
                                                 operationType = "0101",
@@ -787,12 +912,12 @@ fun NewReceiptScreen(
                                                 operationAction = "E",
                                                 currencyType = "PEN",
                                                 operationDate = getCurrentFormattedDate(),
-                                                emitDate = getCurrentFormattedDate(),
+                                                emitDate = receiptDate,
                                                 emitTime = getCurrentFormattedTime(),
                                                 userId = userData?.id ?: 0,
                                                 subsidiaryId = subsidiaryData?.id ?: 0,
                                                 client = clientData?.copy(
-                                                    documentType = "01", // Forzar RUC (6)
+                                                    documentType = "01", // Forzar DNI 1
                                                     documentNumber = clientData!!.documentNumber?.trim(),
                                                     names = clientData!!.names?.trim()?.uppercase(),
                                                     address = clientData!!.address?.trim(),
