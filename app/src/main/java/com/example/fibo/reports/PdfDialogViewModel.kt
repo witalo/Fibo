@@ -62,26 +62,55 @@ class PdfDialogViewModel @Inject constructor(
     private var scanPrintersJob: Job? = null
     private var printOperationJob: Job? = null
 
+    // En PdfDialogViewModel
+    private var currentOperationId: Int? = null
+
     override fun onCleared() {
         super.onCleared()
         scanPrintersJob?.cancel()
         printOperationJob?.cancel()
     }
-
     fun fetchOperationById(operationId: Int) {
+        // Evitar múltiples llamadas para la misma operación
+        if (currentOperationId == operationId &&
+            (_uiState.value is PdfDialogUiState.Success || _uiState.value is PdfDialogUiState.Loading)) {
+            Log.d("PdfDialogViewModel", "Operación $operationId ya está cargada o cargando, evitando duplicados")
+            return
+        }
+
         viewModelScope.launch {
             _uiState.value = PdfDialogUiState.Loading
+            currentOperationId = operationId
+            Log.d("PdfDialogViewModel", "Iniciando carga de operación $operationId")
+
             try {
                 val operation = operationRepository.getOperationById(operationId)
                 currentOperation = operation
                 _uiState.value = PdfDialogUiState.Success(operation)
+                Log.d("PdfDialogViewModel", "Operación $operationId cargada exitosamente")
             } catch (e: ApolloException) {
                 _uiState.value = PdfDialogUiState.Error("Error de conexión: ${e.message}")
+                Log.e("PdfDialogViewModel", "Error de conexión cargando operación $operationId", e)
             } catch (e: Exception) {
                 _uiState.value = PdfDialogUiState.Error("Error inesperado: ${e.message}")
+                Log.e("PdfDialogViewModel", "Error cargando operación $operationId", e)
             }
         }
     }
+//    fun fetchOperationById(operationId: Int) {
+//        viewModelScope.launch {
+//            _uiState.value = PdfDialogUiState.Loading
+//            try {
+//                val operation = operationRepository.getOperationById(operationId)
+//                currentOperation = operation
+//                _uiState.value = PdfDialogUiState.Success(operation)
+//            } catch (e: ApolloException) {
+//                _uiState.value = PdfDialogUiState.Error("Error de conexión: ${e.message}")
+//            } catch (e: Exception) {
+//                _uiState.value = PdfDialogUiState.Error("Error inesperado: ${e.message}")
+//            }
+//        }
+//    }
 
     @OptIn(ExperimentalComposeUiApi::class)
     fun scanForPrinters(context: Context) {
@@ -249,7 +278,6 @@ class PdfDialogViewModel @Inject constructor(
             dateStr
         }
     }
-    // Mejora el método resetState en el PdfDialogViewModel
     fun resetState() {
         viewModelScope.launch {
             try {
@@ -262,6 +290,8 @@ class PdfDialogViewModel @Inject constructor(
 
                 // Liberar recursos
                 currentOperation = null
+                // Resetear ID de operación
+                currentOperationId = null
 
                 // Restablecer estados
                 _uiState.value = PdfDialogUiState.Initial
@@ -274,6 +304,31 @@ class PdfDialogViewModel @Inject constructor(
             }
         }
     }
+    // Mejora el método resetState en el PdfDialogViewModel
+//    fun resetState() {
+//        viewModelScope.launch {
+//            try {
+//                // Cancelar operaciones en curso
+//                scanPrintersJob?.cancel()
+//                scanPrintersJob = null
+//
+//                printOperationJob?.cancel()
+//                printOperationJob = null
+//
+//                // Liberar recursos
+//                currentOperation = null
+//
+//                // Restablecer estados
+//                _uiState.value = PdfDialogUiState.Initial
+//                _selectedPrinter.value = null
+//                _availablePrinters.value = emptyList()
+//
+//                Log.d("PdfDialogViewModel", "Estado reseteado correctamente")
+//            } catch (e: Exception) {
+//                Log.e("PdfDialogViewModel", "Error al resetear estado", e)
+//            }
+//        }
+//    }
 
 
     fun printOperation(context: Context, pdfFile: File) {

@@ -74,67 +74,139 @@ fun PdfViewerDialog(
 
     // Flag para controlar si se está cerrando el diálogo
     var isDialogClosing by remember { mutableStateOf(false) }
-    // Efecto para verificar Bluetooth de forma segura
-    LaunchedEffect(Unit) {
-        try {
-            val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
-            isBluetoothActive = bluetoothAdapter?.isEnabled == true
-
-            // Cargar datos iniciales solo una vez
-            viewModel.fetchOperationById(operationId)
-
-            // Usar snapshotFlow para observar cambios en el estado Bluetooth de manera eficiente
-            bluetoothCheckJob = launch {
-                snapshotFlow {
-                    try {
-                        bluetoothAdapter?.isEnabled == true
-                    } catch (e: Exception) {
-                        Log.e("BluetoothCheck", "Error verificando estado", e)
-                        false
-                    }
-                }
-                    .distinctUntilChanged()
-                    .collect { enabled ->
-                        isBluetoothActive = enabled
-                    }
-            }
-        } catch (e: Exception) {
-            Log.e("Bluetooth", "Error inicializando estado Bluetooth", e)
-            isBluetoothActive = false
-        }
-    }
-    // Función segura para cerrar el diálogo
-    fun safelyDismissDialog() {
-        if (isDialogClosing) return // Evitar múltiples cierres
-
-        isDialogClosing = true
-
-        coroutineScope.launch {
+    // Flag para controlar la inicialización única***
+    var hasInitialized by remember { mutableStateOf(false) }
+    // Efecto para verificar Bluetooth de forma segura***
+    LaunchedEffect(operationId, isVisible) {
+        if (isVisible && !hasInitialized) {
             try {
-                // Cancelar jobs y limpiar recursos
-                bluetoothCheckJob?.cancel()
-                bluetoothCheckJob = null
+                Log.d("PdfViewerDialog", "Inicializando diálogo para operación $operationId")
+                val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+                isBluetoothActive = bluetoothAdapter?.isEnabled == true
 
-                // Resetear ViewModel
-                viewModel.resetState()
+                // Cargar datos iniciales solo una vez
+                viewModel.fetchOperationById(operationId)
+                hasInitialized = true
 
-                // Pequeña pausa para permitir que finalicen las operaciones
-                delay(100)
-
-                // Liberar referencia del archivo
-                pdfFile = null
-
-                // Finalmente llamar al callback de cierre
-                onDismiss()
+                // Monitoreo de Bluetooth solo si es necesario
+                bluetoothCheckJob = launch {
+                    snapshotFlow {
+                        try {
+                            bluetoothAdapter?.isEnabled == true
+                        } catch (e: Exception) {
+                            Log.e("BluetoothCheck", "Error verificando estado", e)
+                            false
+                        }
+                    }
+                        .distinctUntilChanged()
+                        .collect { enabled ->
+                            isBluetoothActive = enabled
+                        }
+                }
             } catch (e: Exception) {
-                Log.e("PdfViewerDialog", "Error al cerrar diálogo", e)
-                // Asegurar que se cierre incluso con error
-                onDismiss()
-            } finally {
-                isDialogClosing = false
+                Log.e("Bluetooth", "Error inicializando estado Bluetooth", e)
+                isBluetoothActive = false
             }
+        } else if (!isVisible) {
+            // Reset cuando el diálogo se cierra
+            hasInitialized = false
         }
     }
+//    LaunchedEffect(Unit) {
+//        try {
+//            val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+//            isBluetoothActive = bluetoothAdapter?.isEnabled == true
+//
+//            // Cargar datos iniciales solo una vez
+//            viewModel.fetchOperationById(operationId)
+//
+//            // Usar snapshotFlow para observar cambios en el estado Bluetooth de manera eficiente
+//            bluetoothCheckJob = launch {
+//                snapshotFlow {
+//                    try {
+//                        bluetoothAdapter?.isEnabled == true
+//                    } catch (e: Exception) {
+//                        Log.e("BluetoothCheck", "Error verificando estado", e)
+//                        false
+//                    }
+//                }
+//                    .distinctUntilChanged()
+//                    .collect { enabled ->
+//                        isBluetoothActive = enabled
+//                    }
+//            }
+//        } catch (e: Exception) {
+//            Log.e("Bluetooth", "Error inicializando estado Bluetooth", e)
+//            isBluetoothActive = false
+//        }
+//    }
+// Función segura para cerrar el diálogo - Asegurarse de que hasInitialized se resetea
+fun safelyDismissDialog() {
+    if (isDialogClosing) return // Evitar múltiples cierres
+
+    isDialogClosing = true
+
+    coroutineScope.launch {
+        try {
+            // Cancelar jobs y limpiar recursos
+            bluetoothCheckJob?.cancel()
+            bluetoothCheckJob = null
+
+            // Resetear ViewModel
+            viewModel.resetState()
+
+            // Pequeña pausa para permitir que finalicen las operaciones
+            delay(100)
+
+            // Resetear el flag de inicialización
+            hasInitialized = false
+
+            // Liberar referencia del archivo
+            pdfFile = null
+
+            // Finalmente llamar al callback de cierre
+            onDismiss()
+        } catch (e: Exception) {
+            Log.e("PdfViewerDialog", "Error al cerrar diálogo", e)
+            // Asegurar que se cierre incluso con error
+            onDismiss()
+        } finally {
+            isDialogClosing = false
+        }
+    }
+}
+    // Función segura para cerrar el diálogo
+//    fun safelyDismissDialog() {
+//        if (isDialogClosing) return // Evitar múltiples cierres
+//
+//        isDialogClosing = true
+//
+//        coroutineScope.launch {
+//            try {
+//                // Cancelar jobs y limpiar recursos
+//                bluetoothCheckJob?.cancel()
+//                bluetoothCheckJob = null
+//
+//                // Resetear ViewModel
+//                viewModel.resetState()
+//
+//                // Pequeña pausa para permitir que finalicen las operaciones
+//                delay(100)
+//
+//                // Liberar referencia del archivo
+//                pdfFile = null
+//
+//                // Finalmente llamar al callback de cierre
+//                onDismiss()
+//            } catch (e: Exception) {
+//                Log.e("PdfViewerDialog", "Error al cerrar diálogo", e)
+//                // Asegurar que se cierre incluso con error
+//                onDismiss()
+//            } finally {
+//                isDialogClosing = false
+//            }
+//        }
+//    }
 
     // Generación eficiente del PDF (solo si es necesario)
     LaunchedEffect(uiState) {
@@ -162,7 +234,9 @@ fun PdfViewerDialog(
     }
     // Efecto de limpieza para asegurar que se limpie todo al desmontar el composable
     DisposableEffect(Unit) {
+        Log.d("PdfViewerDialog", "DisposableEffect iniciado para operación $operationId")
         onDispose {
+            Log.d("PdfViewerDialog", "DisposableEffect limpieza ejecutada para operación $operationId")
             bluetoothCheckJob?.cancel()
             bluetoothCheckJob = null
             viewModel.resetState()
