@@ -289,7 +289,7 @@ fun NewReceiptScreen(
                         OutlinedTextField(
                             value = documentNumber,
                             onValueChange = { documentNumber = it },
-                            label = { Text("DNI", style = MaterialTheme.typography.labelSmall) },
+                            label = { Text("DNI/RUC", style = MaterialTheme.typography.labelSmall) },
                             textStyle = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.weight(0.8f),
                             singleLine = true,
@@ -307,25 +307,44 @@ fun NewReceiptScreen(
                                     shape = RoundedCornerShape(8.dp)
                                 )
                                 .clickable {
-                                    if (documentNumber.length == 8 && documentNumber.all { it.isDigit() }) {
-                                        viewModel.fetchClientData(documentNumber) { person ->
-                                            val modifiedPerson = person.copy(
-                                                names = person.names?.uppercase(),
-                                                documentType = "01",
-                                                documentNumber = person.documentNumber,
-                                                address = person.address?.trim(),
-                                            )
-                                            clientData = modifiedPerson
+                                    if (documentNumber.all { it.isDigit() }) {
+                                        when (documentNumber.length) {
+                                            8 -> { // Validación para DNI
+                                                viewModel.fetchClientData(documentNumber) { person ->
+                                                    val modifiedPerson = person.copy(
+                                                        names = person.names?.uppercase(),
+                                                        documentType = "01",
+                                                        documentNumber = person.documentNumber,
+                                                        address = person.address?.trim(),
+                                                    )
+                                                    clientData = modifiedPerson
+                                                }
+                                            }
+                                            11 -> { // Validación para RUC
+                                                viewModel.fetchClientData(documentNumber) { person ->
+                                                    val modifiedPerson = person.copy(
+                                                        names = person.names?.uppercase(),
+                                                        documentType = "06",
+                                                        documentNumber = person.documentNumber,
+                                                        address = person.address?.trim(),
+                                                    )
+                                                    clientData = modifiedPerson
+                                                }
+                                            }
+                                            else -> {
+                                                Toast.makeText(
+                                                    context,
+                                                    "Ingrese 8 dígitos para DNI o 11 dígitos para RUC",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                            }
                                         }
                                     } else {
-                                        // Puedes mostrar un mensaje de error si no es válido
-                                        Toast
-                                            .makeText(
-                                                context,
-                                                "El DNI debe tener 8 dígitos",
-                                                Toast.LENGTH_SHORT
-                                            )
-                                            .show()
+                                        Toast.makeText(
+                                            context,
+                                            "Solo se permiten números",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
                                     }
                                 },
                             contentAlignment = Alignment.Center
@@ -583,41 +602,94 @@ fun NewReceiptScreen(
             if (showSerialsDialog) {
                 AlertDialog(
                     onDismissRequest = { showSerialsDialog = false },
-                    title = { Text("Seleccionar Serie") },
+                    title = { 
+                        Text(
+                            "Seleccionar serie",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
                     text = {
-                        Column {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp)
+                        ) {
                             serials.forEach { serial ->
-                                Row(
+                                Card(
                                     modifier = Modifier
                                         .fillMaxWidth()
+                                        .padding(vertical = 4.dp)
                                         .clickable {
                                             viewModel.selectSerial(serial)
                                             showSerialsDialog = false
-                                        }
-                                        .padding(vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                        },
+                                    shape = RoundedCornerShape(12.dp),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = if (serial.id == selectedSerial?.id) 
+                                            MaterialTheme.colorScheme.primaryContainer 
+                                        else 
+                                            MaterialTheme.colorScheme.surface
+                                    )
                                 ) {
-                                    RadioButton(
-                                        selected = serial.id == selectedSerial?.id,
-                                        onClick = {
-                                            viewModel.selectSerial(serial)
-                                            showSerialsDialog = false
-                                        }
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = serial.serial,
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        RadioButton(
+                                            selected = serial.id == selectedSerial?.id,
+                                            onClick = {
+                                                viewModel.selectSerial(serial)
+                                                showSerialsDialog = false
+                                            },
+                                            colors = RadioButtonDefaults.colors(
+                                                selectedColor = MaterialTheme.colorScheme.primary,
+                                                unselectedColor = MaterialTheme.colorScheme.outline
+                                            )
+                                        )
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Text(
+                                            text = serial.serial,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = if (serial.id == selectedSerial?.id) 
+                                                MaterialTheme.colorScheme.onPrimaryContainer 
+                                            else 
+                                                MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
                                 }
                             }
                         }
                     },
                     confirmButton = {
-                        TextButton(onClick = { showSerialsDialog = false }) {
-                            Text("Cancelar")
+                        Button(
+                            onClick = { showSerialsDialog = false },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error,
+                                contentColor = Color.White
+                            ),
+                            elevation = ButtonDefaults.buttonElevation(
+                                defaultElevation = 2.dp,
+                                pressedElevation = 4.dp
+                            )
+                        ) {
+                            Text(
+                                "Cancelar",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.SemiBold
+                            )
                         }
-                    }
+                    },
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 8.dp,
+                    shape = RoundedCornerShape(16.dp)
                 )
             }
             // CARD DESCUENTO GLOBAL
@@ -877,7 +949,23 @@ fun NewReceiptScreen(
                             ),
                             enabled = operationDetails.isNotEmpty() && clientData?.names?.isNotBlank() == true
                         ) {
-                            Text("Emitir Boleta", style = MaterialTheme.typography.labelLarge)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = "Confirmar",
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    "Boleta",
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                )
+                            }
                         }
 
                         // Diálogo de confirmación para boleta
@@ -892,7 +980,7 @@ fun NewReceiptScreen(
                                             showBoletaConfirmationDialog = false
                                             // Validaciones adicionales antes de crear la operación
                                             if (clientData?.documentNumber.isNullOrBlank()) {
-                                                Toast.makeText(context, "Ingrese el DNI del cliente", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(context, "Ingrese el DNI/RUC del cliente", Toast.LENGTH_SHORT).show()
                                                 return@Button
                                             }
 
@@ -915,7 +1003,7 @@ fun NewReceiptScreen(
                                                 userId = userData?.id ?: 0,
                                                 subsidiaryId = subsidiaryData?.id ?: 0,
                                                 client = clientData?.copy(
-                                                    documentType = "01", // Forzar DNI 1
+                                                    documentType = clientData!!.documentType, // Usar el tipo de documento extraído
                                                     documentNumber = clientData!!.documentNumber?.trim(),
                                                     names = clientData!!.names?.trim()?.uppercase(),
                                                     address = clientData!!.address?.trim(),
@@ -972,37 +1060,42 @@ fun NewReceiptScreen(
                                             }
                                         },
                                         colors = ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            containerColor = Color(0xFF0D47A1), // Azul oscuro
                                             contentColor = Color.White
                                         ),
-                                        modifier = Modifier.height(48.dp)
+                                        modifier = Modifier.weight(1f)
                                     ) {
-                                        Icon(
-                                            imageVector = Icons.Default.CheckCircle,
-                                            contentDescription = "Confirmar",
-                                            modifier = Modifier.size(20.dp))
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(
-                                            "Confirmar Boleta",
-                                            style = MaterialTheme.typography.labelMedium.copy(
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = Color.White
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.CheckCircle,
+                                                contentDescription = "Confirmar",
+                                                modifier = Modifier.size(20.dp)
                                             )
-                                        )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                "Confirmar",
+                                                style = MaterialTheme.typography.labelMedium.copy(
+                                                    fontWeight = FontWeight.SemiBold
+                                                )
+                                            )
+                                        }
                                     }
                                 },
                                 dismissButton = {
-                                    TextButton(
+                                    Button(
                                         onClick = { showBoletaConfirmationDialog = false },
                                         colors = ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.errorContainer,
-                                            contentColor = MaterialTheme.colorScheme.error
-                                        )
+                                            containerColor = Color(0xFFB71C1C), // Rojo oscuro
+                                            contentColor = Color.White
+                                        ),
+                                        modifier = Modifier.weight(1f)
                                     ) {
                                         Text(
                                             "Cancelar",
                                             style = MaterialTheme.typography.labelMedium.copy(
-                                                color = Color.White,
                                                 fontWeight = FontWeight.SemiBold
                                             )
                                         )

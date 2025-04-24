@@ -602,41 +602,94 @@ fun NewInvoiceScreen(
             if (showSerialsDialog) {
                 AlertDialog(
                     onDismissRequest = { showSerialsDialog = false },
-                    title = { Text("Seleccionar Serie") },
+                    title = { 
+                        Text(
+                            "Seleccionar serie",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
                     text = {
-                        Column {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp)
+                        ) {
                             serials.forEach { serial ->
-                                Row(
+                                Card(
                                     modifier = Modifier
                                         .fillMaxWidth()
+                                        .padding(vertical = 4.dp)
                                         .clickable {
                                             viewModel.selectSerial(serial)
                                             showSerialsDialog = false
-                                        }
-                                        .padding(vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                        },
+                                    shape = RoundedCornerShape(12.dp),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = if (serial.id == selectedSerial?.id) 
+                                            MaterialTheme.colorScheme.primaryContainer 
+                                        else 
+                                            MaterialTheme.colorScheme.surface
+                                    )
                                 ) {
-                                    RadioButton(
-                                        selected = serial.id == selectedSerial?.id,
-                                        onClick = {
-                                            viewModel.selectSerial(serial)
-                                            showSerialsDialog = false
-                                        }
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = serial.serial,
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        RadioButton(
+                                            selected = serial.id == selectedSerial?.id,
+                                            onClick = {
+                                                viewModel.selectSerial(serial)
+                                                showSerialsDialog = false
+                                            },
+                                            colors = RadioButtonDefaults.colors(
+                                                selectedColor = MaterialTheme.colorScheme.primary,
+                                                unselectedColor = MaterialTheme.colorScheme.outline
+                                            )
+                                        )
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Text(
+                                            text = serial.serial,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = if (serial.id == selectedSerial?.id) 
+                                                MaterialTheme.colorScheme.onPrimaryContainer 
+                                            else 
+                                                MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
                                 }
                             }
                         }
                     },
                     confirmButton = {
-                        TextButton(onClick = { showSerialsDialog = false }) {
-                            Text("Cancelar")
+                        Button(
+                            onClick = { showSerialsDialog = false },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error,
+                                contentColor = Color.White
+                            ),
+                            elevation = ButtonDefaults.buttonElevation(
+                                defaultElevation = 2.dp,
+                                pressedElevation = 4.dp
+                            )
+                        ) {
+                            Text(
+                                "Cancelar",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.SemiBold
+                            )
                         }
-                    }
+                    },
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 8.dp,
+                    shape = RoundedCornerShape(16.dp)
                 )
             }
             // CARD DESCUENTO GLOBAL
@@ -896,7 +949,23 @@ fun NewInvoiceScreen(
                             ),
                             enabled = operationDetails.isNotEmpty() && clientData?.names?.isNotBlank() == true
                         ) {
-                            Text("Emitir Factura", style = MaterialTheme.typography.labelLarge)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = "Confirmar",
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    "Factura",
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                )
+                            }
                         }
 
                         // Diálogo de confirmación para factura
@@ -977,18 +1046,6 @@ fun NewInvoiceScreen(
                                                 totalToPay = max(0.0, totalToPay),
                                                 totalPayed = max(0.0, totalToPay) // Asumimos que se paga completo
                                             )
-//                                            viewModel.createInvoice(operation) { operationId, message ->
-//                                                Toast.makeText(
-//                                                    context,
-//                                                    if (operationId > 0) "Factura $message creada" else operationId.toString(),
-//                                                    Toast.LENGTH_LONG
-//                                                ).show()
-//
-////                                                if (operationId > 0) {
-////                                                    onInvoiceCreated(operationId.toString()) // Notificar éxito
-////                                                }
-//                                                onBack()
-//                                            }
                                             viewModel.createInvoice(operation) { operationId, message ->
                                                 Toast.makeText(context, "Factura $message creada", Toast.LENGTH_SHORT).show()
                                                 homeViewModel.triggerRefresh() // <-- Dispara el refresco
@@ -996,38 +1053,42 @@ fun NewInvoiceScreen(
                                             }
                                         },
                                         colors = ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            containerColor = Color(0xFF0D47A1), // Azul oscuro
                                             contentColor = Color.White
                                         ),
-
-                                        modifier = Modifier.height(48.dp)
+                                        modifier = Modifier.weight(1f)
                                     ) {
-                                        Icon(
-                                            imageVector = Icons.Default.CheckCircle,
-                                            contentDescription = "Confirmar",
-                                            modifier = Modifier.size(20.dp))
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(
-                                            "Confirmar Factura",
-                                            style = MaterialTheme.typography.labelMedium.copy(
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = Color.White
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.CheckCircle,
+                                                contentDescription = "Confirmar",
+                                                modifier = Modifier.size(20.dp)
                                             )
-                                        )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                "Confirmar",
+                                                style = MaterialTheme.typography.labelMedium.copy(
+                                                    fontWeight = FontWeight.SemiBold
+                                                )
+                                            )
+                                        }
                                     }
                                 },
                                 dismissButton = {
                                     Button(
                                         onClick = { showConfirmationDialog = false },
                                         colors = ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.errorContainer,
-                                            contentColor = MaterialTheme.colorScheme.error
-                                        )
+                                            containerColor = Color(0xFFB71C1C), // Rojo oscuro
+                                            contentColor = Color.White
+                                        ),
+                                        modifier = Modifier.weight(1f)
                                     ) {
                                         Text(
                                             "Cancelar",
                                             style = MaterialTheme.typography.labelMedium.copy(
-                                                color = Color.White,
                                                 fontWeight = FontWeight.SemiBold
                                             )
                                         )
@@ -1598,7 +1659,7 @@ fun AddProductDialog(
                             PurchaseSummary(
                                 subtotal = subtotalAfterDiscount, // Base después de descuento
                                 igv = igvAmount,                 // IGV (0 si no es gravado)
-                                discount = effectiveDiscount,    // Descuento aplicado (no el ingresado)
+                                discount = effectiveDiscount,    // Descuento aplicado (efectivo)
                                 total = totalAmount,             // Depende del tipo de operación
                                 igvPercentage = igvPercentage   // Ej: 18.0
                             )
