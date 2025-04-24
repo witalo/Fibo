@@ -1,11 +1,9 @@
 package com.example.fibo.repository
 
 import android.annotation.SuppressLint
-import android.util.Log
 import com.example.fibo.model.IOperation
 import com.apollographql.apollo3.ApolloClient
 import com.apollographql.apollo3.api.Optional
-import com.apollographql.apollo3.api.toInput
 import com.apollographql.apollo3.exception.ApolloException
 import com.example.fibo.CreateOperationMutation
 import com.example.fibo.GetAllSerialsByIdQuery
@@ -24,6 +22,7 @@ import com.example.fibo.type.PersonInput
 import com.example.fibo.type.TariffInput
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.example.fibo.CancelInvoiceMutation
 
 
 @Singleton
@@ -402,6 +401,23 @@ class OperationRepository @Inject constructor(
         } catch (e: Exception) {
             println("Error en series: ${e.message}")
             emptyList()
+        }
+    }
+    suspend fun cancelInvoice(operationId: Int, date: String): Result<String> {
+        return try {
+            // Execute the mutation
+            val mutation = CancelInvoiceMutation(operationId = operationId, lowDate = date)
+            val response = apolloClient.mutation(mutation).execute()
+
+            val data = response.data
+            if (data != null && data.cancelInvoice?.success == true) {
+                val successMessage = data.cancelInvoice.message ?: "Comprobante anulado exitosamente"
+                Result.success(successMessage)
+            } else {
+                Result.failure(Exception(data?.cancelInvoice?.message ?: "Error desconocido al anular el comprobante"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 }

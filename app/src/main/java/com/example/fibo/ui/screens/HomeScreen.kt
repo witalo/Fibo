@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.outlined.Receipt
 import androidx.compose.material3.*
@@ -223,14 +224,16 @@ fun InvoiceItem(
     pdfViewModel: PdfDialogViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
+    
     // Observar el estado del diálogo
     val showPdfDialog by homeViewModel.showPdfDialog.collectAsState()
     val currentInvoiceId by homeViewModel.currentInvoiceId.collectAsState()
+    val showCancelDialog by homeViewModel.showCancelDialog.collectAsState()
+    val currentOperationId by homeViewModel.currentOperationId.collectAsState()
+    
     Card(
         modifier = Modifier
             .fillMaxWidth()
-//            .clickable(onClick = onClick)
-            // Added a border for better styling
             .border(
                 width = 1.dp,
                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
@@ -288,28 +291,12 @@ fun InvoiceItem(
                         else -> ColorGradients.greenNature
                     }
                 )
-//                IconButton(
-//                    onClick = {
-//                        Toast.makeText(
-//                            context,
-//                            "Compartiendo por WhatsApp",
-//                            Toast.LENGTH_SHORT
-//                        ).show()
-//                    },
-//                    modifier = Modifier.size(40.dp) // Tamaño del área clickeable
-//                ) {
-//                    Image(
-//                        painter = painterResource(id = R.drawable.ic_whasap),
-//                        contentDescription = "PDF",
-//                        modifier = Modifier.size(30.dp),
-//                        contentScale = ContentScale.Fit
-//                    )
-//                }
+                
                 IconButton(
                     onClick = {
                         homeViewModel.showPdfDialog(invoice.id)
                     },
-                    modifier = Modifier.size(40.dp) // Tamaño del área clickeable
+                    modifier = Modifier.size(40.dp)
                 ) {
                     Image(
                         painter = painterResource(id = R.drawable.ic_pdf),
@@ -318,6 +305,19 @@ fun InvoiceItem(
                         contentScale = ContentScale.Fit
                     )
                 }
+                
+                IconButton(
+                    onClick = { homeViewModel.showCancelDialog(invoice.id) },
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Cancel,
+                        contentDescription = "Anular",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(25.dp)
+                    )
+                }
+                
                 Text(
                     text = "S/. ${invoice.totalToPay}",
                     style = MaterialTheme.typography.titleMedium.copy(
@@ -329,8 +329,97 @@ fun InvoiceItem(
             }
         }
     }
-    // Mostrar el diálogo cuando sea necesario
-    // Mostrar el diálogo PDF cuando showPdfDialog es true
+
+    // Diálogo de anulación
+    if (showCancelDialog && currentOperationId == invoice.id) {
+        AlertDialog(
+            onDismissRequest = { homeViewModel.closeCancelDialog() },
+            title = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Cancel,
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Anular Comprobante",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "${invoice.serial}-${invoice.correlative}",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "¿Está seguro que desea anular este comprobante?",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        homeViewModel.cancelOperation(invoice.id)
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                ) {
+                    Text(
+                        text = "Anular",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = { homeViewModel.closeCancelDialog() },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF2D2D2D),
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                ) {
+                    Text(
+                        text = "Cancelar",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = 8.dp,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+
+    // Mostrar el diálogo PDF cuando sea necesario
     if (showPdfDialog) {
         // Cargar los datos de la operación cuando el diálogo se muestra
         LaunchedEffect(currentInvoiceId) {

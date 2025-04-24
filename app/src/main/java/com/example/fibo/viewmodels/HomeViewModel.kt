@@ -18,10 +18,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import java.text.SimpleDateFormat
 import java.util.*
+import android.widget.Toast
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val operationRepository: OperationRepository,
-    private val preferencesManager: PreferencesManager
+    private val preferencesManager: PreferencesManager,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
     private val _selectedDate = MutableStateFlow(
         SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
@@ -43,6 +47,12 @@ class HomeViewModel @Inject constructor(
 
     // Añade esto para manejar eventos de refresco
     private val _refreshTrigger = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
+    private val _showCancelDialog = MutableStateFlow(false)
+    val showCancelDialog: StateFlow<Boolean> = _showCancelDialog.asStateFlow()
+
+    private val _currentOperationId = MutableStateFlow(0)
+    val currentOperationId: StateFlow<Int> = _currentOperationId.asStateFlow()
 
     fun triggerRefresh() {
         viewModelScope.launch {
@@ -116,6 +126,38 @@ class HomeViewModel @Inject constructor(
     // Función para cerrar el diálogo
     fun closePdfDialog() {
         _showPdfDialog.value = false
+    }
+
+    fun showCancelDialog(operationId: Int) {
+        _currentOperationId.value = operationId
+        _showCancelDialog.value = true
+    }
+
+    fun closeCancelDialog() {
+        _showCancelDialog.value = false
+    }
+
+    fun cancelOperation(operationId: Int) {
+        viewModelScope.launch {
+            try {
+                val currentDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+                val result = operationRepository.cancelInvoice(operationId, currentDate)
+                result.fold(
+                    onSuccess = { message ->
+                        // Mostrar mensaje de éxito
+                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                        closeCancelDialog()
+                        loadInvoices(selectedDate.value)
+                    },
+                    onFailure = { error ->
+                        // Mostrar mensaje de error
+                        Toast.makeText(context, error.message ?: "Error al anular el comprobante", Toast.LENGTH_SHORT).show()
+                    }
+                )
+            } catch (e: Exception) {
+                Toast.makeText(context, e.message ?: "Error al anular el comprobante", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 }
 //@HiltViewModel
