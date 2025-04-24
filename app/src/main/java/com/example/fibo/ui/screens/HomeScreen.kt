@@ -231,6 +231,8 @@ fun InvoiceItem(
     val showCancelDialog by homeViewModel.showCancelDialog.collectAsState()
     val currentOperationId by homeViewModel.currentOperationId.collectAsState()
     
+    val isAnulado = invoice.operationStatus.replace("A_", "") == "06" || invoice.operationStatus.replace("A_", "") == "04"
+    
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -241,7 +243,10 @@ fun InvoiceItem(
             ),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
+            containerColor = if (isAnulado) 
+                Color.Red.copy(alpha = 0.1f)
+            else 
+                MaterialTheme.colorScheme.surfaceVariant
         ),
         shape = RoundedCornerShape(8.dp)
     ) {
@@ -306,16 +311,32 @@ fun InvoiceItem(
                     )
                 }
                 
-                IconButton(
-                    onClick = { homeViewModel.showCancelDialog(invoice.id) },
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Cancel,
-                        contentDescription = "Anular",
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(25.dp)
-                    )
+                if (isAnulado) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xF5F5F5F5))
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = "Anulado",
+                            color = Color(0xFFB71C1C),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                } else {
+                    IconButton(
+                        onClick = { homeViewModel.showCancelDialog(invoice.id) },
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Cancel,
+                            contentDescription = "Anular",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(25.dp)
+                        )
+                    }
                 }
                 
                 Text(
