@@ -70,6 +70,7 @@ import com.example.fibo.utils.getAffectationColor
 import com.example.fibo.utils.getAffectationTypeShort
 import com.example.fibo.utils.getCurrentFormattedDate
 import com.example.fibo.utils.getCurrentFormattedTime
+import com.example.fibo.viewmodels.HomeViewModel
 import kotlinx.coroutines.delay
 import kotlin.math.max
 import kotlin.math.min
@@ -80,7 +81,8 @@ import kotlin.math.min
 fun NewInvoiceScreen(
     onBack: () -> Unit,
     onInvoiceCreated: (String) -> Unit,
-    viewModel: NewInvoiceViewModel = hiltViewModel()
+    viewModel: NewInvoiceViewModel = hiltViewModel(),
+    homeViewModel: HomeViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     val companyData by viewModel.companyData.collectAsState()
@@ -780,16 +782,16 @@ fun NewInvoiceScreen(
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
-
-                    // Mostrar los diferentes tipos según SUNAT (con valores después de descuentos)
-                    if (totalTaxedAfterDiscount > 0) {
+                    // Descuentos globales (si existen)
+                    if (totalDiscount > 0) {
+                        Spacer(modifier = Modifier.height(4.dp))
                         ResumenRow(
-                            label = "Op. Gravadas:",
-                            value = totalTaxedAfterDiscount,
-                            color = getAffectationColor(1)
+                            label = "Descuentos:",
+                            value = -totalDiscount,
+                            color = Color(0xFFFF5722) // Color naranja/rojo para destacar
                         )
                     }
-
+                    // Mostrar los diferentes tipos según SUNAT (con valores después de descuentos)
                     if (totalExonerated > 0) {
                         ResumenRow(
                             label = "Op. Exoneradas:",
@@ -813,17 +815,13 @@ fun NewInvoiceScreen(
                             color = getAffectationColor(4)
                         )
                     }
-
-                    // Descuentos globales (si existen)
-                    if (totalDiscount > 0) {
-                        Spacer(modifier = Modifier.height(4.dp))
+                    if (totalTaxedAfterDiscount > 0) {
                         ResumenRow(
-                            label = "Descuentos Globales:",
-                            value = -totalDiscount,
-                            color = Color(0xFFFF5722) // Color naranja/rojo para destacar
+                            label = "Op. Gravadas:",
+                            value = totalTaxedAfterDiscount,
+                            color = getAffectationColor(1)
                         )
                     }
-
                     // IGV (solo aplicable a operaciones gravadas)
                     Spacer(modifier = Modifier.height(4.dp))
                     ResumenRow(
@@ -979,17 +977,22 @@ fun NewInvoiceScreen(
                                                 totalToPay = max(0.0, totalToPay),
                                                 totalPayed = max(0.0, totalToPay) // Asumimos que se paga completo
                                             )
+//                                            viewModel.createInvoice(operation) { operationId, message ->
+//                                                Toast.makeText(
+//                                                    context,
+//                                                    if (operationId > 0) "Factura $message creada" else operationId.toString(),
+//                                                    Toast.LENGTH_LONG
+//                                                ).show()
+//
+////                                                if (operationId > 0) {
+////                                                    onInvoiceCreated(operationId.toString()) // Notificar éxito
+////                                                }
+//                                                onBack()
+//                                            }
                                             viewModel.createInvoice(operation) { operationId, message ->
-                                                Toast.makeText(
-                                                    context,
-                                                    if (operationId > 0) "Factura $message creada" else operationId.toString(),
-                                                    Toast.LENGTH_LONG
-                                                ).show()
-
-//                                                if (operationId > 0) {
-//                                                    onInvoiceCreated(operationId.toString()) // Notificar éxito
-//                                                }
-                                                onBack()
+                                                Toast.makeText(context, "Factura $message creada", Toast.LENGTH_SHORT).show()
+                                                homeViewModel.triggerRefresh() // <-- Dispara el refresco
+                                                onBack() // <-- Navega hacia atrás
                                             }
                                         },
                                         colors = ButtonDefaults.buttonColors(
@@ -1161,8 +1164,8 @@ fun AddProductDialog(
     // 4. Calcular total según tipo de operación
     val totalAmount = when (selectedAffectationType) {
         1 -> subtotalAfterDiscount + igvAmount  // Gravada: (Base - Descuento) + IGV
-        2, 3 -> subtotalAfterDiscount           // Exonerada/Inafecta: Base - Descuento
-        4 -> 0.0                               // Gratuita (valor comercial = 0)
+        2, 3, 4 -> subtotalAfterDiscount           // Exonerada/Inafecta: Base - Descuento
+//        4 -> 0.0                               // Gratuita (valor comercial = 0)
         else -> subtotalAfterDiscount + igvAmount
     }
 
@@ -1193,10 +1196,10 @@ fun AddProductDialog(
                     priceWithoutIgv = String.format("%.4f", product.priceWithoutIgv)
                     priceWithIgv = String.format("%.4f", product.priceWithIgv)
                 }
-                4 -> { // Gratuito
-                    priceWithoutIgv = "0.00"
-                    priceWithIgv = "0.00"
-                }
+//                4 -> { // Gratuito
+//                    priceWithoutIgv = "0.00"
+//                    priceWithIgv = "0.00"
+//                }
                 else -> { // Exonerado o Inafecto
                     priceWithoutIgv = String.format("%.4f", product.priceWithoutIgv)
                     priceWithIgv = String.format("%.4f", product.priceWithoutIgv) // Mismo valor
@@ -1464,7 +1467,7 @@ fun AddProductDialog(
                                             // Actualizar precio con IGV según el tipo de afectación
                                             priceWithIgv = when (selectedAffectationType) {
                                                 1 -> String.format("%.4f", withoutIgvValue * (1 + valueIgv)) // Gravado
-                                                4 -> "0.00" // Gratuito
+//                                                4 -> "0.00" // Gratuito
                                                 else -> String.format("%.4f", withoutIgvValue) // Exonerado o Inafecto
                                             }
                                         }
@@ -1500,7 +1503,7 @@ fun AddProductDialog(
                                             // Actualizar precio sin IGV según el tipo de afectación
                                             priceWithoutIgv = when (selectedAffectationType) {
                                                 1 -> String.format("%.4f", withIgvValue / (1 + valueIgv)) // Gravado
-                                                4 -> "0.00" // Gratuito
+//                                                4 -> "0.00" // Gratuito
                                                 else -> priceWithIgv // Exonerado o Inafecto (mismo valor)
                                             }
                                         }
@@ -1559,10 +1562,11 @@ fun AddProductDialog(
                                                 expandedAffectationType = false
 
                                                 // Actualizar cálculos según el tipo de afectación
-                                                if (affectationType.id == 4) { // Gratuita
-                                                    priceWithoutIgv = "0.00"
-                                                    priceWithIgv = "0.00"
-                                                } else if (affectationType.id != 1) { // Exonerada o Inafecta
+//                                                if (affectationType.id == 1) { // Gratuita
+//                                                    priceWithoutIgv = "0.00"
+//                                                    priceWithIgv = "0.00"
+//                                                } else
+                                                if (affectationType.id != 1) { // Exonerada o Inafecta
                                                     // Para exonerada o inafecta, mantener el precio pero no aplicar IGV
                                                     val withoutIgvValue = priceWithoutIgv.toDoubleOrNull() ?: 0.0
                                                     priceWithIgv = String.format("%.4f", withoutIgvValue)

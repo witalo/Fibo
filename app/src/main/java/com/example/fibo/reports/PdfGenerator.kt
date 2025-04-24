@@ -521,12 +521,11 @@ class PdfGenerator @Inject constructor(
                 }
             )
         }
-
-        addTotalRow("GRAVADA:", operation.totalTaxed)
+        addTotalRow("DESCUENTO:", operation.totalDiscount)
         addTotalRow("EXONERADA:", operation.totalExonerated ?: 0.0)
         addTotalRow("INAFECTA:", operation.totalUnaffected ?: 0.0)
         addTotalRow("GRATUITA:", operation.totalFree ?: 0.0)
-        addTotalRow("DESC. GLOBAL:", operation.totalDiscount)
+        addTotalRow("GRAVADA:", operation.totalTaxed)
         addTotalRow("IGV(${company.percentageIgv}%):", operation.totalIgv)
         addTotalRow("TOTAL:", operation.totalAmount, true)
 

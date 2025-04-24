@@ -762,15 +762,16 @@ fun NewReceiptScreen(
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
-                    // Mostrar los diferentes tipos según SUNAT (con valores después de descuentos)
-                    if (totalTaxedAfterDiscount > 0) {
+                    // Descuentos globales (si existen)
+                    if (totalDiscount > 0) {
+                        Spacer(modifier = Modifier.height(4.dp))
                         ResumenReceiptRow(
-                            label = "Op. Gravadas:",
-                            value = totalTaxedAfterDiscount,
-                            color = getAffectationColor(1)
+                            label = "Descuentos:",
+                            value = -totalDiscount,
+                            color = Color(0xFFFF5722) // Color naranja/rojo para destacar
                         )
                     }
-
+                    // Mostrar los diferentes tipos según SUNAT (con valores después de descuentos)
                     if (totalExonerated > 0) {
                         ResumenReceiptRow(
                             label = "Op. Exoneradas:",
@@ -794,14 +795,11 @@ fun NewReceiptScreen(
                             color = getAffectationColor(4)
                         )
                     }
-
-                    // Descuentos globales (si existen)
-                    if (totalDiscount > 0) {
-                        Spacer(modifier = Modifier.height(4.dp))
+                    if (totalTaxedAfterDiscount > 0) {
                         ResumenReceiptRow(
-                            label = "Descuentos Globales:",
-                            value = -totalDiscount,
-                            color = Color(0xFFFF5722) // Color naranja/rojo para destacar
+                            label = "Op. Gravadas:",
+                            value = totalTaxedAfterDiscount,
+                            color = getAffectationColor(1)
                         )
                     }
 
@@ -1140,8 +1138,8 @@ fun AddReceiptProductDialog(
     // 4. Calcular total según tipo de operación
     val totalAmount = when (selectedAffectationType) {
         1 -> subtotalAfterDiscount + igvAmount  // Gravada: (Base - Descuento) + IGV
-        2, 3 -> subtotalAfterDiscount           // Exonerada/Inafecta: Base - Descuento
-        4 -> 0.0                               // Gratuita (valor comercial = 0)
+        2, 3, 4 -> subtotalAfterDiscount           // Exonerada/Inafecta: Base - Descuento
+//        4 -> 0.0                               // Gratuita (valor comercial = 0)
         else -> subtotalAfterDiscount + igvAmount
     }
 
@@ -1172,10 +1170,10 @@ fun AddReceiptProductDialog(
                     priceWithoutIgv = String.format("%.4f", product.priceWithoutIgv)
                     priceWithIgv = String.format("%.4f", product.priceWithIgv)
                 }
-                4 -> { // Gratuito
-                    priceWithoutIgv = "0.00"
-                    priceWithIgv = "0.00"
-                }
+//                4 -> { // Gratuito
+//                    priceWithoutIgv = "0.00"
+//                    priceWithIgv = "0.00"
+//                }
                 else -> { // Exonerado o Inafecto
                     priceWithoutIgv = String.format("%.4f", product.priceWithoutIgv)
                     priceWithIgv = String.format("%.4f", product.priceWithoutIgv) // Mismo valor
@@ -1436,7 +1434,7 @@ fun AddReceiptProductDialog(
                                             // Actualizar precio con IGV según el tipo de afectación
                                             priceWithIgv = when (selectedAffectationType) {
                                                 1 -> String.format("%.4f", withoutIgvValue * (1 + valueIgv)) // Gravado
-                                                4 -> "0.00" // Gratuito
+//                                                4 -> "0.00" // Gratuito
                                                 else -> String.format("%.4f", withoutIgvValue) // Exonerado o Inafecto
                                             }
                                         }
@@ -1467,7 +1465,7 @@ fun AddReceiptProductDialog(
                                             // Actualizar precio sin IGV según el tipo de afectación
                                             priceWithoutIgv = when (selectedAffectationType) {
                                                 1 -> String.format("%.4f", withIgvValue / (1 + valueIgv)) // Gravado
-                                                4 -> "0.00" // Gratuito
+//                                                4 -> "0.00" // Gratuito
                                                 else -> priceWithIgv // Exonerado o Inafecto (mismo valor)
                                             }
                                         }
@@ -1521,10 +1519,11 @@ fun AddReceiptProductDialog(
                                                 expandedAffectationType = false
 
                                                 // Actualizar cálculos según el tipo de afectación
-                                                if (affectationType.id == 4) { // Gratuita
-                                                    priceWithoutIgv = "0.00"
-                                                    priceWithIgv = "0.00"
-                                                } else if (affectationType.id != 1) { // Exonerada o Inafecta
+//                                                if (affectationType.id == 4) { // Gratuita
+//                                                    priceWithoutIgv = "0.00"
+//                                                    priceWithIgv = "0.00"
+//                                                } else
+                                                if (affectationType.id != 1) { // Exonerada o Inafecta
                                                     // Para exonerada o inafecta, mantener el precio pero no aplicar IGV
                                                     val withoutIgvValue = priceWithoutIgv.toDoubleOrNull() ?: 0.0
                                                     priceWithIgv = String.format("%.4f", withoutIgvValue)

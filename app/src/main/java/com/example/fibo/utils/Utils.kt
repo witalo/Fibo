@@ -42,9 +42,9 @@ fun getAffectationColor(typeAffectationId: Int): Color {
 fun getAffectationTypeShort(typeAffectationId: Int): String {
     return when (typeAffectationId) {
         1 -> "GRAV" // Gravada
-        2 -> "INAF" // Inafecta
-        3 -> "EXO"  // Exonerada
-        4 -> "GRA"  // Gratuita
+        2 -> "EXON"  // Exonerada
+        3 -> "INAF" // Inafecta
+        4 -> "GRAT"  // Gratuita
         else -> "N/D"
     }
 }

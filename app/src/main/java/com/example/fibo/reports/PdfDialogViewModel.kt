@@ -519,17 +519,21 @@ class PdfDialogViewModel @Inject constructor(
             // Formatear los montos para que queden alineados
             val labelWidth = 15 // Ancho para las etiquetas
 
+            val opDescuento = "DESCUENTO:".padEnd(labelWidth) + numberFormat.format(operation.totalDiscount).padStart(10)
             val opGravada = "OP. GRAVADA:".padEnd(labelWidth) + numberFormat.format(operation.totalTaxed).padStart(10)
             val opInafecta = "OP. INAFECTA:".padEnd(labelWidth) + numberFormat.format(operation.totalUnaffected).padStart(10)
             val opExonerada = "OP. EXONERADA:".padEnd(labelWidth) + numberFormat.format(operation.totalExonerated).padStart(10)
+            val opGratuita = "OP. GRATUITA:".padEnd(labelWidth) + numberFormat.format(operation.totalFree).padStart(10)
             val igv = "IGV:".padEnd(labelWidth) + numberFormat.format(operation.totalIgv).padStart(10)
 
             // Total con formato destacado
             val total = "TOTAL:".padEnd(labelWidth) + numberFormat.format(operation.totalAmount).padStart(10)
 
-            writer.write("$opGravada\n")
-            writer.write("$opInafecta\n")
+            writer.write("$opDescuento\n")
             writer.write("$opExonerada\n")
+            writer.write("$opInafecta\n")
+            writer.write("$opGratuita\n")
+            writer.write("$opGravada\n")
             writer.write("$igv\n")
             outputStream.write(PrinterCommands.ESC_BOLD_ON)
             writer.write("$total\n")

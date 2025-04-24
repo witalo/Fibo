@@ -10,6 +10,7 @@ import javax.inject.Inject
 import com.example.fibo.model.IOperation
 import com.example.fibo.model.ISubsidiary
 import com.example.fibo.repository.OperationRepository
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.util.Date
@@ -40,7 +41,22 @@ class HomeViewModel @Inject constructor(
     private val _currentInvoiceId = MutableStateFlow(0)
     val currentInvoiceId: StateFlow<Int> = _currentInvoiceId
 
+    // Añade esto para manejar eventos de refresco
+    private val _refreshTrigger = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
+    fun triggerRefresh() {
+        viewModelScope.launch {
+            _refreshTrigger.emit(Unit)
+        }
+    }
+
     init {
+        // Configura el collector para el refresco
+        viewModelScope.launch {
+            _refreshTrigger.collect {
+                loadInvoices(_selectedDate.value)
+            }
+        }
         // Set up user data collection
         viewModelScope.launch {
             preferencesManager.userData.collect { user ->
@@ -51,7 +67,6 @@ class HomeViewModel @Inject constructor(
                 }
             }
         }
-
     }
 
     fun updateSelectedDate(date: String) {
