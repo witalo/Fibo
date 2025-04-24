@@ -51,18 +51,21 @@ class HomeViewModel @Inject constructor(
     }
 
     init {
-        // Configura el collector para el refresco
-        viewModelScope.launch {
-            _refreshTrigger.collect {
-                loadInvoices(_selectedDate.value)
-            }
-        }
-        // Set up user data collection
+        // 1. Collector para datos de usuario
         viewModelScope.launch {
             preferencesManager.userData.collect { user ->
                 currentUserId = user?.id
-                // Load invoices whenever we get a valid user ID
-                if (currentUserId != null) {
+                user?.id?.let {
+                    // Carga facturas cuando tenemos un usuario válido
+                    loadInvoices(_selectedDate.value)
+                }
+            }
+        }
+
+        // 2. Collector independiente para eventos de refresco
+        viewModelScope.launch {
+            _refreshTrigger.collect {
+                currentUserId?.let {
                     loadInvoices(_selectedDate.value)
                 }
             }
