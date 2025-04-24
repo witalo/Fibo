@@ -53,6 +53,7 @@ import com.example.fibo.reports.PdfViewerDialog
 import com.example.fibo.ui.components.AppTopBar
 import com.example.fibo.ui.components.SideMenu
 import com.example.fibo.utils.ColorGradients
+import androidx.compose.foundation.isSystemInDarkTheme
 
 
 @Composable
@@ -244,7 +245,11 @@ fun InvoiceItem(
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isAnulado) 
-                Color.Red.copy(alpha = 0.1f)
+//                Color.Red.copy(alpha = 0.1f)
+                when (isSystemInDarkTheme()) {
+                    true -> Color(0xFF7C1D1D)
+                    false -> Color(0xFFFDCFCF)
+                }
             else 
                 MaterialTheme.colorScheme.surfaceVariant
         ),
@@ -314,15 +319,15 @@ fun InvoiceItem(
                 if (isAnulado) {
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xF5F5F5F5))
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color(0xFFFFFFFF).copy(alpha = 0.6f))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Text(
                             text = "Anulado",
-                            color = Color(0xFFB71C1C),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold
+                            color = Color(0xFFC52B2B),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 } else {
@@ -333,6 +338,7 @@ fun InvoiceItem(
                         Icon(
                             imageVector = Icons.Default.Cancel,
                             contentDescription = "Anular",
+                            // Un rojo más oscuro  tint = Color(0xFF8E0000),
                             tint = MaterialTheme.colorScheme.error,
                             modifier = Modifier.size(25.dp)
                         )
@@ -341,11 +347,12 @@ fun InvoiceItem(
                 
                 Text(
                     text = "S/. ${invoice.totalToPay}",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        brush = ColorGradients.goldLuxury
-                    ),
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = when (isSystemInDarkTheme()) {
+                        true -> Color(0xFFFF9800)
+                        false -> Color(0xFF097BD9)
+                    }
                 )
             }
         }
