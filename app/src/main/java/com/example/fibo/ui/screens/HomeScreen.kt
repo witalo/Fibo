@@ -154,9 +154,19 @@ fun InvoiceContent(
     onNewInvoice: () -> Unit,
     onNewReceipt: () -> Unit
 ) {
-    // Calculate totals
+    // Calculate cantidad de facturas y boletas
     val invoiceCount = invoices.count { it.documentTypeReadable == "FACTURA" }
     val receiptCount = invoices.count { it.documentTypeReadable == "BOLETA" }
+
+    // Calculate monetary totals
+    val invoiceAmountTotal = invoices
+        .filter { it.documentTypeReadable == "FACTURA" }
+        .sumOf { it.totalToPay }
+
+    val receiptAmountTotal = invoices
+        .filter { it.documentTypeReadable == "BOLETA" }
+        .sumOf { it.totalToPay }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -192,7 +202,9 @@ fun InvoiceContent(
                 onNewInvoice = onNewInvoice,
                 onNewReceipt = onNewReceipt,
                 invoiceCount = invoiceCount,
-                receiptCount = receiptCount
+                receiptCount = receiptCount,
+                invoiceAmountTotal = invoiceAmountTotal,
+                receiptAmountTotal = receiptAmountTotal
             )
         }
     }
@@ -471,7 +483,9 @@ fun ActionButtons(
     onNewInvoice: () -> Unit,
     onNewReceipt: () -> Unit,
     invoiceCount: Int,
-    receiptCount: Int
+    receiptCount: Int,
+    invoiceAmountTotal: Double,
+    receiptAmountTotal: Double
 ) {
     Column(
         modifier = Modifier
@@ -517,8 +531,22 @@ fun ActionButtons(
                         color = Color.White
                     )
                 }
+                Spacer(modifier = Modifier.width(3.dp))
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color.White.copy(alpha = 0.2f))
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = "S/. ${invoiceAmountTotal}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White
+                    )
+                }               
+                    
 
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(4.dp))
 
                 Icon(
                     imageVector = Icons.Default.ReceiptLong,
@@ -532,13 +560,13 @@ fun ActionButtons(
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold
                 )
-                Spacer(modifier = Modifier.weight(1f))
-                Icon(
-                    imageVector = Icons.Filled.ArrowForward,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                    tint = Color.White.copy(alpha = 0.8f)
-                )
+//                Spacer(modifier = Modifier.weight(1f))
+//                Icon(
+//                    imageVector = Icons.Filled.ArrowForward,
+//                    contentDescription = null,
+//                    modifier = Modifier.size(18.dp),
+//                    tint = Color.White.copy(alpha = 0.6f)
+//                )
             }
         }
 
@@ -580,8 +608,21 @@ fun ActionButtons(
                         color = Color.White
                     )
                 }
+                Spacer(modifier = Modifier.width(3.dp))
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color.White.copy(alpha = 0.2f))
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = "S/. ${receiptAmountTotal}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White
+                    )
+                }  
 
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(4.dp))
 
                 Icon(
                     imageVector = Icons.Default.Receipt,
@@ -595,13 +636,13 @@ fun ActionButtons(
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold
                 )
-                Spacer(modifier = Modifier.weight(1f))
-                Icon(
-                    imageVector = Icons.Filled.ArrowForward,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                    tint = Color.White.copy(alpha = 0.8f)
-                )
+//                Spacer(modifier = Modifier.weight(1f))
+//                Icon(
+//                    imageVector = Icons.Filled.ArrowForward,
+//                    contentDescription = null,
+//                    modifier = Modifier.size(18.dp),
+//                    tint = Color.White.copy(alpha = 0.6f)
+//                )
             }
         }
     }
