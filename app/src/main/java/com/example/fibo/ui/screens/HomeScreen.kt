@@ -395,7 +395,7 @@ fun InvoiceItem(
                 }
                 
                 Text(
-                    text = "S/. ${invoice.totalToPay}",
+                    text = "S/. ${String.format("%.2f", invoice.totalToPay)}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = when (isSystemInDarkTheme()) {
@@ -576,7 +576,7 @@ fun ActionButtons(
                         .padding(horizontal = 8.dp, vertical = 2.dp)
                 ) {
                     Text(
-                        text = "S/. ${invoiceAmountTotal}",
+                        text = "S/. ${String.format("%.2f", invoiceAmountTotal)}",
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.White
                     )
@@ -653,7 +653,7 @@ fun ActionButtons(
                         .padding(horizontal = 8.dp, vertical = 2.dp)
                 ) {
                     Text(
-                        text = "S/. ${receiptAmountTotal}",
+                        text = "S/. ${String.format("%.2f", receiptAmountTotal)}",
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.White
                     )
