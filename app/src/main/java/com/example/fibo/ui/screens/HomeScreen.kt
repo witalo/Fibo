@@ -118,8 +118,24 @@ fun HomeScreen(
                             .padding(paddingValues)
                             .background(MaterialTheme.colorScheme.background)
                     ) {
+
                         when (invoiceState) {
                             is HomeViewModel.InvoiceState.Loading -> CenterLoadingIndicator()
+                            is HomeViewModel.InvoiceState.WaitingForUser -> {
+                                // Mensaje de espera para autenticación
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        CircularProgressIndicator()
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Text("Esperando autenticación...")
+                                    }
+                                }
+                            }
                             is HomeViewModel.InvoiceState.Success -> {
                                 val invoices =
                                     (invoiceState as HomeViewModel.InvoiceState.Success).data
@@ -132,7 +148,6 @@ fun HomeScreen(
                                     onNewReceipt = { navController.navigate(Screen.NewReceipt.route) }
                                 )
                             }
-
                             is HomeViewModel.InvoiceState.Error -> {
                                 ErrorMessage(
                                     message = (invoiceState as HomeViewModel.InvoiceState.Error).message,
@@ -140,6 +155,28 @@ fun HomeScreen(
                                 )
                             }
                         }
+//                        when (invoiceState) {
+//                            is HomeViewModel.InvoiceState.Loading -> CenterLoadingIndicator()
+//                            is HomeViewModel.InvoiceState.Success -> {
+//                                val invoices =
+//                                    (invoiceState as HomeViewModel.InvoiceState.Success).data
+//                                InvoiceContent(
+//                                    invoices = invoices,
+//                                    onInvoiceClick = { invoice ->
+//                                        navController.navigate("invoice_detail/${invoice.id}")
+//                                    },
+//                                    onNewInvoice = { navController.navigate(Screen.NewInvoice.route) },
+//                                    onNewReceipt = { navController.navigate(Screen.NewReceipt.route) }
+//                                )
+//                            }
+//
+//                            is HomeViewModel.InvoiceState.Error -> {
+//                                ErrorMessage(
+//                                    message = (invoiceState as HomeViewModel.InvoiceState.Error).message,
+//                                    onRetry = { homeViewModel.loadInvoices(selectedDate) }
+//                                )
+//                            }
+//                        }
                     }
                 }
             )

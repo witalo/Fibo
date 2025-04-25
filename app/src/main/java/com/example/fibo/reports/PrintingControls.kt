@@ -69,10 +69,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.example.fibo.utils.PdfDialogUiState
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.time.LocalDateTime
 import java.util.concurrent.CancellationException
@@ -225,12 +227,17 @@ fun PrintControlsSection(
                 is PdfDialogUiState.PrintComplete -> {
                     isPrintingInProgress = false
                     // Asegurarse de completar correctamente antes de llamar onPrintSuccess
-                    viewModel.resetState()
-                    delay(500)
+                    //viewModel.resetState()
+                   // delay(500)
                     // Usar el scope del composable para el cierre seguro
                     composableScope.launch {
                         try {
                             onPrintSuccess()
+                            delay(1000)
+                            // Asegurarnos que el resetState se complete
+                            withContext(Dispatchers.Main) {
+                                viewModel.resetState()
+                            }
                         } catch (e: Exception) {
                             Log.e("PrintControlsSection", "Error en onPrintSuccess", e)
                         }

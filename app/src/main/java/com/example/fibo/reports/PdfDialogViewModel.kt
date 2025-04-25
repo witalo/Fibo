@@ -297,7 +297,6 @@ class PdfDialogViewModel @Inject constructor(
                 _uiState.value = PdfDialogUiState.Initial
                 _selectedPrinter.value = null
                 _availablePrinters.value = emptyList()
-
                 Log.d("PdfDialogViewModel", "Estado reseteado correctamente")
             } catch (e: Exception) {
                 Log.e("PdfDialogViewModel", "Error al resetear estado", e)
