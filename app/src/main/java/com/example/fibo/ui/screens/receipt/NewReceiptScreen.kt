@@ -313,7 +313,7 @@ fun NewReceiptScreen(
                                                 viewModel.fetchClientData(documentNumber) { person ->
                                                     val modifiedPerson = person.copy(
                                                         names = person.names?.uppercase(),
-                                                        documentType = "01",
+                                                        documentType = "1",
                                                         documentNumber = person.documentNumber,
                                                         address = person.address?.trim(),
                                                     )
@@ -324,7 +324,7 @@ fun NewReceiptScreen(
                                                 viewModel.fetchClientData(documentNumber) { person ->
                                                     val modifiedPerson = person.copy(
                                                         names = person.names?.uppercase(),
-                                                        documentType = "06",
+                                                        documentType = "6",
                                                         documentNumber = person.documentNumber,
                                                         address = person.address?.trim(),
                                                     )

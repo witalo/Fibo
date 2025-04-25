@@ -1,6 +1,7 @@
 package com.example.fibo.repository
 
 import android.annotation.SuppressLint
+import android.util.Log
 import com.example.fibo.model.IOperation
 import com.apollographql.apollo3.ApolloClient
 import com.apollographql.apollo3.api.Optional
@@ -282,9 +283,19 @@ class OperationRepository @Inject constructor(
                 }
                 Result.success(Pair(operationIdInt, successMessage))
             } else {
-                Result.failure(Exception(data?.createOperation?.message ?: "Unknown error"))
+                // Better error handling
+                val errorMessage = data?.createOperation?.message
+                    ?: response.errors?.firstOrNull()?.message
+                    ?: "Error desconocido al crear el comprobante"
+
+                Log.e("CreateOperation", "Error: $errorMessage")
+                Log.e("CreateOperation", "Response: $response")
+                Log.e("CreateOperation", "Operation: $operation")
+
+                Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
+            Log.e("CreateOperation", "Exception: ${e.message}", e)
             Result.failure(e)
         }
     }

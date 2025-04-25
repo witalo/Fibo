@@ -320,7 +320,7 @@ fun NewInvoiceScreen(
                                         viewModel.fetchClientData(documentNumber) { person ->
                                             val modifiedPerson = person.copy(
                                                 names = person.names?.uppercase(),
-                                                documentType = "06",
+                                                documentType = "6",
                                                 documentNumber = person.documentNumber,
                                                 address = person.address?.trim(),
                                             )
@@ -1003,7 +1003,7 @@ fun NewInvoiceScreen(
                                                 userId = userData?.id ?: 0, // ID del usuario logueado
                                                 subsidiaryId = subsidiaryData?.id ?: 0, // Sucursal
                                                 client = clientData?.copy(
-                                                    documentType = "06", // Forzar RUC (6)
+                                                    documentType = "6", // Forzar RUC (6)
                                                     documentNumber = clientData!!.documentNumber?.trim(),
                                                     names = clientData!!.names?.trim()?.uppercase(),
                                                     address = clientData!!.address?.trim(),

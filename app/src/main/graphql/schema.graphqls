@@ -4100,7 +4100,7 @@ input CarrierType {
 
   mainDriverNames: String
 
-  mainDriverDriverLicense: String
+  mainDriverLicense: String
 }
 
 input GuideType {
