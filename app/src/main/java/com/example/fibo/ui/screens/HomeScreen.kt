@@ -588,10 +588,10 @@ fun ActionButtons(
                 Icon(
                     imageVector = Icons.Default.ReceiptLong,
                     contentDescription = "Nueva Factura",
-                    modifier = Modifier.size(22.dp),
+                    modifier = Modifier.size(18.dp),
                     tint = Color.White
                 )
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "Nueva Factura",
                     style = MaterialTheme.typography.titleSmall,
@@ -664,10 +664,10 @@ fun ActionButtons(
                 Icon(
                     imageVector = Icons.Default.Receipt,
                     contentDescription = "Nueva Boleta",
-                    modifier = Modifier.size(22.dp),
+                    modifier = Modifier.size(18.dp),
                     tint = Color.White
                 )
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "Nueva Boleta",
                     style = MaterialTheme.typography.titleSmall,
