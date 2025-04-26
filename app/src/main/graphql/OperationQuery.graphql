@@ -124,6 +124,7 @@ query GetOperationById($OperationId: Int!) {
             totalIgv
             totalAmount
             totalToPay
+            description
             productTariff{
                 id
                 productId

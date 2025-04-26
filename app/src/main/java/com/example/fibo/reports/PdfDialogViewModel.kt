@@ -492,7 +492,14 @@ class PdfDialogViewModel @Inject constructor(
             operation.operationDetailSet.forEach { detail ->
                 // Primera línea: Descripción completa del producto
                 outputStream.write(PrinterCommands.ESC_ALIGN_LEFT)
-                writer.write("${detail.tariff.productName}\n")
+//                writer.write("${detail.tariff.productName}\n")
+                writer.write(
+                    if (detail.description != null && detail.description.isNotBlank()) {
+                        "${detail.tariff.productName} (${detail.description})\n"
+                    } else {
+                        "${detail.tariff.productName}\n"
+                    }
+                )
 
                 // Segunda línea: Datos numéricos alineados a la derecha
                 outputStream.write(PrinterCommands.ESC_ALIGN_RIGHT)

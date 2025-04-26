@@ -298,7 +298,16 @@ class PdfGenerator @Inject constructor(
             productTable.addCell(createCell(numberFormat.format(detail.quantity)).setTextAlignment(TextAlignment.RIGHT))
 
             // Descripción (alineada a la izquierda por defecto)
-            productTable.addCell(createCell(detail.tariff.productName.take(25)))
+//            productTable.addCell(createCell(detail.tariff.productName.take(25) ))
+            productTable.addCell(
+                createCell(
+                    if (detail.description != null && detail.description.isNotBlank()) {
+                        "${detail.tariff.productName} (${detail.description})"
+                    } else {
+                        detail.tariff.productName.take(25)
+                    }
+                )
+            )
 
             // Precio Unitario (alineado a la derecha)
             productTable.addCell(createCell(numberFormat.format(detail.unitPrice)).setTextAlignment(TextAlignment.RIGHT))

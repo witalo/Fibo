@@ -16,4 +16,5 @@ data class IOperationDetail(
     val totalIgv: Double = 0.0, // Total IGV Item
     val totalAmount: Double = 0.0, // Total Item
     val totalToPay: Double = 0.0, // Total a pagar Item
+    val description: String = "", // Descripcion Item
 )

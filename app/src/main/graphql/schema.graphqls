@@ -3914,6 +3914,8 @@ input OperationDetailInput {
 
   typeAffectationId: Int
 
+  description: String
+
   quantity: Float
 
   unitValue: Float

@@ -209,6 +209,7 @@ class OperationRepository @Inject constructor(
                 OperationDetailInput(
                     id = Optional.present(detail.id),
                     tariff = Optional.present(tariffInput),
+                    description = Optional.present(detail.description),
                     typeAffectationId = Optional.present(detail.typeAffectationId),
                     quantity = Optional.present(detail.quantity),
                     unitValue = Optional.present(detail.unitValue),
@@ -343,6 +344,7 @@ class OperationRepository @Inject constructor(
                     typeAffectationId = detail.typeAffectationId!!.toInt()
                 ),
                 typeAffectationId = detail.typeAffectationId,
+                description = detail.description.toString(),
                 quantity = detail.quantity.toSafeDouble(),
                 unitValue = detail.unitValue.toSafeDouble(),
                 unitPrice = detail.unitPrice.toSafeDouble(),

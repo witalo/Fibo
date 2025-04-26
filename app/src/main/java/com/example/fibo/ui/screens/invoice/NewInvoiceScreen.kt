@@ -1018,6 +1018,7 @@ fun NewInvoiceScreen(
                                                         // Asegurar valores positivos
                                                         id = 0,
                                                         typeAffectationId = max(1, detail.typeAffectationId),
+                                                        description = detail.description.trim().uppercase(),
                                                         tariff = detail.tariff,
                                                         quantity = max(0.0, detail.quantity),
                                                         unitValue = max(0.0, detail.unitValue),
@@ -1186,6 +1187,7 @@ fun AddProductDialog(
     val selectedProduct by viewModel.selectedProduct.collectAsState()
 
     // Estados del producto seleccionado
+    var observaciones by remember { mutableStateOf("") }
     var quantity by remember { mutableStateOf("1") }
     var discount by remember { mutableStateOf("0.00") }
     var selectedAffectationType by remember(selectedProduct) {
@@ -1481,6 +1483,21 @@ fun AddProductDialog(
 
                             Spacer(modifier = Modifier.height(8.dp))
 
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                OutlinedTextField(
+                                    value = observaciones,
+                                    onValueChange = { observaciones = it },
+                                    label = { Text("Descripción") },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp),
+                                    maxLines = 2
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+
                             // Cantidad y Descuento
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -1698,7 +1715,7 @@ fun AddProductDialog(
                                         val operationDetail = IOperationDetail(
                                             id = 0,
                                             tariff = tariff,
-                                            //typeAffectationId = product.typeAffectationId,
+                                            description = observaciones,
                                             typeAffectationId = selectedAffectationType, // Usar el tipo seleccionado, no el del producto
                                             quantity = qtyValue,
                                             unitValue = priceWithoutIgvValue, // Precio unitario sin IGV
