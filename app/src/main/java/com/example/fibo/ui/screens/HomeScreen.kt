@@ -527,7 +527,7 @@ fun ActionButtons(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
+            .padding(horizontal = 3.dp, vertical = 3.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         // Botón Nueva Factura - Versión mejorada
@@ -535,7 +535,7 @@ fun ActionButtons(
             onClick = onNewInvoice,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(45.dp),
+                .height(50.dp),
             colors = ButtonDefaults.elevatedButtonColors(
                 containerColor = Color(0xFF4A6FA5),  // Azul profesional
                 contentColor = Color.White
@@ -553,13 +553,13 @@ fun ActionButtons(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(0.95f)
             ) {
                 // Counter Chip
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(16.dp))
-                        .background(Color.White.copy(alpha = 0.2f))
+                        .background(Color.White.copy(alpha = 0.15f))
                         .padding(horizontal = 8.dp, vertical = 2.dp)
                 ) {
                     Text(
@@ -572,7 +572,7 @@ fun ActionButtons(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(16.dp))
-                        .background(Color.White.copy(alpha = 0.2f))
+                        .background(Color.White.copy(alpha = 0.15f))
                         .padding(horizontal = 8.dp, vertical = 2.dp)
                 ) {
                     Text(
@@ -580,10 +580,10 @@ fun ActionButtons(
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.White
                     )
-                }               
-                    
+                }
 
-                Spacer(modifier = Modifier.width(4.dp))
+
+                Spacer(modifier = Modifier.weight(1f)) // Espacio flexible
 
                 Icon(
                     imageVector = Icons.Default.ReceiptLong,
@@ -591,12 +591,13 @@ fun ActionButtons(
                     modifier = Modifier.size(18.dp),
                     tint = Color.White
                 )
-                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "Nueva Factura",
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1 // Forzar una sola línea
                 )
+                Spacer(modifier = Modifier.weight(1f)) // Espacio flexible
 //                Spacer(modifier = Modifier.weight(1f))
 //                Icon(
 //                    imageVector = Icons.Filled.ArrowForward,
@@ -612,7 +613,7 @@ fun ActionButtons(
             onClick = onNewReceipt,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(45.dp),
+                .height(50.dp),
             colors = ButtonDefaults.elevatedButtonColors(
                 containerColor = Color(0xFF6A8C72),  // Verde profesional
                 contentColor = Color.White
@@ -630,13 +631,13 @@ fun ActionButtons(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(0.95f)
             ) {
                 // Counter Chip
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(16.dp))
-                        .background(Color.White.copy(alpha = 0.2f))
+                        .background(Color.White.copy(alpha = 0.15f))
                         .padding(horizontal = 8.dp, vertical = 2.dp)
                 ) {
                     Text(
@@ -649,7 +650,7 @@ fun ActionButtons(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(16.dp))
-                        .background(Color.White.copy(alpha = 0.2f))
+                        .background(Color.White.copy(alpha = 0.15f))
                         .padding(horizontal = 8.dp, vertical = 2.dp)
                 ) {
                     Text(
@@ -657,9 +658,9 @@ fun ActionButtons(
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.White
                     )
-                }  
+                }
 
-                Spacer(modifier = Modifier.width(4.dp))
+                Spacer(modifier = Modifier.weight(1f)) // Espacio flexible
 
                 Icon(
                     imageVector = Icons.Default.Receipt,
@@ -667,12 +668,13 @@ fun ActionButtons(
                     modifier = Modifier.size(18.dp),
                     tint = Color.White
                 )
-                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "Nueva Boleta",
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1 // Forzar una sola línea
                 )
+                Spacer(modifier = Modifier.weight(1f)) // Espacio flexible
 //                Spacer(modifier = Modifier.weight(1f))
 //                Icon(
 //                    imageVector = Icons.Filled.ArrowForward,
