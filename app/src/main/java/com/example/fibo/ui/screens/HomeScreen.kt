@@ -552,7 +552,7 @@ fun ActionButtons(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier.fillMaxWidth(0.95f)
             ) {
                 // Counter Chip
@@ -560,7 +560,7 @@ fun ActionButtons(
                     modifier = Modifier
                         .clip(RoundedCornerShape(16.dp))
                         .background(Color.White.copy(alpha = 0.15f))
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Text(
                         text = "Total: $invoiceCount",
@@ -568,12 +568,11 @@ fun ActionButtons(
                         color = Color.White
                     )
                 }
-                Spacer(modifier = Modifier.width(3.dp))
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(16.dp))
                         .background(Color.White.copy(alpha = 0.15f))
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Text(
                         text = "S/. ${String.format("%.2f", invoiceAmountTotal)}",
@@ -630,7 +629,7 @@ fun ActionButtons(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier.fillMaxWidth(0.95f)
             ) {
                 // Counter Chip
@@ -638,7 +637,7 @@ fun ActionButtons(
                     modifier = Modifier
                         .clip(RoundedCornerShape(16.dp))
                         .background(Color.White.copy(alpha = 0.15f))
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Text(
                         text = "Total: $receiptCount",
@@ -646,12 +645,11 @@ fun ActionButtons(
                         color = Color.White
                     )
                 }
-                Spacer(modifier = Modifier.width(3.dp))
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(16.dp))
                         .background(Color.White.copy(alpha = 0.15f))
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Text(
                         text = "S/. ${String.format("%.2f", receiptAmountTotal)}",
