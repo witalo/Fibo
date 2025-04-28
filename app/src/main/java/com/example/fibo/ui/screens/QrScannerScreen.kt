@@ -230,7 +230,7 @@ fun QrScannerScreen(
     }
     LaunchedEffect(scanResult) {
         if (scanResult?.data?.qrScan?.success == true) {
-            delay(500)
+//            delay(500)
             onScanSuccess()
         }
     }
