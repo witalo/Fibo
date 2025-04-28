@@ -62,6 +62,7 @@ import com.example.fibo.utils.ColorGradients
 import com.example.fibo.utils.rememberCameraPermission
 import com.journeyapps.barcodescanner.BarcodeView
 import com.journeyapps.barcodescanner.Size
+import kotlinx.coroutines.delay
 
 @Composable
 fun QrScannerScreen(
@@ -229,6 +230,7 @@ fun QrScannerScreen(
     }
     LaunchedEffect(scanResult) {
         if (scanResult?.data?.qrScan?.success == true) {
+            delay(500)
             onScanSuccess()
         }
     }

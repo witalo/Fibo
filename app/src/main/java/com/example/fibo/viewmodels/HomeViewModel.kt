@@ -59,7 +59,6 @@ class HomeViewModel @Inject constructor(
             _refreshTrigger.emit(Unit)
         }
     }
-
     init {
         // 1. Collector para datos de usuario
         viewModelScope.launch {
@@ -104,7 +103,6 @@ class HomeViewModel @Inject constructor(
         _selectedDate.value = date
         // No llamamos a loadInvoices aquí, ya que el collector de _selectedDate se encargará
     }
-
     fun loadInvoices(date: String) {
         viewModelScope.launch {
             _invoiceState.value = InvoiceState.Loading
@@ -191,142 +189,3 @@ class HomeViewModel @Inject constructor(
         }
     }
 }
-//@HiltViewModel
-//class HomeViewModel @Inject constructor(
-//    private val operationRepository: OperationRepository,
-//    private val preferencesManager: PreferencesManager,
-//    @ApplicationContext private val context: Context
-//) : ViewModel() {
-//    private val _selectedDate = MutableStateFlow(
-//        SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-//    )
-//    val selectedDate: StateFlow<String> = _selectedDate.asStateFlow()
-//
-//    private val _invoiceState = MutableStateFlow<InvoiceState>(InvoiceState.Loading)
-//    val invoiceState: StateFlow<InvoiceState> = _invoiceState.asStateFlow()
-//
-//    // Store the userId when available
-//    private var currentUserId: Int? = null
-//    val subsidiaryData: StateFlow<ISubsidiary?> = preferencesManager.subsidiaryData
-//
-//    // Estado para el diálogo de PDF
-//    private val _showPdfDialog = MutableStateFlow(false)
-//    val showPdfDialog: StateFlow<Boolean> = _showPdfDialog
-//    private val _currentInvoiceId = MutableStateFlow(0)
-//    val currentInvoiceId: StateFlow<Int> = _currentInvoiceId
-//
-//    // Añade esto para manejar eventos de refresco
-//    private val _refreshTrigger = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
-//
-//    private val _showCancelDialog = MutableStateFlow(false)
-//    val showCancelDialog: StateFlow<Boolean> = _showCancelDialog.asStateFlow()
-//
-//    private val _currentOperationId = MutableStateFlow(0)
-//    val currentOperationId: StateFlow<Int> = _currentOperationId.asStateFlow()
-//
-//    fun triggerRefresh() {
-//        viewModelScope.launch {
-//            _refreshTrigger.emit(Unit)
-//        }
-//    }
-//
-//    init {
-//        // 1. Collector para datos de usuario
-//        viewModelScope.launch {
-//            preferencesManager.userData.collect { user ->
-//                currentUserId = user?.id
-//                user?.id?.let {
-//                    // Carga facturas cuando tenemos un usuario válido
-//                    loadInvoices(_selectedDate.value)
-//                }
-//            }
-//        }
-//
-//        // 2. Collector independiente para eventos de refresco
-//        viewModelScope.launch {
-//            _refreshTrigger.collect {
-//                currentUserId?.let {
-//                    loadInvoices(_selectedDate.value)
-//                }
-//            }
-//        }
-//    }
-//
-//    fun updateSelectedDate(date: String) {
-//        Log.d("italo", "Fecha: $date")
-//        _selectedDate.value = date
-//        loadInvoices(date)
-//    }
-//
-//    fun loadInvoices(date: String) {
-//        viewModelScope.launch {
-//            _invoiceState.value = InvoiceState.Loading
-//            Log.d("italo", "Usuario: $currentUserId")
-//            val userId = currentUserId
-//            if (userId == null) {
-//                _invoiceState.value = InvoiceState.Error("Usuario no autenticado")
-//                return@launch
-//            }
-//
-//            try {
-//                Log.d("italo", "Cargando operaciones para userId: $userId y fecha: $date")
-//                val invoices = operationRepository.getOperationByDate(date, userId)
-//                Log.d("italo", "Operaciones cargadas: $invoices")
-//                _invoiceState.value = InvoiceState.Success(invoices)
-//            } catch (e: Exception) {
-//                Log.e("italo", "Error al cargar operaciones", e)
-//                _invoiceState.value = InvoiceState.Error(
-//                    e.message ?: "Error al cargar las operaciones"
-//                )
-//            }
-//        }
-//    }
-//
-//    sealed class InvoiceState {
-//        object Loading : InvoiceState()
-//        data class Success(val data: List<IOperation>) : InvoiceState()
-//        data class Error(val message: String) : InvoiceState()
-//    }
-//    // Función para mostrar el diálogo de PDF
-//    fun showPdfDialog(invoiceId: Int) {
-//        _currentInvoiceId.value = invoiceId
-//        _showPdfDialog.value = true
-//    }
-//
-//    // Función para cerrar el diálogo
-//    fun closePdfDialog() {
-//        _showPdfDialog.value = false
-//    }
-//
-//    fun showCancelDialog(operationId: Int) {
-//        _currentOperationId.value = operationId
-//        _showCancelDialog.value = true
-//    }
-//
-//    fun closeCancelDialog() {
-//        _showCancelDialog.value = false
-//    }
-//
-//    fun cancelOperation(operationId: Int) {
-//        viewModelScope.launch {
-//            try {
-//                val currentDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-//                val result = operationRepository.cancelInvoice(operationId, currentDate)
-//                result.fold(
-//                    onSuccess = { message ->
-//                        // Mostrar mensaje de éxito
-//                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-//                        closeCancelDialog()
-//                        loadInvoices(selectedDate.value)
-//                    },
-//                    onFailure = { error ->
-//                        // Mostrar mensaje de error
-//                        Toast.makeText(context, error.message ?: "Error al anular el comprobante", Toast.LENGTH_SHORT).show()
-//                    }
-//                )
-//            } catch (e: Exception) {
-//                Toast.makeText(context, e.message ?: "Error al anular el comprobante", Toast.LENGTH_SHORT).show()
-//            }
-//        }
-//    }
-//}
