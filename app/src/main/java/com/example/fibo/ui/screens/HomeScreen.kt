@@ -684,48 +684,7 @@ fun ActionButtons(
         }
     }
 }
-//@Composable
-//fun ActionButtons(
-//    onNewInvoice: () -> Unit,
-//    onNewReceipt: () -> Unit
-//) {
-//    Column(
-//        modifier = Modifier.fillMaxWidth(),
-//        verticalArrangement = Arrangement.spacedBy(2.dp)
-//    ) {
-//        FilledTonalButton(
-//            onClick = onNewInvoice,
-//            modifier = Modifier.fillMaxWidth(),
-//            colors = ButtonDefaults.filledTonalButtonColors(
-//                containerColor = MaterialTheme.colorScheme.primaryContainer
-//            )
-//        ) {
-//            Icon(
-//                imageVector = Icons.Default.ReceiptLong,
-//                contentDescription = null,
-//                modifier = Modifier.size(18.dp)
-//            )
-//            Spacer(modifier = Modifier.width(8.dp))
-//            Text("Nueva Factura")
-//        }
-//
-//        FilledTonalButton(
-//            onClick = onNewReceipt,
-//            modifier = Modifier.fillMaxWidth(),
-//            colors = ButtonDefaults.filledTonalButtonColors(
-//                containerColor = MaterialTheme.colorScheme.secondaryContainer
-//            )
-//        ) {
-//            Icon(
-//                imageVector = Icons.Default.Receipt,
-//                contentDescription = null,
-//                modifier = Modifier.size(18.dp)
-//            )
-//            Spacer(modifier = Modifier.width(8.dp))
-//            Text("Nueva Boleta")
-//        }
-//    }
-//}
+
 
 @Composable
 fun Chip(
