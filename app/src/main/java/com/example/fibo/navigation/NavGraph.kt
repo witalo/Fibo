@@ -10,6 +10,7 @@ import androidx.navigation.compose.composable
 import com.example.fibo.datastore.PreferencesManager
 import com.example.fibo.ui.screens.HomeScreen
 import com.example.fibo.ui.screens.QrScannerScreen
+import com.example.fibo.ui.screens.QuotationScreen
 import com.example.fibo.viewmodels.AuthViewModel
 import com.example.fibo.ui.screens.invoice.NewInvoiceScreen
 import com.example.fibo.ui.screens.profile.ProfileScreen
@@ -41,6 +42,19 @@ fun NavGraph(
         // Pantallas principales
         composable(Screen.Home.route) {
             HomeScreen(
+                navController = navController,
+                onLogout = {
+                    authViewModel.logout()
+                    navController.navigate(Screen.QrScanner.route) {
+                        popUpTo(navController.graph.id) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        // Pantallas de cotizaciones
+        composable(Screen.Quotation.route) {
+            QuotationScreen(
                 navController = navController,
                 onLogout = {
                     authViewModel.logout()

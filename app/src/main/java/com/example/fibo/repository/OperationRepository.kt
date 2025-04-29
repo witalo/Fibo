@@ -24,6 +24,7 @@ import com.example.fibo.type.TariffInput
 import javax.inject.Inject
 import javax.inject.Singleton
 import com.example.fibo.CancelInvoiceMutation
+import com.example.fibo.GetOperationsByDateAndUserIdQuery
 
 
 @Singleton
@@ -432,5 +433,42 @@ class OperationRepository @Inject constructor(
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    suspend fun getOperationsByDateAndUserId(date: String, userId: Int, types:List<String>): List<IOperation> {
+        val query = GetOperationsByDateAndUserIdQuery(date = date, userId = userId, types=Optional.Present(types))
+        val response = apolloClient.query(query).execute()
+
+        return response.data?.operationsByDateAndUserId?.filterNotNull()?.map { o ->
+            IOperation(
+                id = o.id.toInt(),
+                documentType = o.documentType.toString(),
+                documentTypeReadable = o.documentTypeReadable.toString(),
+                emitDate = o.emitDate!!.toString(),
+                serial = o.serial ?: "",
+                correlative = o.correlative ?: 0,
+                totalAmount = o.totalAmount.toSafeDouble(),
+                totalTaxed = o.totalTaxed.toSafeDouble(),
+                totalDiscount = o.totalDiscount.toSafeDouble(),
+                totalExonerated = o.totalExonerated.toSafeDouble(),
+                totalUnaffected = o.totalUnaffected.toSafeDouble(),
+                totalFree = o.totalFree.toSafeDouble(),
+                totalIgv = o.totalIgv.toSafeDouble(),
+                totalToPay = o.totalToPay.toSafeDouble(),
+                totalPayed = o.totalPayed.toSafeDouble(),
+                operationStatus = o.operationStatus.toString(),
+                subsidiaryId = o.subsidiaryId!!,
+                client = o.client?.let {
+                    IPerson(
+                        id = it.id.toInt(),
+                        names = it.names.orEmpty(),
+                        documentNumber = it.documentNumber.orEmpty(),
+                        phone = it.phone.orEmpty(),
+                        email = it.email.orEmpty()
+                    )
+                } ?: IPerson(id = 0, names = "", documentNumber = "", phone = "", email = "")
+            )
+        } ?: emptyList()
+
     }
 }

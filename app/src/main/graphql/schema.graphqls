@@ -61,6 +61,8 @@ type Query {
 
   operationsApp(date: Date, userId: Int): [OperationType]
 
+  operationsByDateAndUserId(date: Date, userId: Int, types: [String]): [OperationType]
+
   clientById(clientId: ID): PersonType
 
   operationById(id: Int): OperationType

@@ -41,3 +41,10 @@ sealed class PdfGenerationState {
     object Success : PdfGenerationState()
     class Error(val message: String) : PdfGenerationState()
 }
+
+sealed class QuotationState {
+    object WaitingForUser : QuotationState()
+    object Loading : QuotationState()
+    data class Success(val data: List<IOperation>) : QuotationState()
+    data class Error(val message: String) : QuotationState()
+}

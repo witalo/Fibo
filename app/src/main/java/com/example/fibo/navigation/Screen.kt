@@ -13,9 +13,13 @@ sealed class Screen(
     object QrScanner : Screen("qr_scanner")
     // Principal
     object Home : Screen("home")
+    object Quotation : Screen("quotation")
+    object NotesOfSale : Screen("notes_of_sale")
     object Profile : Screen("new_profile")
     object NewInvoice : Screen("new_invoice")
     object NewReceipt : Screen("new_receipt")
+    object NewQuotation : Screen("new_quotation")
+    object NewNotesOfSale : Screen("new_notes_of_sale")
 
     // Detalles
     object InvoiceDetail : Screen(

@@ -146,7 +146,8 @@ fun SideMenu(
                         )
                         MenuItem(icon = Icons.Default.Description, text = "Nueva Factura", onClick = { onMenuItemSelected("Nueva Factura") })
                         MenuItem(icon = Icons.Default.Receipt, text = "Nueva Boleta", onClick = { onMenuItemSelected("Nueva Boleta") })
-                        MenuItem(icon = Icons.Default.History, text = "Historial", onClick = { onMenuItemSelected("Historial") })
+                        MenuItem(icon = Icons.Default.AddCircleOutline, text = "Cotizaciones", onClick = { onMenuItemSelected("Cotizaciones") })
+                        MenuItem(icon = Icons.Default.AddCircle, text = "Nota de salida", onClick = { onMenuItemSelected("Nota de Salida") })
 
                         // Flexible spacer before footer
                         Spacer(modifier = Modifier.weight(0.5f))

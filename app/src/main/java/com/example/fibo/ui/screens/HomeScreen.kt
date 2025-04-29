@@ -91,10 +91,13 @@ fun HomeScreen(
         onMenuItemSelected = { option ->
             when (option) {
                 "Inicio" -> navController.navigate(Screen.Home.route)
+                "Cotizaciones" -> navController.navigate(Screen.Quotation.route)
+                "Notas de salida" -> navController.navigate(Screen.NotesOfSale.route)
                 "Perfil" -> navController.navigate(Screen.Profile.route)
                 "Nueva Factura" -> navController.navigate(Screen.NewInvoice.route)
                 "Nueva Boleta" -> navController.navigate(Screen.NewReceipt.route)
-//                "Historial" -> navController.navigate(Screen.History.route)
+                "Nueva Cotización" -> navController.navigate(Screen.NewQuotation.route)
+                "Nueva Nota de salida" -> navController.navigate(Screen.NewNotesOfSale.route)
             }
             isMenuOpen = false
         },
