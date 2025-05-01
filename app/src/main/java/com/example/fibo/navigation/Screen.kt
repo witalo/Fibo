@@ -47,4 +47,17 @@ sealed class Screen(
         fun createRoute(receiptId: Int) = "receipt/$receiptId"
         const val receiptIdArg = "receiptId"
     }
+
+    object QuotationDetail : Screen(
+        route = "quotation",
+        routeWithArgs = "quotation/{quotationId}",
+        arguments = listOf(
+            navArgument("quotationId") {
+                type = NavType.StringType
+            }
+        )
+    ) {
+        fun createRoute(quotationId: Int) = "quotation/$quotationId"
+        const val quotationIdArg = "quotationId"
+    }
 }

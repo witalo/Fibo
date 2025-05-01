@@ -281,7 +281,7 @@ class OperationRepository @Inject constructor(
                 val successMessage = if (serial.isNotEmpty()) {
                     "${data.createOperation.message ?: "Comprobante creada exitosamente"} (${serial}-${correlative})"
                 } else {
-                    data.createOperation.message ?: "Factura creada exitosamente"
+                    data.createOperation.message ?: "Comprobante creada exitosamente"
                 }
                 Result.success(Pair(operationIdInt, successMessage))
             } else {

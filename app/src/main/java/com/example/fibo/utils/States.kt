@@ -3,6 +3,7 @@ package com.example.fibo.utils
 import android.bluetooth.BluetoothDevice
 import com.example.fibo.model.IOperation
 import com.example.fibo.model.IProduct
+import java.io.File
 
 sealed class ProductSearchState {
     object Idle : ProductSearchState()
@@ -47,4 +48,21 @@ sealed class QuotationState {
     object Loading : QuotationState()
     data class Success(val data: List<IOperation>) : QuotationState()
     data class Error(val message: String) : QuotationState()
+}
+
+// Define Bluetooth states
+sealed class BluetoothState {
+    object Disabled : BluetoothState()
+    object Enabled : BluetoothState()
+    object Scanning : BluetoothState()
+    object DevicesFound : BluetoothState()
+    object Connected : BluetoothState()
+    data class Error(val message: String) : BluetoothState()
+}
+
+// Define PDF states
+sealed class PdfState {
+    object Loading : PdfState()
+    data class Success(val file: File) : PdfState()
+    data class Error(val message: String) : PdfState()
 }

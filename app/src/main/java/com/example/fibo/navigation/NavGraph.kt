@@ -14,6 +14,7 @@ import com.example.fibo.ui.screens.QuotationScreen
 import com.example.fibo.viewmodels.AuthViewModel
 import com.example.fibo.ui.screens.invoice.NewInvoiceScreen
 import com.example.fibo.ui.screens.profile.ProfileScreen
+import com.example.fibo.ui.screens.quotation.NewQuotationScreen
 import com.example.fibo.ui.screens.receipt.NewReceiptScreen
 
 @Composable
@@ -91,6 +92,15 @@ fun NavGraph(
                 }
             )
         }
+        // Pantallas de facturas y recibos
+        composable(Screen.NewQuotation.route) {
+            NewQuotationScreen(
+                onBack = { navController.popBackStack() },
+                onQuotationCreated = { quotationId ->
+                    navController.navigate(Screen.InvoiceDetail.createRoute(quotationId.toInt()))
+                }
+            )
+        }
 
         // Pantallas de detalle
         Screen.InvoiceDetail.routeWithArgs?.let {
@@ -114,6 +124,19 @@ fun NavGraph(
                 val receiptId = backStackEntry.arguments?.getString(Screen.ReceiptDetail.receiptIdArg)?.toIntOrNull() ?: 0
                 // ReceiptDetailScreen(
                 //     receiptId = receiptId,
+                //     onBack = { navController.popBackStack() }
+                // )
+            }
+        }
+        // Pantallas de detalle
+        Screen.QuotationDetail.routeWithArgs?.let {
+            composable(
+                route = it,
+                arguments = Screen.QuotationDetail.arguments
+            ) { backStackEntry ->
+                val quotationId = backStackEntry.arguments?.getString(Screen.QuotationDetail.quotationIdArg)?.toIntOrNull() ?: 0
+                // InvoiceDetailScreen(
+                //     invoiceId = invoiceId,
                 //     onBack = { navController.popBackStack() }
                 // )
             }

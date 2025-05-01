@@ -114,7 +114,7 @@ class NewQuotationViewModel @Inject constructor(
         }
     }
 
-    fun createInvoice(operation: IOperation, onSuccess: (Int, String) -> Unit) {
+    fun createQuotation(operation: IOperation, onSuccess: (Int, String) -> Unit) {
         if (operation.client.names.isNullOrBlank()) {
             _error.value = "Ingrese el nombre del cliente"
             return
@@ -159,7 +159,7 @@ class NewQuotationViewModel @Inject constructor(
             try {
                 val serials = operationRepository.getAllSerialsByIdSubsidiary(
                     subsidiaryId = subsidiaryId,
-                    documentType = "01" // "01" para facturas
+                    documentType = "48" // "01" para facturas
                 )
                 _serials.value = serials
                 _selectedSerial.value = serials.firstOrNull()

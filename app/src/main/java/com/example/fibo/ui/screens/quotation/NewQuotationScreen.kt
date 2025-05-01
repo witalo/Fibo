@@ -76,7 +76,7 @@ import kotlin.math.min
 @Composable
 fun NewQuotationScreen(
     onBack: () -> Unit,
-    onInvoiceCreated: (String) -> Unit,
+    onQuotationCreated: (String) -> Unit,
     viewModel: NewQuotationViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
@@ -129,7 +129,7 @@ fun NewQuotationScreen(
     // 5. CALCULAR TOTALES FINALES
     val baseImponible = totalTaxedAfterDiscount + totalExonerated + totalUnaffected
     val totalAmount = baseImponible + totalIgv
-    val totalToPay = totalAmount // En una factura normal, el total a pagar es igual al totalAmount
+    val totalToPay = totalAmount // En una cotizacion normal, el total a pagar es igual al totalAmount
     var discountByPercentage by remember { mutableStateOf(false) } //  Controla si el descuento es por porcentaje o monto
     // 6. CÁLCULO DEL DESCUENTO GLOBAL (para mostrar en UI)
     LaunchedEffect(discountGlobalString, applyGlobalDiscount, discountByPercentage, baseImponible) {
@@ -154,7 +154,7 @@ fun NewQuotationScreen(
     // Total de descuentos (global + por ítem)
     val totalDiscount = discountGlobalValue + discountForItem
     // Estados para serie y fecha
-    var invoiceDate by remember { mutableStateOf(getCurrentFormattedDate()) }
+    var quotationDate by remember { mutableStateOf(getCurrentFormattedDate()) }
     var showSerialsDialog by remember { mutableStateOf(false) }
 
     // Obtener series del ViewModel
@@ -174,7 +174,7 @@ fun NewQuotationScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Nueva Factura", style = MaterialTheme.typography.titleSmall) },
+                title = { Text("Nueva Cotización", style = MaterialTheme.typography.titleSmall) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
@@ -210,7 +210,7 @@ fun NewQuotationScreen(
                         .fillMaxWidth()
                 ) {
                     Text(
-                        "Configuración de Factura",
+                        "Configuración de Cotización",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(bottom = 8.dp)
@@ -258,8 +258,8 @@ fun NewQuotationScreen(
                             )
 
                             DateSelector(
-                                currentDate = invoiceDate,
-                                onDateSelected = { invoiceDate = it }
+                                currentDate = quotationDate,
+                                onDateSelected = { quotationDate = it }
                             )
                         }
                     }
@@ -293,7 +293,7 @@ fun NewQuotationScreen(
                         OutlinedTextField(
                             value = documentNumber,
                             onValueChange = { documentNumber = it },
-                            label = { Text("RUC", style = MaterialTheme.typography.labelSmall) },
+                            label = { Text("DNI/RUC", style = MaterialTheme.typography.labelSmall) },
                             textStyle = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.weight(0.8f),
                             singleLine = true,
@@ -311,25 +311,44 @@ fun NewQuotationScreen(
                                     shape = RoundedCornerShape(8.dp)
                                 )
                                 .clickable {
-                                    if (documentNumber.length == 11 && documentNumber.all { it.isDigit() }) {
-                                        viewModel.fetchClientData(documentNumber) { person ->
-                                            val modifiedPerson = person.copy(
-                                                names = person.names?.uppercase(),
-                                                documentType = "6",
-                                                documentNumber = person.documentNumber,
-                                                address = person.address?.trim(),
-                                            )
-                                            clientData = modifiedPerson
+                                    if (documentNumber.all { it.isDigit() }) {
+                                        when (documentNumber.length) {
+                                            8 -> { // Validación para DNI
+                                                viewModel.fetchClientData(documentNumber) { person ->
+                                                    val modifiedPerson = person.copy(
+                                                        names = person.names?.uppercase(),
+                                                        documentType = "1",
+                                                        documentNumber = person.documentNumber,
+                                                        address = person.address?.trim(),
+                                                    )
+                                                    clientData = modifiedPerson
+                                                }
+                                            }
+                                            11 -> { // Validación para RUC
+                                                viewModel.fetchClientData(documentNumber) { person ->
+                                                    val modifiedPerson = person.copy(
+                                                        names = person.names?.uppercase(),
+                                                        documentType = "6",
+                                                        documentNumber = person.documentNumber,
+                                                        address = person.address?.trim(),
+                                                    )
+                                                    clientData = modifiedPerson
+                                                }
+                                            }
+                                            else -> {
+                                                Toast.makeText(
+                                                    context,
+                                                    "Ingrese 8 dígitos para DNI o 11 dígitos para RUC",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                            }
                                         }
                                     } else {
-                                        // Puedes mostrar un mensaje de error si no es válido
-                                        Toast
-                                            .makeText(
-                                                context,
-                                                "El RUC debe tener 11 dígitos",
-                                                Toast.LENGTH_SHORT
-                                            )
-                                            .show()
+                                        Toast.makeText(
+                                            context,
+                                            "Solo se permiten números",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
                                     }
                                 },
                             contentAlignment = Alignment.Center
@@ -833,7 +852,7 @@ fun NewQuotationScreen(
                     // Descuentos globales (si existen)
                     if (totalDiscount > 0) {
                         Spacer(modifier = Modifier.height(4.dp))
-                        ResumenRow(
+                        ResumenRowQuotation(
                             label = "Descuentos:",
                             value = -totalDiscount,
                             color = Color(0xFFFF5722) // Color naranja/rojo para destacar
@@ -841,7 +860,7 @@ fun NewQuotationScreen(
                     }
                     // Mostrar los diferentes tipos según SUNAT (con valores después de descuentos)
                     if (totalExonerated > 0) {
-                        ResumenRow(
+                        ResumenRowQuotation(
                             label = "Op. Exoneradas:",
                             value = totalExonerated,
                             color = getAffectationColor(2)
@@ -849,7 +868,7 @@ fun NewQuotationScreen(
                     }
 
                     if (totalUnaffected > 0) {
-                        ResumenRow(
+                        ResumenRowQuotation(
                             label = "Op. Inafectas:",
                             value = totalUnaffected,
                             color = getAffectationColor(3)
@@ -857,14 +876,14 @@ fun NewQuotationScreen(
                     }
 
                     if (totalFree > 0) {
-                        ResumenRow(
+                        ResumenRowQuotation(
                             label = "Op. Gratuitas:",
                             value = totalFree,
                             color = getAffectationColor(4)
                         )
                     }
                     if (totalTaxedAfterDiscount > 0) {
-                        ResumenRow(
+                        ResumenRowQuotation(
                             label = "Op. Gravadas:",
                             value = totalTaxedAfterDiscount,
                             color = getAffectationColor(1)
@@ -872,7 +891,7 @@ fun NewQuotationScreen(
                     }
                     // IGV (solo aplicable a operaciones gravadas)
                     Spacer(modifier = Modifier.height(4.dp))
-                    ResumenRow(
+                    ResumenRowQuotation(
                         label = "IGV (${igvPercentage}%):",
                         value = totalIgv,
                         color = getAffectationColor(1) // Mismo color que operaciones gravadas
@@ -955,7 +974,7 @@ fun NewQuotationScreen(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    "Factura",
+                                    "Cotizacion",
                                     style = MaterialTheme.typography.labelMedium.copy(
                                         fontWeight = FontWeight.SemiBold
                                     )
@@ -963,12 +982,12 @@ fun NewQuotationScreen(
                             }
                         }
 
-                        // Diálogo de confirmación para factura
+                        // Diálogo de confirmación para cotizacion
                         if (showConfirmationDialog) {
                             AlertDialog(
                                 onDismissRequest = { showConfirmationDialog = false },
-                                title = { Text("Confirmar emisión", style = MaterialTheme.typography.titleMedium) },
-                                text = { Text("¿Está seguro que desea emitir esta factura?") },
+                                title = { Text("Confirmar registro", style = MaterialTheme.typography.titleMedium) },
+                                text = { Text("¿Está seguro que desea registrar esta cotizacion?") },
                                 confirmButton = {
                                     Button(
                                         onClick = {
@@ -987,18 +1006,18 @@ fun NewQuotationScreen(
                                                 id = 0, // ID se generará en el backend
                                                 serial = selectedSerial?.serial ?: "", // Serie seleccionada
                                                 correlative = 0, // Se asignará automáticamente
-                                                documentType = "01", // Factura electrónica
-                                                operationType = "0101", // Factura a cliente
+                                                documentType = "48", // Cotizacion
+                                                operationType = "0101", // Cotizacion a cliente
                                                 operationStatus = "01", // Pendiente de envío a SUNAT
-                                                operationAction = "E", // Emitir
+                                                operationAction = "NA", // Emitir
                                                 currencyType = "PEN", // Soles peruanos
                                                 operationDate = getCurrentFormattedDate(), // Fecha actual
-                                                emitDate = invoiceDate, // Fecha de emisión
+                                                emitDate = quotationDate, // Fecha de emisión
                                                 emitTime = getCurrentFormattedTime(), // Hora actual
                                                 userId = userData?.id ?: 0, // ID del usuario logueado
                                                 subsidiaryId = subsidiaryData?.id ?: 0, // Sucursal
                                                 client = clientData?.copy(
-                                                    documentType = "6", // Forzar RUC (6)
+                                                    documentType = clientData!!.documentType,
                                                     documentNumber = clientData!!.documentNumber?.trim(),
                                                     names = clientData!!.names?.trim()?.uppercase(),
                                                     address = clientData!!.address?.trim(),
@@ -1042,8 +1061,8 @@ fun NewQuotationScreen(
                                                 totalToPay = max(0.0, totalToPay),
                                                 totalPayed = max(0.0, totalToPay) // Asumimos que se paga completo
                                             )
-                                            viewModel.createInvoice(operation) { operationId, message ->
-                                                Toast.makeText(context, "Factura $message creada", Toast.LENGTH_SHORT).show()
+                                            viewModel.createQuotation(operation) { operationId, message ->
+                                                Toast.makeText(context, "Cotización $message creada", Toast.LENGTH_SHORT).show()
                                                 onBack() // <-- Navega hacia atrás
                                             }
                                         },
@@ -1097,7 +1116,7 @@ fun NewQuotationScreen(
         }
         // Diálogo para agregar producto
         if (showAddItemDialog) {
-            AddProductDialog(
+            AddProductQuotationDialog(
                 onDismiss = { showAddItemDialog = false },
                 onProductAdded = { newItem ->
                     operationDetails = operationDetails + newItem
@@ -1141,7 +1160,7 @@ fun NewQuotationScreen(
 }
 
 @Composable
-fun ResumenRow(
+fun ResumenRowQuotation(
     label: String,
     value: Double,
     color: Color = MaterialTheme.colorScheme.onSurface
@@ -1165,7 +1184,7 @@ fun ResumenRow(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddProductDialog(
+fun AddProductQuotationDialog(
     onDismiss: () -> Unit,
     onProductAdded: (IOperationDetail) -> Unit,
     viewModel: NewQuotationViewModel,
@@ -1411,7 +1430,7 @@ fun AddProductDialog(
                                             .heightIn(min = 350.dp, max = 350.dp)
                                     ) {
                                         itemsIndexed(products) { index, product ->
-                                            ProductListItem(
+                                            ProductQuotationListItem(
                                                 product = product,
                                                 onClick = {
                                                     viewModel.getTariff(product.id, subsidiaryId)
@@ -1431,17 +1450,17 @@ fun AddProductDialog(
                             }
 
                             is ProductSearchState.Empty -> {
-                                EmptySearchResult()
+                                EmptySearchQuotationResult()
                             }
 
                             is ProductSearchState.Error -> {
-                                SearchError((searchState as ProductSearchState.Error).message)
+                                SearchQuotationError((searchState as ProductSearchState.Error).message)
                             }
 
                             else -> {
                                 // Estado Idle
                                 if (searchQuery.isNotEmpty()) {
-                                    MinimumSearchInfo()
+                                    MinimumSearchQuotationInfo()
                                 }
                             }
                         }
@@ -1461,7 +1480,7 @@ fun AddProductDialog(
                                 .padding(top = 8.dp)
                         ) {
                             // Card con datos del producto seleccionado
-                            SelectedProductCard(
+                            SelectedProductQuotationCard(
                                 product = product,
                                 onClear = { viewModel.clearProductSelection() }
                             )
@@ -1667,7 +1686,7 @@ fun AddProductDialog(
                             Spacer(modifier = Modifier.height(8.dp))
 
                             // Resumen de la venta
-                            PurchaseSummary(
+                            PurchaseQuotationSummary(
                                 subtotal = subtotalAfterDiscount, // Base después de descuento
                                 igv = igvAmount,                 // IGV (0 si no es gravado)
                                 discount = effectiveDiscount,    // Descuento aplicado (efectivo)
@@ -1769,7 +1788,7 @@ fun AddProductDialog(
 }
 
 @Composable
-private fun ProductListItem(
+private fun ProductQuotationListItem(
     product: IProduct,
     onClick: () -> Unit
 ) {
@@ -1841,7 +1860,7 @@ private fun ProductListItem(
 }
 
 @Composable
-private fun SelectedProductCard(
+private fun SelectedProductQuotationCard(
     product: ITariff,
     onClear: () -> Unit
 ) {
@@ -1923,13 +1942,13 @@ private fun SelectedProductCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
-                        InfoRow(
+                        InfoQuotationRow(
                             label = "Código:",
                             value = product.productCode,
                             labelColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(4.dp))
-                        InfoRow(
+                        InfoQuotationRow(
                             label = "Stock:",
                             value = "${product.remainingQuantity} ${product.unitName}",
                             labelColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1960,7 +1979,7 @@ private fun SelectedProductCard(
 }
 
 @Composable
-private fun InfoRow(
+private fun InfoQuotationRow(
     label: String,
     value: String,
     labelColor: Color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1983,7 +2002,7 @@ private fun InfoRow(
 }
 
 @Composable
-private fun EmptySearchResult() {
+private fun EmptySearchQuotationResult() {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -2014,7 +2033,7 @@ private fun EmptySearchResult() {
 }
 
 @Composable
-private fun SearchError(errorMessage: String) {
+private fun SearchQuotationError(errorMessage: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -2051,7 +2070,7 @@ private fun SearchError(errorMessage: String) {
 }
 
 @Composable
-private fun MinimumSearchInfo() {
+private fun MinimumSearchQuotationInfo() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -2067,7 +2086,7 @@ private fun MinimumSearchInfo() {
 }
 
 @Composable
-private fun PurchaseSummary(
+private fun PurchaseQuotationSummary(
     subtotal: Double,         // Base imponible después de descuento (subtotalAfterDiscount)
     igv: Double,              // IGV calculado (solo si es gravado)
     discount: Double,         // Descuento aplicado (efectivo)
@@ -2094,13 +2113,13 @@ private fun PurchaseSummary(
 
             Spacer(modifier = Modifier.height(8.dp))
             // 1. Subtotal (base después de descuento)
-            SummaryRow(
+            SummaryQuotationRow(
                 label = "Base Imponible:",
                 value = subtotal,
                 showCurrency = true
             )
             // 2. Descuento (si existe)
-            SummaryRow(
+            SummaryQuotationRow(
                 label = "Descuento:",
                 value = -discount, // Mostrar como negativo
                 showCurrency = true,
@@ -2108,7 +2127,7 @@ private fun PurchaseSummary(
             )
             // 3. IGV (solo si es operación gravada)
             if (igv > 0) {
-                SummaryRow(
+                SummaryQuotationRow(
                     label = "IGV (${igvPercentage}%):",
                     value = igv,
                     showCurrency = true
@@ -2121,7 +2140,7 @@ private fun PurchaseSummary(
                 color = MaterialTheme.colorScheme.outlineVariant
             )
             // 5. Total
-            SummaryRow(
+            SummaryQuotationRow(
                 label = "TOTAL:",
                 value = total,
                 showCurrency = true,
@@ -2132,7 +2151,7 @@ private fun PurchaseSummary(
 }
 
 @Composable
-private fun SummaryRow(
+private fun SummaryQuotationRow(
     label: String,
     value: Double,
     showCurrency: Boolean = true,
