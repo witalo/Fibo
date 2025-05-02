@@ -27,6 +27,7 @@ import com.itextpdf.layout.properties.TextAlignment
 import com.itextpdf.kernel.colors.ColorConstants
 import com.itextpdf.layout.element.Cell
 import com.itextpdf.layout.borders.SolidBorder
+import com.itextpdf.layout.properties.VerticalAlignment
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -176,100 +177,6 @@ class QuotationPdfViewModel @Inject constructor(
             }
         }
     }
-    /**
-     * Scan for available Bluetooth devices
-     */
-//    fun scanForDevices(context: Context) {
-//        viewModelScope.launch {
-//            try {
-//
-//                if (!hasBluetoothPermissions()) {
-//                    _bluetoothState.value = BluetoothState.Error("Permisos de Bluetooth requeridos")
-//                    return@launch
-//                }
-//
-//                _bluetoothState.value = BluetoothState.Scanning
-//                _devicesList.value = emptyList()
-//
-//                val bluetoothManager =
-//                    context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
-//                val bluetoothAdapter = bluetoothManager.adapter
-//
-//                if (bluetoothAdapter != null) {
-//                    // Verificar permisos nuevamente antes de proceder
-//                    if (!hasBluetoothPermissions()) {
-//                        _bluetoothState.value = BluetoothState.Error("Permisos de Bluetooth requeridos")
-//                        return@launch
-//                    }
-//                    // Get already paired devices
-//                    val pairedDevices = if (hasBluetoothPermissions()) {
-//                        bluetoothAdapter.bondedDevices.toList()
-//                    } else {
-//                        emptySet<BluetoothDevice>().toList()
-//                    }
-//                    _devicesList.value = pairedDevices
-//
-//                    // Register for broadcasts when a device is discovered
-//                    receiver = object : BroadcastReceiver() {
-//                        override fun onReceive(context: Context, intent: Intent) {
-//                            when (intent.action) {
-//                                BluetoothDevice.ACTION_FOUND -> {
-//                                    // Discovery has found a device
-//                                    val device =
-//                                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-//                                            intent.getParcelableExtra(
-//                                                BluetoothDevice.EXTRA_DEVICE,
-//                                                BluetoothDevice::class.java
-//                                            )
-//                                        } else {
-//                                            @Suppress("DEPRECATION")
-//                                            intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
-//                                        }
-//
-//                                    device?.let {
-//                                        val currentDevices = _devicesList.value.toMutableList()
-//                                        // Check if device is not already in the list
-//                                        if (!currentDevices.any { d -> d.address == it.address }) {
-//                                            currentDevices.add(it)
-//                                            _devicesList.value = currentDevices
-//                                        }
-//                                    }
-//                                }
-//
-//                                BluetoothAdapter.ACTION_DISCOVERY_FINISHED -> {
-//                                    // Discovery finished
-//                                    _bluetoothState.value = BluetoothState.DevicesFound
-//                                }
-//                            }
-//                        }
-//                    }
-//
-//                    // Register the BroadcastReceiver
-//                    val filter = IntentFilter().apply {
-//                        addAction(BluetoothDevice.ACTION_FOUND)
-//                        addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED)
-//                    }
-//                    context.registerReceiver(receiver, filter)
-//
-//                    // Start discovery
-//                    if (bluetoothAdapter.isDiscovering) {
-//                        bluetoothAdapter.cancelDiscovery()
-//                    }
-//                    bluetoothAdapter.startDiscovery()
-//
-//                    // For better UX, we can show paired devices immediately
-//                    if (pairedDevices.isNotEmpty()) {
-//                        _bluetoothState.value = BluetoothState.DevicesFound
-//                    }
-//                } else {
-//                    _bluetoothState.value = BluetoothState.Error("Bluetooth no disponible")
-//                }
-//            } catch (e: Exception) {
-//                _bluetoothState.value =
-//                    BluetoothState.Error("Error al buscar dispositivos: ${e.message}")
-//            }
-//        }
-//    }
     /**
      * Scan for available Bluetooth devices with complete permission handling
      */
@@ -503,11 +410,14 @@ class QuotationPdfViewModel @Inject constructor(
         // Add items
         // Note: In a real implementation, you would iterate through items from quotation
         // For this example, we'll add sample data
-        itemsTable.addCell(createCell("1"))
-        itemsTable.addCell(createCell("Producto o servicio de ejemplo"))
-        itemsTable.addCell(createCell("S/ 100.00"))
-        itemsTable.addCell(createCell("S/ 0.00"))
-        itemsTable.addCell(createCell("S/ 100.00"))
+        // Itera los detalles
+        quotation.operationDetailSet.forEach { detail ->
+            itemsTable.addCell(createRightAlignedCell(detail.quantity.toString()))
+            itemsTable.addCell(createCell(detail.description))
+            itemsTable.addCell(createRightAlignedCell("S/ %.3f".format(detail.unitPrice)))
+            itemsTable.addCell(createRightAlignedCell("S/ %.3f".format(detail.totalDiscount)))
+            itemsTable.addCell(createRightAlignedCell("S/ %.2f".format(detail.totalAmount)))
+        }
 
         document.add(itemsTable)
         document.add(Paragraph("\n"))
@@ -561,6 +471,12 @@ class QuotationPdfViewModel @Inject constructor(
 
         return cell.setPadding(5f)
     }
+    private fun createRightAlignedCell(text: String): Cell {
+        return Cell().add(Paragraph(text))
+            .setPadding(5f)
+            .setTextAlignment(TextAlignment.RIGHT)
+            .setVerticalAlignment(VerticalAlignment.MIDDLE)
+    }
 
     /**
      * Create a header cell with background color
@@ -572,51 +488,6 @@ class QuotationPdfViewModel @Inject constructor(
             .setPadding(5f)
     }
 
-    /**
-     * Connect to the selected Bluetooth device and print the quotation
-     */
-//    fun connectAndPrint(context: Context, device: BluetoothDevice, operation: IOperation) {
-//        viewModelScope.launch {
-//            try {
-//                val bluetoothManager =
-//                    context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
-//                val bluetoothAdapter = bluetoothManager.adapter
-//
-//                // Cancel discovery because it's resource intensive
-//                bluetoothAdapter.cancelDiscovery()
-//
-//                // Get a BluetoothSocket for connection with the given device
-//                bluetoothSocket = device.createRfcommSocketToServiceRecord(SPP_UUID)
-//
-//                // Connect to the remote device
-//                withContext(Dispatchers.IO) {
-//                    bluetoothSocket?.connect()
-//                }
-//
-//                // Get the output stream from the socket
-//                val outputStream = bluetoothSocket?.outputStream
-//
-//                if (outputStream != null) {
-//                    // Now send the print data
-//                    sendPrintQuotation(outputStream, operation)
-//
-//                    // Update the state to Connected
-//                    _bluetoothState.value = BluetoothState.Connected
-//                } else {
-//                    _bluetoothState.value =
-//                        BluetoothState.Error("Error al obtener stream de salida")
-//                }
-//            } catch (e: IOException) {
-//                // Unable to connect or IO error
-//                _bluetoothState.value = BluetoothState.Error("Error de conexión: ${e.message}")
-//                closeConnection()
-//            } catch (e: Exception) {
-//                // Other errors
-//                _bluetoothState.value = BluetoothState.Error("Error al imprimir: ${e.message}")
-//                closeConnection()
-//            }
-//        }
-//    }
     /**
      * Connect to the selected Bluetooth device with complete permission handling
      */

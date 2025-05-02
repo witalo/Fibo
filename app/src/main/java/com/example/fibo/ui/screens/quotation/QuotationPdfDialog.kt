@@ -175,12 +175,14 @@ fun QuotationPdfDialog(
                             .background(
                                 Brush.horizontalGradient(
                                     colors = listOf(
-                                        MaterialTheme.colorScheme.primary,
-                                        MaterialTheme.colorScheme.tertiary
+//                                        MaterialTheme.colorScheme.primary,
+//                                        MaterialTheme.colorScheme.tertiary,
+                                        Color(0xFFAF330C),
+                                        Color(0xFFDC870A),
                                     )
                                 )
                             )
-                            .padding(16.dp)
+                            .padding(10.dp)
                     ) {
                         Text(
                             text = "Cotización ${quotation.serial}-${quotation.correlative}",
