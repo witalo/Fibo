@@ -32,8 +32,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.BluetoothDisabled
@@ -115,8 +117,6 @@ fun QuotationPdfDialog(
     ) { permissions ->
         val allGranted = permissions.values.all { it }
         if (allGranted) {
-//            viewModel.enableBluetooth(context)
-            // Si permisos son concedidos, actualizar estado
             viewModel.updateBluetoothState(BluetoothState.Enabled)
         } else {
             viewModel.updateBluetoothState(BluetoothState.Error("Permisos de Bluetooth denegados"))
@@ -137,6 +137,7 @@ fun QuotationPdfDialog(
     // Generate and load PDF when dialog opens
     LaunchedEffect(isVisible) {
         if (isVisible) {
+            viewModel.resetAll() // Limpiar antes de generar nuevo
             viewModel.generatePdf(quotation, context)
         }
     }
@@ -146,13 +147,17 @@ fun QuotationPdfDialog(
         onDispose {
             if (!isVisible) {
                 viewModel.cleanup()
+                viewModel.resetAll()
             }
         }
     }
 
     if (isVisible) {
         Dialog(
-            onDismissRequest = onDismiss,
+            onDismissRequest = {
+                viewModel.resetAll()
+                onDismiss()
+            },
             properties = DialogProperties(
                 dismissOnBackPress = true,
                 dismissOnClickOutside = false,
@@ -175,8 +180,6 @@ fun QuotationPdfDialog(
                             .background(
                                 Brush.horizontalGradient(
                                     colors = listOf(
-//                                        MaterialTheme.colorScheme.primary,
-//                                        MaterialTheme.colorScheme.tertiary,
                                         Color(0xFFAF330C),
                                         Color(0xFFDC870A),
                                     )
@@ -284,6 +287,7 @@ fun QuotationPdfDialog(
                         modifier = Modifier
                             .weight(0.3f)
                             .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())  // <-- Añade esto para hacer scrollable
                             .padding(16.dp)
                     ) {
                         Text(
@@ -308,7 +312,6 @@ fun QuotationPdfDialog(
                             Button(
                                 onClick = {
                                     if (bluetoothState is BluetoothState.Disabled) {
-//                                        handleBluetoothActivation(context, viewModel)
                                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                                             val permissions = arrayOf(
                                                 Manifest.permission.BLUETOOTH_CONNECT,
@@ -389,8 +392,10 @@ fun QuotationPdfDialog(
                             // Button to scan for devices
                             Button(
                                 onClick = {
-                                    showDevicesList = !showDevicesList
-                                    if (showDevicesList) {
+                                    // CORRECCIÓN: Asegurarse de que la lista se muestre cuando se haga clic
+                                    if (bluetoothState is BluetoothState.Enabled ||
+                                        bluetoothState is BluetoothState.DevicesFound) {
+                                        showDevicesList = true
                                         viewModel.scanForDevices(context)
                                     }
                                 },
@@ -442,19 +447,57 @@ fun QuotationPdfDialog(
                                     }
                                 }
                             },
-                            enabled = selectedDevice != null && bluetoothState is BluetoothState.DevicesFound && !printingInProgress,
+                            enabled = selectedDevice != null && !printingInProgress,
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.secondary
+                                containerColor = if (selectedDevice != null && !printingInProgress) {
+                                    // Color cuando está habilitado y listo para imprimir
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    // Color cuando está deshabilitado
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+                                },
+                                contentColor = if (selectedDevice != null && !printingInProgress) {
+                                    // Color del contenido cuando está habilitado
+                                    MaterialTheme.colorScheme.onPrimary
+                                } else {
+                                    // Color del contenido cuando está deshabilitado
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                },
+                                disabledContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                                disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                             ),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            elevation = ButtonDefaults.buttonElevation(
+                                defaultElevation = 2.dp,
+                                pressedElevation = 4.dp,
+                                disabledElevation = 0.dp
+                            )
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.Print,
-                                    contentDescription = "Imprimir"
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                if (printingInProgress) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        strokeWidth = 2.dp,
+                                        color = MaterialTheme.colorScheme.onPrimary
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.Print,
+                                        contentDescription = "Imprimir",
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                }
+                                Text(
+                                    text = if (printingInProgress) "Imprimiendo..." else "Imprimir",
+                                    style = MaterialTheme.typography.labelLarge
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(text = if (printingInProgress) "Imprimiendo..." else "Imprimir")
                             }
                         }
 
@@ -466,12 +509,10 @@ fun QuotationPdfDialog(
                             )
                         }
 
-                        // Device list (appears when scanning or after scan complete)
-                        AnimatedVisibility(
-                            visible = showDevicesList,
-                            enter = fadeIn() + slideInVertically(),
-                            exit = fadeOut() + slideOutVertically()
-                        ) {
+                        // CORRECCIÓN: La lista de dispositivos ahora siempre está visible cuando showDevicesList es true
+                        // en lugar de basarse en el estado de Bluetooth
+                        if (showDevicesList) {
+                            Spacer(modifier = Modifier.height(8.dp))
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -513,11 +554,11 @@ fun QuotationPdfDialog(
                                             modifier = Modifier.padding(vertical = 8.dp)
                                         )
                                     } else {
-                                        // List of found devices
+                                        // CORRECCIÓN: Aumentamos la altura máxima de la lista para asegurar que es visible
                                         LazyColumn(
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .height(120.dp)
+                                                .height(150.dp) // Aumentamos la altura para mayor visibilidad
                                         ) {
                                             items(devices) { device ->
                                                 Row(
@@ -616,59 +657,5 @@ fun BluetoothStatusIndicator(bluetoothState: BluetoothState) {
                 else -> Color.Black
             }
         )
-    }
-}
-
-/**
- * Integration of PDF viewer with AndroidPdfViewer library
- * Note: This is a simplified placeholder for actual implementation
- */
-@Composable
-fun PdfViewerComponent(file: File) {
-    // This is a placeholder for actual implementation with AndroidPdfViewer
-    // In a real implementation, you would use AndroidView to integrate the library
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White)
-    ) {
-        Text(
-            text = "PDF Viewer: ${file.name}",
-            modifier = Modifier.align(Alignment.Center)
-        )
-    }
-}
-
-// Función externa reusable
-private fun handleBluetoothActivation(context: Context, viewModel: QuotationPdfViewModel) {
-    // Verificar permisos para Android 12+
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        val permissions = arrayOf(
-            Manifest.permission.BLUETOOTH_CONNECT,
-            Manifest.permission.BLUETOOTH_SCAN
-        )
-
-        val allGranted = permissions.all {
-            ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
-        }
-
-        if (!allGranted) {
-            // Esto lanzará el bluetoothPermissionLauncher que debes tener definido en tu composable
-            return
-        }
-    }
-
-    // Lógica común para todas las versiones de Android
-    val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
-    val bluetoothAdapter = bluetoothManager?.adapter ?: run {
-        viewModel.updateBluetoothState(BluetoothState.Error("Bluetooth no disponible"))
-        return
-    }
-
-    if (!bluetoothAdapter.isEnabled) {
-        val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-        // Esto usará el enableBluetoothLauncher que debes tener definido
-    } else {
-        viewModel.updateBluetoothState(BluetoothState.Enabled)
     }
 }

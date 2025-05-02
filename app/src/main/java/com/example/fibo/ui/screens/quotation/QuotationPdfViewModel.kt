@@ -184,7 +184,6 @@ class QuotationPdfViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 _bluetoothState.value = BluetoothState.Scanning
-                _devicesList.value = emptyList()
 
                 val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
                 val bluetoothAdapter = bluetoothManager?.adapter
@@ -194,9 +193,26 @@ class QuotationPdfViewModel @Inject constructor(
                     return@launch
                 }
 
+                // Limpiar la lista de dispositivos antes de escanear
+                _devicesList.value = emptyList()
+
                 // Obtener dispositivos emparejados con manejo de permisos
                 val pairedDevices = getPairedDevices(bluetoothAdapter)
-                _devicesList.value = pairedDevices
+
+                // Mostrar inmediatamente los dispositivos emparejados
+                if (pairedDevices.isNotEmpty()) {
+                    _devicesList.value = pairedDevices
+                }
+
+                // Desregistrar el receptor anterior si existe
+                receiver?.let {
+                    try {
+                        context.unregisterReceiver(it)
+                    } catch (e: IllegalArgumentException) {
+                        // El receptor ya estaba desregistrado
+                    }
+                    receiver = null
+                }
 
                 // Registrar BroadcastReceiver
                 receiver = object : BroadcastReceiver() {
@@ -218,7 +234,13 @@ class QuotationPdfViewModel @Inject constructor(
                                 }
                             }
                             BluetoothAdapter.ACTION_DISCOVERY_FINISHED -> {
-                                _bluetoothState.value = BluetoothState.DevicesFound
+                                // Cambiar estado sólo si hay dispositivos o si ya había encontrado antes
+                                if (_devicesList.value.isNotEmpty()) {
+                                    _bluetoothState.value = BluetoothState.DevicesFound
+                                } else {
+                                    // Si no hay dispositivos, mostrar mensaje de error
+                                    _bluetoothState.value = BluetoothState.Error("No se encontraron dispositivos")
+                                }
                             }
                         }
                     }
@@ -236,7 +258,7 @@ class QuotationPdfViewModel @Inject constructor(
                     _bluetoothState.value = BluetoothState.Error("Permisos de Bluetooth requeridos")
                 }
 
-                // Mostrar dispositivos emparejados inmediatamente
+                // Cambiar estado a dispositivos encontrados si ya hay emparejados
                 if (pairedDevices.isNotEmpty()) {
                     _bluetoothState.value = BluetoothState.DevicesFound
                 }
@@ -667,20 +689,21 @@ class QuotationPdfViewModel @Inject constructor(
                 closeConnection()
 
                 // Unregister the BroadcastReceiver
-                receiver?.let { receiver ->
+                receiver?.let {
                     try {
-                        // Using local context to avoid memory leaks
-                        // This will be handled by the Fragment/Activity that uses this ViewModel
+                        context.unregisterReceiver(it)
                     } catch (e: IllegalArgumentException) {
-                        // Receiver not registered, ignore
+                        // Receptor ya desregistrado, ignorar
                     }
                 }
                 receiver = null
 
                 // Reset state
                 _selectedDevice.value = null
+                _devicesList.value = emptyList()
+                _bluetoothState.value = BluetoothState.Disabled
             } catch (e: Exception) {
-                // Ignore cleanup exceptions
+                // Ignorar excepciones de limpieza
             }
         }
     }
@@ -691,5 +714,15 @@ class QuotationPdfViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         cleanup()
+    }
+    fun resetAll() {
+        viewModelScope.launch {
+            cleanup()
+            _selectedDevice.value = null
+            _devicesList.value = emptyList()
+            _bluetoothState.value = BluetoothState.Disabled
+            _pdfState.value = PdfState.Loading
+            pdfFile = null
+        }
     }
 }
