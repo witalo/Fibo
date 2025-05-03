@@ -49,7 +49,11 @@ sealed class QuotationState {
     data class Success(val data: List<IOperation>) : QuotationState()
     data class Error(val message: String) : QuotationState()
 }
-
+sealed class OperationState {
+    object Loading : OperationState()
+    data class Success(val operation: IOperation) : OperationState()
+    data class Error(val message: String) : OperationState()
+}
 // Define Bluetooth states
 sealed class BluetoothState {
     object Disabled : BluetoothState()

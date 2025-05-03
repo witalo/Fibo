@@ -250,7 +250,7 @@ class PdfGenerator @Inject constructor(
             setFontSize(9f)
         })
         document.add(
-            Paragraph("${formatDocumentType(operation.client.documentType) ?: "DOCUMENTO"}: ${operation.client.documentNumber ?: ""}").apply {
+            Paragraph("${formatDocumentType(operation.client.documentType)}: ${operation.client.documentNumber ?: ""}").apply {
                 setBold()
                 setFontSize(8f)
             }

@@ -80,6 +80,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import com.example.fibo.model.IOperation
 import com.example.fibo.utils.BluetoothState
+import com.example.fibo.utils.OperationState
 import com.example.fibo.utils.PdfState
 import com.github.barteksc.pdfviewer.PDFView
 import kotlinx.coroutines.Dispatchers
@@ -110,6 +111,8 @@ fun QuotationPdfDialog(
     val selectedDevice by viewModel.selectedDevice.collectAsState()
     var showDevicesList by remember { mutableStateOf(false) }
     var printingInProgress by remember { mutableStateOf(false) }
+    // Estado de la operación detallada
+    val quotationState by viewModel.quotationState.collectAsState()
 
     // Request permissions
     val bluetoothPermissionLauncher = rememberLauncherForActivityResult(
@@ -138,7 +141,15 @@ fun QuotationPdfDialog(
     LaunchedEffect(isVisible) {
         if (isVisible) {
             viewModel.resetAll() // Limpiar antes de generar nuevo
-            viewModel.generatePdf(quotation, context)
+            viewModel.getQuotationById(quotation.id)
+//            viewModel.generatePdf(quotation, context)
+        }
+    }
+    // Efecto para generar el PDF cuando tenemos los datos detallados
+    LaunchedEffect(quotationState) {
+        if (quotationState is OperationState.Success) {
+            val detailedQuotation = (quotationState as OperationState.Success).operation
+            viewModel.generatePdf(detailedQuotation, context)
         }
     }
 
