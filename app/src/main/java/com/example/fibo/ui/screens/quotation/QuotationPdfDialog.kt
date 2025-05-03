@@ -4,10 +4,13 @@ import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -15,9 +18,11 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,6 +48,7 @@ import androidx.compose.material.icons.filled.BluetoothSearching
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -50,8 +56,11 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -68,16 +77,22 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.imageResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import com.example.fibo.R
 import com.example.fibo.model.IOperation
 import com.example.fibo.utils.BluetoothState
 import com.example.fibo.utils.OperationState
@@ -244,13 +259,40 @@ fun QuotationPdfDialog(
                             }
                             is PdfState.Success -> {
                                 (pdfState as PdfState.Success).file.let { file ->
-                                    PdfViewerAndroidView(
-                                        file = file,
-                                        modifier = Modifier.fillMaxSize(),
-                                        onPdfLoadComplete = {
-                                            // Opcional: Acciones cuando el PDF termina de cargar
+                                    // Contenedor para el PDF + botón flotante
+                                    Box(modifier = Modifier.fillMaxSize()) {
+                                        PdfViewerAndroidView(
+                                            file = file,
+                                            modifier = Modifier.fillMaxSize(),
+                                            onPdfLoadComplete = {
+                                                // Opcional: Acciones cuando el PDF termina de cargar
+                                            }
+                                        )
+
+                                        // Botón flotante para compartir (dentro del área del PDF)
+                                        FloatingActionButton(
+                                            onClick = { sharePdfViaWhatsApp(context, file) },
+                                            modifier = Modifier
+                                                .align(Alignment.TopEnd)
+                                                .padding(1.dp),
+                                            containerColor = Color.Transparent,
+                                            elevation = FloatingActionButtonDefaults.elevation(0.dp),
+                                            interactionSource = remember { MutableInteractionSource() } // Esto desactiva el ripple
+                                        ) {
+                                            Image(
+                                                painter = painterResource(id = R.drawable.ic_whasap),
+                                                contentDescription = "Compartir en WhatsApp",
+                                                modifier = Modifier.size(40.dp)
+                                            )
                                         }
-                                    )
+                                    }
+//                                    PdfViewerAndroidView(
+//                                        file = file,
+//                                        modifier = Modifier.fillMaxSize(),
+//                                        onPdfLoadComplete = {
+//                                            // Opcional: Acciones cuando el PDF termina de cargar
+//                                        }
+//                                    )
                                 }
                             }
                             is PdfState.Error -> {
@@ -668,5 +710,35 @@ fun BluetoothStatusIndicator(bluetoothState: BluetoothState) {
                 else -> Color.Black
             }
         )
+    }
+}
+private fun sharePdfViaWhatsApp(context: Context, pdfFile: File) {
+    try {
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.provider",
+            pdfFile
+        )
+
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "application/pdf"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            // Opcional: Especificar WhatsApp directamente
+             setPackage("com.whatsapp")
+        }
+//        context.startActivity(Intent.createChooser(shareIntent, "Compartir PDF via"))
+        try {
+            context.startActivity(Intent.createChooser(shareIntent, "Compartir PDF via"))
+        } catch (e: ActivityNotFoundException) {
+            Toast.makeText(context, "WhatsApp no está instalado", Toast.LENGTH_SHORT).show()
+        }
+    } catch (e: Exception) {
+        Toast.makeText(
+            context,
+            "Error al compartir el PDF: ${e.message}",
+            Toast.LENGTH_LONG
+        ).show()
+        Log.e("SharePDF", "Error sharing PDF", e)
     }
 }

@@ -1,4 +1,5 @@
 package com.example.fibo.ui.screens.quotation
+
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
@@ -31,6 +32,7 @@ import com.example.fibo.model.IOperation
 import com.example.fibo.model.ISubsidiary
 import com.example.fibo.repository.OperationRepository
 import com.example.fibo.utils.BluetoothState
+import com.example.fibo.utils.NumberToLetterConverter
 import com.example.fibo.utils.OperationState
 import com.example.fibo.utils.PdfState
 import com.google.zxing.BarcodeFormat
@@ -50,6 +52,7 @@ import com.itextpdf.kernel.geom.PageSize
 import com.itextpdf.layout.borders.Border
 import com.itextpdf.layout.element.Cell
 import com.itextpdf.kernel.colors.DeviceRgb
+import com.itextpdf.layout.borders.SolidBorder
 import com.itextpdf.layout.element.Image
 import com.itextpdf.layout.properties.BorderRadius
 import com.itextpdf.layout.properties.HorizontalAlignment
@@ -135,7 +138,7 @@ class QuotationPdfViewModel @Inject constructor(
 
             try {
                 val quotation = operationRepository.getOperationById(quotationId)
-                _quotationState.value =OperationState.Success(quotation)
+                _quotationState.value = OperationState.Success(quotation)
             } catch (e: ApolloException) {
                 _quotationState.value = OperationState.Error(e.message ?: "Error consulta")
             } catch (e: Exception) {
@@ -150,25 +153,20 @@ class QuotationPdfViewModel @Inject constructor(
     private fun hasBluetoothPermissions(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.BLUETOOTH_CONNECT
-            ) == PackageManager.PERMISSION_GRANTED &&
-                    ContextCompat.checkSelfPermission(
-                        context,
-                        Manifest.permission.BLUETOOTH_SCAN
-                    ) == PackageManager.PERMISSION_GRANTED
+                context, Manifest.permission.BLUETOOTH_CONNECT
+            ) == PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(
+                context, Manifest.permission.BLUETOOTH_SCAN
+            ) == PackageManager.PERMISSION_GRANTED
         } else {
             // Para versiones anteriores a Android 12
             ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.BLUETOOTH
-            ) == PackageManager.PERMISSION_GRANTED &&
-                    ContextCompat.checkSelfPermission(
-                        context,
-                        Manifest.permission.BLUETOOTH_ADMIN
-                    ) == PackageManager.PERMISSION_GRANTED
+                context, Manifest.permission.BLUETOOTH
+            ) == PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(
+                context, Manifest.permission.BLUETOOTH_ADMIN
+            ) == PackageManager.PERMISSION_GRANTED
         }
     }
+
     /**
      * Get paired devices with proper permission handling
      */
@@ -178,8 +176,7 @@ class QuotationPdfViewModel @Inject constructor(
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     bluetoothAdapter.getBondedDevices().toList()
                 } else {
-                    @Suppress("DEPRECATION")
-                    bluetoothAdapter.bondedDevices.toList()
+                    @Suppress("DEPRECATION") bluetoothAdapter.bondedDevices.toList()
                 }
             } else {
                 emptyList()
@@ -188,6 +185,7 @@ class QuotationPdfViewModel @Inject constructor(
             emptyList()
         }
     }
+
     /**
      * Start Bluetooth discovery with proper permission handling
      */
@@ -206,6 +204,7 @@ class QuotationPdfViewModel @Inject constructor(
             false
         }
     }
+
     /**
      * Cancel Bluetooth discovery with proper permission handling
      */
@@ -221,6 +220,7 @@ class QuotationPdfViewModel @Inject constructor(
             false
         }
     }
+
     /**
      * Scan for available Bluetooth devices with complete permission handling
      */
@@ -229,7 +229,8 @@ class QuotationPdfViewModel @Inject constructor(
             try {
                 _bluetoothState.value = BluetoothState.Scanning
 
-                val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+                val bluetoothManager =
+                    context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
                 val bluetoothAdapter = bluetoothManager?.adapter
 
                 if (bluetoothAdapter == null) {
@@ -263,12 +264,17 @@ class QuotationPdfViewModel @Inject constructor(
                     override fun onReceive(context: Context, intent: Intent) {
                         when (intent.action) {
                             BluetoothDevice.ACTION_FOUND -> {
-                                val device = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                    intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
-                                } else {
-                                    @Suppress("DEPRECATION")
-                                    intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
-                                }
+                                val device =
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        intent.getParcelableExtra(
+                                            BluetoothDevice.EXTRA_DEVICE,
+                                            BluetoothDevice::class.java
+                                        )
+                                    } else {
+                                        @Suppress("DEPRECATION") intent.getParcelableExtra(
+                                            BluetoothDevice.EXTRA_DEVICE
+                                        )
+                                    }
                                 device?.let {
                                     val currentDevices = _devicesList.value.toMutableList()
                                     if (!currentDevices.any { d -> d.address == it.address }) {
@@ -277,13 +283,15 @@ class QuotationPdfViewModel @Inject constructor(
                                     }
                                 }
                             }
+
                             BluetoothAdapter.ACTION_DISCOVERY_FINISHED -> {
                                 // Cambiar estado sólo si hay dispositivos o si ya había encontrado antes
                                 if (_devicesList.value.isNotEmpty()) {
                                     _bluetoothState.value = BluetoothState.DevicesFound
                                 } else {
                                     // Si no hay dispositivos, mostrar mensaje de error
-                                    _bluetoothState.value = BluetoothState.Error("No se encontraron dispositivos")
+                                    _bluetoothState.value =
+                                        BluetoothState.Error("No se encontraron dispositivos")
                                 }
                             }
                         }
@@ -309,10 +317,12 @@ class QuotationPdfViewModel @Inject constructor(
             } catch (e: SecurityException) {
                 _bluetoothState.value = BluetoothState.Error("Permisos insuficientes: ${e.message}")
             } catch (e: Exception) {
-                _bluetoothState.value = BluetoothState.Error("Error al buscar dispositivos: ${e.message}")
+                _bluetoothState.value =
+                    BluetoothState.Error("Error al buscar dispositivos: ${e.message}")
             }
         }
     }
+
     /**
      * Select a device from the list
      */
@@ -341,11 +351,10 @@ class QuotationPdfViewModel @Inject constructor(
             try {
                 withContext(Dispatchers.IO) {
                     val pdfDir = File(
-                        context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS),
-                        "cotizaciones"
+                        context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), "cotizaciones"
                     ).apply { mkdirs() }
 
-                    val fileName = "cotizacion_${quotation.serial}_${quotation.correlative}.pdf"
+                    val fileName = "COTIZACION_${quotation.serial}_${quotation.correlative}.pdf"
                     val file = File(pdfDir, fileName)
 
                     FileOutputStream(file).use { outputStream ->
@@ -369,9 +378,8 @@ class QuotationPdfViewModel @Inject constructor(
 
                         // 5. Totales con diseño mejorado
                         addEnhancedTotals(document, quotation)
-                        val qrString = "|${quotation.serial}-${quotation.correlative.toString().padStart(6, '0')}|${quotation.client.documentType}|${quotation.client.documentNumber}|${quotation.client.names}"
-                        // 6. Pie de página con QR y términos
-                        addFooterWithQR(document, context, qrString)
+//                        // 6. Pie de página con QR y términos
+                        addFooterWithQR(document, context)
 
                         document.close()
                     }
@@ -385,14 +393,22 @@ class QuotationPdfViewModel @Inject constructor(
         }
     }
 
-    private suspend fun addCustomHeader(document: Document, quotation: IOperation, context: Context) {
+    private suspend fun addCustomHeader(
+        document: Document, quotation: IOperation, context: Context
+    ) {
         // Esperar a que ambos datos estén disponibles
         val company = _companyData.filterNotNull().first()
         val subsidiary = _subsidiaryData.filterNotNull().first()
         // Tabla de 3 columnas para el encabezado
-        val headerTable = Table(UnitValue.createPercentArray(floatArrayOf(25f, 50f, 25f)))
-            .setWidth(UnitValue.createPercentValue(100f))
-            .setMarginBottom(20f)
+        val headerTable = Table(
+            UnitValue.createPercentArray(
+                floatArrayOf(
+                    25f,
+                    50f,
+                    25f
+                )
+            )
+        ).setWidth(UnitValue.createPercentValue(100f)).setMarginBottom(7f)
 
 
         // Columna 1: Logo (debes reemplazar con tu imagen real)
@@ -409,7 +425,8 @@ class QuotationPdfViewModel @Inject constructor(
                     }
 
                     // Decode base64 to bytes
-                    val logoBytes = android.util.Base64.decode(base64Data, android.util.Base64.DEFAULT)
+                    val logoBytes =
+                        android.util.Base64.decode(base64Data, android.util.Base64.DEFAULT)
 
                     // Create a bitmap from the logo bytes
                     val bitmap = BitmapFactory.decodeByteArray(logoBytes, 0, logoBytes.size)
@@ -433,17 +450,16 @@ class QuotationPdfViewModel @Inject constructor(
                     add(logo)
                 } else {
                     // Fallback to text if logo is empty
-                    add(Paragraph("")
-                        .setTextAlignment(TextAlignment.LEFT)
-                        .setBold()
-                        .setFontSize(12f))
+                    add(
+                        Paragraph("").setTextAlignment(TextAlignment.LEFT).setBold()
+                            .setFontSize(9f)
+                    )
                 }
             } catch (e: Exception) {
                 // Error handling - fallback to text
-                add(Paragraph("")
-                    .setTextAlignment(TextAlignment.LEFT)
-                    .setBold()
-                    .setFontSize(12f))
+                add(
+                    Paragraph("").setTextAlignment(TextAlignment.LEFT).setBold().setFontSize(9f)
+                )
             }
 
             setBorder(Border.NO_BORDER)
@@ -452,17 +468,15 @@ class QuotationPdfViewModel @Inject constructor(
         headerTable.addCell(logoCell)
 
         // Columna 2: Datos de la empresa (centrado)
-        val companyInfo = Paragraph()
-            .add(Paragraph(company.businessName)
-                .setFontSize(14f)
-                .setBold()
-                .setTextAlignment(TextAlignment.CENTER))
-            .add(Paragraph(company.doc)
-                .setFontSize(10f)
-                .setTextAlignment(TextAlignment.CENTER))
-            .add(Paragraph(subsidiary.address)
-                .setFontSize(10f)
-                .setTextAlignment(TextAlignment.CENTER))
+        val companyInfo = Paragraph().add(
+                Paragraph(company.businessName).setFontSize(10f).setBold()
+                    .setTextAlignment(TextAlignment.CENTER)
+            ).add(
+                Paragraph(company.doc).setFontSize(9f).setTextAlignment(TextAlignment.CENTER)
+            ).add(
+                Paragraph(subsidiary.address).setFontSize(9f)
+                    .setTextAlignment(TextAlignment.CENTER)
+            )
 //            .add(Paragraph("Tel: (04) 123-4567")
 //                .setFontSize(10f)
 //                .setTextAlignment(TextAlignment.CENTER))
@@ -480,29 +494,24 @@ class QuotationPdfViewModel @Inject constructor(
             setBackgroundColor(hexToDeviceRgb("#065FCC"))// Color AZUL
             setBorderRadius(BorderRadius(7f))
 
-            val quoteText = Paragraph("COTIZACIÓN")
-                .setFontSize(13f)
-                .setBold()
-                .setFontColor(ColorConstants.WHITE)
-                .setTextAlignment(TextAlignment.CENTER)
-                .setPadding(0f)
-                .setMarginBottom(0f)
+            val quoteText = Paragraph("COTIZACIÓN").setFontSize(10f).setBold()
+                .setFontColor(ColorConstants.WHITE).setTextAlignment(TextAlignment.CENTER)
+                .setPadding(0f).setMarginBottom(0f)
 
-            val numberText = Paragraph("${quotation.serial}-${quotation.correlative.toString().padStart(6, '0')}")
-                .setFontSize(12f)
-                .setFontColor(ColorConstants.WHITE)
-                .setTextAlignment(TextAlignment.CENTER)
-                .setPadding(0f)
-                .setMarginBottom(0f)
+            val numberText = Paragraph(
+                "${quotation.serial}-${
+                    quotation.correlative.toString().padStart(6, '0')
+                }"
+            ).setFontSize(10f).setFontColor(ColorConstants.WHITE)
+                .setTextAlignment(TextAlignment.CENTER).setPadding(0f).setMarginBottom(0f)
 
-            addCell(Cell().add(Paragraph("RUC: 20123456789")
-                .setFontSize(12f)
-                .setBold()
-                .setFontColor(ColorConstants.WHITE)
-                .setTextAlignment(TextAlignment.CENTER)
-                .setPadding(0f)
-                .setMarginBottom(0f)
-            ).setBorder(Border.NO_BORDER))
+            addCell(
+                Cell().add(
+                    Paragraph("RUC: 20123456789").setFontSize(10f).setBold()
+                        .setFontColor(ColorConstants.WHITE).setTextAlignment(TextAlignment.CENTER)
+                        .setPadding(0f).setMarginBottom(0f)
+                ).setBorder(Border.NO_BORDER)
+            )
             addCell(Cell().add(quoteText).setBorder(Border.NO_BORDER))
             addCell(Cell().add(numberText).setBorder(Border.NO_BORDER))
         }
@@ -517,6 +526,7 @@ class QuotationPdfViewModel @Inject constructor(
         document.add(headerTable)
         document.add(Paragraph("\n"))
     }
+
     private fun getRoundedBitmap(bitmap: Bitmap): Bitmap {
         val width = bitmap.width
         val height = bitmap.height
@@ -537,33 +547,43 @@ class QuotationPdfViewModel @Inject constructor(
 
         return outputBitmap
     }
+
     private fun addCustomerInfo(document: Document, quotation: IOperation) {
-        val customerTable = Table(UnitValue.createPercentArray(floatArrayOf(20f, 80f)))
-            .setWidth(UnitValue.createPercentValue(100f))
-            .setMarginBottom(5f)
+        val customerTable = Table(
+            UnitValue.createPercentArray(
+                floatArrayOf(
+                    15f,
+                    85f
+                )
+            )
+        ).setWidth(UnitValue.createPercentValue(100f)).setMarginBottom(5f)
 
         // Estilo para las celdas de título
         val titleStyle = { text: String ->
-            Paragraph(text).setBold().setFontSize(10f)
+            Paragraph(text).setBold().setFontSize(7f)
+        }
+        val detailStyle = { text: String ->
+            Paragraph(text).setFontSize(7f)
         }
 
         with(customerTable) {
             addCell(createCell(titleStyle("Cliente:"), true))
-            addCell(createCell(Paragraph(quotation.client.names ?: "")))
+            addCell(createCell(detailStyle(quotation.client.names ?: "")))
 
             addCell(createCell(titleStyle("Documento:"), true))
-            addCell(createCell(Paragraph("${formatDocumentType(quotation.client.documentType)}: ${quotation.client.documentNumber ?: ""}")))
+            addCell(createCell(detailStyle("${formatDocumentType(quotation.client.documentType)}: ${quotation.client.documentNumber ?: ""}")))
 
             addCell(createCell(titleStyle("Dirección:"), true))
-            addCell(createCell(Paragraph(quotation.client.address ?: "")))
+            addCell(createCell(detailStyle(quotation.client.address ?: "")))
 
             addCell(createCell(titleStyle("Email:"), true))
-            addCell(createCell(Paragraph(quotation.client.email ?: "")))
+            addCell(createCell(detailStyle(quotation.client.email ?: "")))
         }
 
         document.add(customerTable)
 //        document.add(Paragraph("\n"))
     }
+
     private fun formatDocumentType(documentType: String?): String {
         // Si es nulo, retornamos DOCUMENTO directamente
         if (documentType == null) return "DOCUMENTO"
@@ -586,20 +606,33 @@ class QuotationPdfViewModel @Inject constructor(
             else -> processedType
         }
     }
+
     private fun addQuotationDetails(document: Document, quotation: IOperation) {
-        val detailsTable = Table(UnitValue.createPercentArray(floatArrayOf(30f, 70f)))
-            .setWidth(UnitValue.createPercentValue(100f))
-            .setMarginBottom(5f)
+        val detailsTable = Table(
+            UnitValue.createPercentArray(
+                floatArrayOf(
+                    15f,
+                    85f
+                )
+            )
+        ).setWidth(UnitValue.createPercentValue(100f)).setMarginBottom(5f)
+        // Estilo para las celdas de título
+        val titleStyle = { text: String ->
+            Paragraph(text).setBold().setFontSize(7f)
+        }
+        val detailStyle = { text: String ->
+            Paragraph(text).setFontSize(7f)
+        }
 
         with(detailsTable) {
-            addCell(createCell(Paragraph("Fecha Emisión:"), true))
-            addCell(createCell(Paragraph(quotation.emitDate)))
+            addCell(createCell(titleStyle("Fecha Emisión:"), true))
+            addCell(createCell(detailStyle(quotation.emitDate)))
 
-            addCell(createCell(Paragraph("Moneda:"), true))
-            addCell(createCell(Paragraph(quotation.currencyType)))
+            addCell(createCell(titleStyle("Moneda:"), true))
+            addCell(createCell(detailStyle(quotation.currencyType)))
 
-            addCell(createCell(Paragraph("Forma de Pago:"), true))
-            addCell(createCell(Paragraph("CONTADO")))
+            addCell(createCell(titleStyle("Forma de Pago:"), true))
+            addCell(createCell(detailStyle("CONTADO")))
         }
 
         document.add(detailsTable)
@@ -608,17 +641,16 @@ class QuotationPdfViewModel @Inject constructor(
 
     private fun addItemsTable(document: Document, quotation: IOperation) {
         // Tabla con bordes redondeados
-        val itemsTable = Table(UnitValue.createPercentArray(floatArrayOf(8f, 42f, 12f, 12f, 12f, 14f)))
-            .setWidth(UnitValue.createPercentValue(100f))
-            .setMarginBottom(5f)
+        val itemsTable =
+            Table(UnitValue.createPercentArray(floatArrayOf(8f, 42f, 12f, 12f, 12f, 14f))).setWidth(
+                    UnitValue.createPercentValue(100f)
+                ).setMarginBottom(5f)
 
         // Estilo para celdas de encabezado
         fun createHeaderCell(text: String): Cell {
             return Cell().apply {
                 add(
-                    Paragraph(text)
-                        .setBold()
-                        .setFontSize(9f)
+                    Paragraph(text).setBold().setFontSize(9f)
                         .setFontColor(ColorConstants.WHITE) // Establece el texto en blanco
                 )
                 setBackgroundColor(hexToDeviceRgb("#065FCC")) // Fondo azul
@@ -639,9 +671,17 @@ class QuotationPdfViewModel @Inject constructor(
         }
 
         // Items
+        val detailStyle = { text: String ->
+            Paragraph(text).setFontSize(7f)
+        }
         quotation.operationDetailSet.forEach { detail ->
             itemsTable.addCell(createRightAlignedCell(detail.quantity.toString()))
-            itemsTable.addCell(createCell(Paragraph("${detail.tariff.productName} (${detail.description})")))
+            val description = if(detail.description.isNotEmpty()) {
+                "${detail.tariff.productName} (${detail.description})"
+            } else {
+                detail.tariff.productName
+            }
+            itemsTable.addCell(createCell(detailStyle(description)))
             itemsTable.addCell(createRightAlignedCell("S/ ${"%.2f".format(detail.unitPrice)}"))
             itemsTable.addCell(createRightAlignedCell("S/ ${"%.2f".format(detail.totalDiscount)}"))
             itemsTable.addCell(createRightAlignedCell("S/ ${"%.2f".format(detail.totalIgv)}"))
@@ -652,70 +692,22 @@ class QuotationPdfViewModel @Inject constructor(
     }
 
     private fun addEnhancedTotals(document: Document, quotation: IOperation) {
-        val totalsTable = Table(UnitValue.createPercentArray(floatArrayOf(70f, 30f)))
-            .setWidth(UnitValue.createPercentValue(100f))
-            .setMarginBottom(5f)
+        // Crear tabla principal con dos columnas: QR a la izquierda y Totales a la derecha
+        val mainTable = Table(
+            UnitValue.createPercentArray(
+                floatArrayOf(
+                    60f,
+                    40f
+                )
+            )
+        ).setWidth(UnitValue.createPercentValue(100f)).setMarginBottom(5f)
 
-        fun createTotalCell(label: String, value: String, isBold: Boolean = false): Cell {
-            return Cell().apply {
-                add(Paragraph(label).setTextAlignment(TextAlignment.RIGHT))
-                setBorder(Border.NO_BORDER)
-                setPadding(5f)
-            }
-        }
-
-        fun createValueCell(value: String, isBold: Boolean = false): Cell {
-            return Cell().apply {
-                add(Paragraph(value).setTextAlignment(TextAlignment.RIGHT).run {
-                    if (isBold) setBold() else this
-                })
-                setBorder(Border.NO_BORDER)
-                setPadding(5f)
-            }
-        }
-
-        with(totalsTable) {
-            // Operaciones gravadas
-            addCell(createTotalCell("Op. Gravadas:", ""))
-            addCell(createValueCell("S/ ${"%.2f".format(quotation.totalTaxed)}"))
-
-            // Descuento global
-            if (quotation.discountGlobal > 0) {
-                addCell(createTotalCell("Descuento Global:", ""))
-                addCell(createValueCell("-S/ ${"%.2f".format(quotation.discountGlobal)}"))
-            }
-
-            // IGV
-            addCell(createTotalCell("IGV (18%):", ""))
-            addCell(createValueCell("S/ ${"%.2f".format(quotation.totalIgv)}"))
-
-            // Total
-            addCell(createTotalCell("TOTAL:", ""))
-            addCell(createValueCell("S/ ${"%.2f".format(quotation.totalToPay)}", true))
-        }
-
-        document.add(totalsTable)
-    }
-
-    private fun addFooterWithQR(document: Document, context: Context, qrContent: String) {
-        val footerTable = Table(UnitValue.createPercentArray(floatArrayOf(50f, 50f)))
-            .setWidth(UnitValue.createPercentValue(100f))
-
-        // Columna izquierda: Términos y condiciones
-        val terms = Paragraph()
-            .add(Paragraph("TÉRMINOS Y CONDICIONES")
-                .setBold()
-                .setFontSize(10f))
-            .add(Paragraph("• Válido por 15 días"))
-            .add(Paragraph("• Precios sujetos a cambio sin previo aviso"))
-            .add(Paragraph("• Formas de pago: Efectivo, Transferencia"))
-            .setFontSize(8f)
-
-        footerTable.addCell(Cell().add(terms).setBorder(Border.NO_BORDER))
-
-        // Columna derecha: Código QR generado
+        // Columna izquierda: QR
         val qrCell = Cell().apply {
             // Generar el código QR
+            val qrContent = "|${quotation.serial}-${
+                quotation.correlative.toString().padStart(6, '0')
+            }|${quotation.client.documentType}|${quotation.client.documentNumber}|${quotation.client.names}"
             val qrBitmap = generateQRCode(qrContent)
 
             if (qrBitmap != null) {
@@ -725,37 +717,146 @@ class QuotationPdfViewModel @Inject constructor(
                 val qrImageData = stream.toByteArray()
 
                 // Crear imagen con iText
-                val qrImage = Image(ImageDataFactory.create(qrImageData))
-                    .setWidth(100f)  // Ajusta el tamaño según necesites
-                    .setHorizontalAlignment(HorizontalAlignment.RIGHT)
+                val qrImage = Image(ImageDataFactory.create(qrImageData)).setWidth(100f)
+                    .setHorizontalAlignment(HorizontalAlignment.LEFT)
 
                 add(qrImage)
-                add(Paragraph("Escanea para más información")
-                    .setFontSize(8f)
-                    .setTextAlignment(TextAlignment.CENTER))
+//                add(Paragraph("Escanea para más información")
+//                    .setFontSize(8f)
+//                    .setTextAlignment(TextAlignment.LEFT))
             } else {
                 // Fallback en caso de error
-                add(Paragraph("ERROR AL GENERAR QR")
-                    .setTextAlignment(TextAlignment.CENTER)
-                    .setFontSize(8f))
+                add(
+                    Paragraph("").setTextAlignment(TextAlignment.LEFT).setFontSize(7f)
+                )
             }
 
             setBorder(Border.NO_BORDER)
+            setVerticalAlignment(VerticalAlignment.TOP)
         }
 
-        footerTable.addCell(qrCell)
+        // Columna derecha: Tabla de totales
+        val totalsTable = Table(
+            UnitValue.createPercentArray(
+                floatArrayOf(
+                    70f,
+                    30f
+                )
+            )
+        ).setWidth(UnitValue.createPercentValue(100f))
 
-        document.add(footerTable)
+        with(totalsTable) {
+
+
+            // Descuento global
+            if (quotation.discountGlobal > 0) {
+                addCell(createTotalCell("Descuento Global:"))
+                addCell(createValueCell("-S/ ${"%.2f".format(quotation.discountGlobal)}"))
+            }
+            // Exonerada
+            if (quotation.totalExonerated > 0) {
+                addCell(createTotalCell("Op. Exoneradas:"))
+                addCell(createValueCell("-S/ ${"%.2f".format(quotation.totalExonerated)}"))
+            }
+            // Inafecta
+            if (quotation.totalExonerated > 0) {
+                addCell(createTotalCell("Op. Inafectas:"))
+                addCell(createValueCell("-S/ ${"%.2f".format(quotation.totalUnaffected)}"))
+            }
+            // Gratuita
+            if (quotation.totalFree > 0) {
+                addCell(createTotalCell("Op. Gratuitas:"))
+                addCell(createValueCell("-S/ ${"%.2f".format(quotation.totalFree)}"))
+            }
+
+            // Operaciones gravadas
+            addCell(createTotalCell("Op. Gravadas:"))
+            addCell(createValueCell("S/ ${"%.2f".format(quotation.totalTaxed)}"))
+
+            // IGV
+            addCell(createTotalCell("IGV (18%):"))
+            addCell(createValueCell("S/ ${"%.2f".format(quotation.totalIgv)}"))
+
+            // Total
+            addCell(createTotalCell("TOTAL:"))
+            addCell(createValueCell("S/ ${"%.2f".format(quotation.totalToPay)}", true))
+        }
+
+        val totalsCell = Cell().apply {
+            add(totalsTable)
+            setBorder(Border.NO_BORDER)
+            setPadding(5f)
+        }
+
+        // Agregar celdas a la tabla principal
+        mainTable.addCell(qrCell)
+        mainTable.addCell(totalsCell)
+
+        // Agregar la tabla principal al documento
+        document.add(mainTable)
+
+        // Agregar el total en letras
+        val totalEnLetras = NumberToLetterConverter.convertNumberToLetter(
+            quotation.totalToPay, quotation.currencyType
+        )
+        val totalInWords = Paragraph("SON: $totalEnLetras").setFontSize(7f).setBold()
+            .setTextAlignment(TextAlignment.LEFT).setMarginBottom(5f)
+
+        document.add(totalInWords)
+    }
+
+    private fun addFooterWithQR(document: Document, context: Context) {
+        // Ahora solo tendremos términos y condiciones, ya que el QR se movió arriba
+        val terms = Paragraph().add(
+                Paragraph("TÉRMINOS Y CONDICIONES").setBold().setFontSize(7f)
+            )
+//            .add(Paragraph(" • Válido por 15 días"))
+//            .add(Paragraph(" • Precios sujetos a cambio sin previo aviso"))
+//            .add(Paragraph(" • Formas de pago: Efectivo, Transferencia"))
+//            .setFontSize(8f)
+//            .setMarginTop(2f)
+
+        document.add(terms)
+        document.add(Paragraph(" • Válido por 15 días").setFontSize(6f))
+        document.add(Paragraph(" • Precios sujetos a cambio sin previo aviso").setFontSize(6f))
+        document.add(Paragraph(" • Formas de pago: Efectivo, Transferencia").setFontSize(6f))
         document.add(Paragraph("\n"))
 
         // Firma
-        val signature = Paragraph("__________________________\nResponsable: Nombre del Vendedor")
-            .setTextAlignment(TextAlignment.CENTER)
-            .setFontSize(10f)
-            .setMarginTop(20f)
-
-        document.add(signature)
+//        val signature = Paragraph("__________________________\nResponsable: Nombre del Vendedor")
+//            .setTextAlignment(TextAlignment.CENTER)
+//            .setFontSize(10f)
+//            .setMarginTop(20f)
+//
+//        document.add(signature)
     }
+
+    // Funciones auxiliares para la tabla de totales
+    private fun createTotalCell(label: String): Cell {
+        return Cell().apply {
+            add(
+                Paragraph(label).setTextAlignment(TextAlignment.RIGHT).setFontSize(7f)
+            )
+            // Añadir bordes sutiles
+            setBorderBottom(SolidBorder(ColorConstants.LIGHT_GRAY, 0.5f))
+            setBorderLeft(SolidBorder(ColorConstants.LIGHT_GRAY, 0.5f))
+            setBorderTop(SolidBorder(ColorConstants.LIGHT_GRAY, 0.5f))
+            setPadding(5f)
+        }
+    }
+
+    private fun createValueCell(value: String, isBold: Boolean = false): Cell {
+        return Cell().apply {
+            add(Paragraph(value).setTextAlignment(TextAlignment.RIGHT).setFontSize(7f)
+                .run { if (isBold) setBold() else this })
+            // Añadir bordes sutiles
+            setBorderBottom(SolidBorder(ColorConstants.LIGHT_GRAY, 0.5f))
+            setBorderRight(SolidBorder(ColorConstants.LIGHT_GRAY, 0.5f))
+            setBorderTop(SolidBorder(ColorConstants.LIGHT_GRAY, 0.5f))
+            setPadding(5f)
+        }
+    }
+
     private fun generateQRCode(content: String): Bitmap? {
         try {
             // Necesitas añadir la dependencia de ZXing a tu proyecto:
@@ -768,9 +869,7 @@ class QuotationPdfViewModel @Inject constructor(
 
             val qrCodeWriter = QRCodeWriter()
             val bitMatrix = qrCodeWriter.encode(
-                content,
-                BarcodeFormat.QR_CODE,
-                300, // Ancho del QR
+                content, BarcodeFormat.QR_CODE, 300, // Ancho del QR
                 300, // Alto del QR
                 hints
             )
@@ -792,6 +891,7 @@ class QuotationPdfViewModel @Inject constructor(
             return null
         }
     }
+
     // Funciones auxiliares mejoradas
     private fun createCell(paragraph: Paragraph, isBold: Boolean = false): Cell {
         return Cell().add(paragraph).apply {
@@ -801,11 +901,11 @@ class QuotationPdfViewModel @Inject constructor(
     }
 
     private fun createRightAlignedCell(text: String): Cell {
-        return Cell().add(Paragraph(text).setTextAlignment(TextAlignment.RIGHT))
-            .setPadding(5f)
-            .setVerticalAlignment(VerticalAlignment.MIDDLE)
+        return Cell().add(Paragraph(text).setTextAlignment(TextAlignment.RIGHT)).setPadding(5f)
+            .setVerticalAlignment(VerticalAlignment.MIDDLE).setFontSize(7f)
     }
-//   ------------------------------------------------------------------------------------------------
+
+    //   ------------------------------------------------------------------------------------------------
     fun hexToDeviceRgb(hexColor: String): DeviceRgb {
         val cleanHex = hexColor.replace("#", "")
         val colorInt = cleanHex.toLong(16).toInt()
@@ -822,7 +922,8 @@ class QuotationPdfViewModel @Inject constructor(
     fun connectAndPrint(context: Context, device: BluetoothDevice, operation: IOperation) {
         viewModelScope.launch {
             try {
-                val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+                val bluetoothManager =
+                    context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
                 val bluetoothAdapter = bluetoothManager?.adapter
 
                 if (bluetoothAdapter == null) {
@@ -832,7 +933,8 @@ class QuotationPdfViewModel @Inject constructor(
 
                 // Cancelar descubrimiento con manejo de permisos
                 if (!cancelBluetoothDiscovery(bluetoothAdapter)) {
-                    _bluetoothState.value = BluetoothState.Error("No se pudo cancelar el descubrimiento")
+                    _bluetoothState.value =
+                        BluetoothState.Error("No se pudo cancelar el descubrimiento")
                     return@launch
                 }
 
@@ -848,7 +950,8 @@ class QuotationPdfViewModel @Inject constructor(
                 }
 
                 if (bluetoothSocket == null) {
-                    _bluetoothState.value = BluetoothState.Error("Permisos insuficientes para conectar")
+                    _bluetoothState.value =
+                        BluetoothState.Error("Permisos insuficientes para conectar")
                     return@launch
                 }
 
@@ -859,7 +962,8 @@ class QuotationPdfViewModel @Inject constructor(
                         _bluetoothState.value = BluetoothState.Connected
 
                         // Obtener el outputStream de manera segura
-                        val outputStream = bluetoothSocket?.outputStream ?: throw IOException("No se pudo obtener el stream de salida")
+                        val outputStream = bluetoothSocket?.outputStream
+                            ?: throw IOException("No se pudo obtener el stream de salida")
 
                         // Llamar a la función de impresión
                         sendPrintQuotation(outputStream, operation)
@@ -881,6 +985,7 @@ class QuotationPdfViewModel @Inject constructor(
             }
         }
     }
+
     /**
      * Send quotation data to the printer
      */
@@ -935,24 +1040,21 @@ class QuotationPdfViewModel @Inject constructor(
             outputStream.write(
                 "SUBTOTAL:             S/ ${
                     String.format(
-                        "%.2f",
-                        operation.totalTaxed
+                        "%.2f", operation.totalTaxed
                     )
                 }\n".toByteArray()
             )
             outputStream.write(
                 "IGV (18%):            S/ ${
                     String.format(
-                        "%.2f",
-                        operation.totalIgv
+                        "%.2f", operation.totalIgv
                     )
                 }\n".toByteArray()
             )
             outputStream.write(
                 "TOTAL:                S/ ${
                     String.format(
-                        "%.2f",
-                        operation.totalToPay
+                        "%.2f", operation.totalToPay
                     )
                 }\n".toByteArray()
             )
@@ -1021,6 +1123,7 @@ class QuotationPdfViewModel @Inject constructor(
         super.onCleared()
         cleanup()
     }
+
     fun resetAll() {
         viewModelScope.launch {
             cleanup()
@@ -1031,4 +1134,6 @@ class QuotationPdfViewModel @Inject constructor(
             pdfFile = null
         }
     }
+
+
 }
