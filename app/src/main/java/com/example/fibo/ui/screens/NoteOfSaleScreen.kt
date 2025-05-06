@@ -130,8 +130,8 @@ fun NoteOfSaleScreen(
                                     (noteOfSaleState as NoteOfSaleState.Success).data
                                 NoteOfSaleContent(
                                     noteOfSale = noteOfSale,
-                                    onNoteOfSaleClick = { q ->
-                                        navController.navigate("note_sale_detail/${q.id}")
+                                    onNoteOfSaleClick = { n ->
+                                        navController.navigate("noteOfSale_detail/${n.id}")
                                     },
                                     onNewNoteOfSale = { navController.navigate(Screen.NewNoteOfSale.route) }
                                 )

@@ -164,5 +164,18 @@ fun NavGraph(
                 // )
             }
         }
+        // Pantallas de detalle
+        Screen.NoteOfSaleDetail.routeWithArgs?.let {
+            composable(
+                route = it,
+                arguments = Screen.NoteOfSaleDetail.arguments
+            ) { backStackEntry ->
+                val noteOfSaleId = backStackEntry.arguments?.getString(Screen.NoteOfSaleDetail.noteOfSaleIdArg)?.toIntOrNull() ?: 0
+                // InvoiceDetailScreen(
+                //     invoiceId = invoiceId,
+                //     onBack = { navController.popBackStack() }
+                // )
+            }
+        }
     }
 }

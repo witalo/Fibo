@@ -85,11 +85,21 @@ sealed class PdfState {
 // BluetoothUtils.kt
 suspend fun downloadAndSavePdf(context: Context, url: String, fileName: String): File {
     return withContext(Dispatchers.IO) {
-        val client = OkHttpClient()
-        val request = Request.Builder().url(url).build()
+        val client = OkHttpClient.Builder()
+            .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .build()
+
+        val request = Request.Builder()
+            .url(url)
+            .header("Accept", "application/pdf")
+            .build()
+
         val response = client.newCall(request).execute()
 
-        if (!response.isSuccessful) throw IOException("Failed to download PDF")
+        if (!response.isSuccessful) {
+            throw IOException("Failed to download PDF: ${response.code}")
+        }
 
         val body = response.body?.bytes() ?: throw IOException("Empty PDF response")
         val file = File(context.cacheDir, fileName)

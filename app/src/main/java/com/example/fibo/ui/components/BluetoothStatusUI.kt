@@ -27,13 +27,17 @@ import androidx.compose.material.icons.filled.BluetoothSearching
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonColors
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -49,7 +53,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import com.example.fibo.utils.BluetoothUtils.hasBluetoothConnectPermission
 import com.example.fibo.utils.MyBluetoothState
 
 @Composable
@@ -64,46 +67,101 @@ fun BluetoothStatusUI(
 ) {
     Column(
         modifier = modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+            .fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Estado actual
+        // Estado actual con indicador visual
         BluetoothStateIndicator(state)
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(4.dp))
+        Divider()
+        Spacer(modifier = Modifier.height(4.dp))
 
         // Acciones según el estado
         when (state) {
             is MyBluetoothState.Disabled -> {
+                InfoMessage(
+                    message = "El Bluetooth está desactivado. Actívalo para conectarte a una impresora.",
+                    icon = Icons.Default.BluetoothDisabled,
+                    color = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
                 ActionButton(
                     text = "Activar Bluetooth",
                     icon = Icons.Default.Bluetooth,
-                    onClick = onEnableBluetooth
+                    onClick = onEnableBluetooth,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
                 )
             }
+
             is MyBluetoothState.Enabling -> {
+                InfoMessage(
+                    message = "Activando Bluetooth...",
+                    icon = Icons.Default.BluetoothSearching,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
                 LoadingButton(text = "Activando...")
             }
+
             is MyBluetoothState.Enabled -> {
+                InfoMessage(
+                    message = "Bluetooth activado. Busca dispositivos para conectarte.",
+                    icon = Icons.Default.Bluetooth,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
                 ActionButton(
                     text = "Buscar Dispositivos",
                     icon = Icons.Default.Search,
-                    onClick = onScanDevices
+                    onClick = onScanDevices,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
                 )
             }
+
             is MyBluetoothState.Scanning -> {
-                LoadingButton(text = "Buscando...")
+                InfoMessage(
+                    message = "Buscando dispositivos Bluetooth...",
+                    icon = Icons.Default.Search,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                LoadingButton(text = "Buscando dispositivos...")
             }
+
             is MyBluetoothState.DevicesFound -> {
+                InfoMessage(
+                    message = "Selecciona un dispositivo para conectar:",
+                    icon = Icons.Default.Devices,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
                 DevicesList(
                     devices = state.devices,
                     onDeviceSelected = onConnectDevice
                 )
             }
+
             is MyBluetoothState.Connecting -> {
-                LoadingButton( text = "Conectando a ${state.device}...")
+                InfoMessage(
+                    message = "Conectando al dispositivo...",
+                    icon = Icons.Default.BluetoothConnected,
+//                    icon = Icons.Default.BluetoothConnecting,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                val deviceName = try {
+                    state.device.name ?: "Dispositivo Bluetooth"
+                } catch (e: SecurityException) {
+                    "Dispositivo Bluetooth"
+                }
+                LoadingButton(text = "Conectando a $deviceName...")
             }
+
             is MyBluetoothState.Connected -> {
                 ConnectedDeviceUI(
                     device = state.device,
@@ -111,20 +169,38 @@ fun BluetoothStatusUI(
                     onDisconnect = onDisconnect
                 )
             }
+
             is MyBluetoothState.Printing -> {
+                InfoMessage(
+                    message = "Imprimiendo documento...",
+                    icon = Icons.Default.Print,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
                 LoadingButton(text = "Imprimiendo...")
             }
+
             is MyBluetoothState.Error -> {
                 ErrorStateUI(
                     message = state.message,
                     retryAction = state.retryAction
                 )
             }
+
             is MyBluetoothState.Disconnected -> {
-                Text(
-                    text = "Desconectado",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                InfoMessage(
+                    message = "Desconectado. Conéctate a un dispositivo para imprimir.",
+                    icon = Icons.Default.BluetoothDisabled,
+                    color = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                ActionButton(
+                    text = "Buscar Dispositivos",
+                    icon = Icons.Default.Search,
+                    onClick = onScanDevices,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
                 )
             }
         }
@@ -133,35 +209,86 @@ fun BluetoothStatusUI(
 
 @Composable
 private fun BluetoothStateIndicator(state: MyBluetoothState) {
-    val (icon, color) = when (state) {
-        is MyBluetoothState.Disabled -> Pair(Icons.Default.BluetoothDisabled, Color.Red)
-        is MyBluetoothState.Enabling -> Pair(Icons.Default.BluetoothSearching, Color(0xFFFFA000))
-        is MyBluetoothState.Enabled -> Pair(Icons.Default.Bluetooth, Color.Blue)
-        is MyBluetoothState.Scanning -> Pair(Icons.Default.Search, Color.Blue)
-        is MyBluetoothState.DevicesFound -> Pair(Icons.Default.BluetoothAudio, Color.Green)
-        is MyBluetoothState.Connecting -> Pair(Icons.Default.BluetoothSearching, Color(0xFFFFA000))
-        is MyBluetoothState.Connected -> Pair(Icons.Default.BluetoothConnected, Color.Green)
-        is MyBluetoothState.Printing -> Pair(Icons.Default.Print, Color.Blue)
-        is MyBluetoothState.Error -> Pair(Icons.Default.Error, Color.Red)
-        is MyBluetoothState.Disconnected -> Pair(Icons.Default.BluetoothDisabled, Color.Gray)
+    val (icon, color, stateText) = when (state) {
+        is MyBluetoothState.Disabled -> Triple(
+            Icons.Default.BluetoothDisabled,
+            Color.Red,
+            "Bluetooth desactivado"
+        )
+        is MyBluetoothState.Enabling -> Triple(
+            Icons.Default.BluetoothSearching,
+            Color(0xFFFFA000),
+            "Activando Bluetooth..."
+        )
+        is MyBluetoothState.Enabled -> Triple(
+            Icons.Default.Bluetooth,
+            Color.Blue,
+            "Bluetooth activado"
+        )
+        is MyBluetoothState.Scanning -> Triple(
+            Icons.Default.Search,
+            Color.Blue,
+            "Buscando dispositivos..."
+        )
+        is MyBluetoothState.DevicesFound -> Triple(
+            Icons.Default.BluetoothSearching,
+            Color.Green,
+            "${state.devices.size} dispositivos encontrados"
+        )
+        is MyBluetoothState.Connecting -> Triple(
+            Icons.Default.BluetoothConnected,
+            Color(0xFFFFA000),
+            "Conectando..."
+        )
+        is MyBluetoothState.Connected -> Triple(
+            Icons.Default.BluetoothConnected,
+            Color.Green,
+            "Conectado"
+        )
+        is MyBluetoothState.Printing -> Triple(
+            Icons.Default.Print,
+            Color.Blue,
+            "Imprimiendo..."
+        )
+        is MyBluetoothState.Error -> Triple(
+            Icons.Default.Error,
+            Color.Red,
+            "Error"
+        )
+        is MyBluetoothState.Disconnected -> Triple(
+            Icons.Default.BluetoothDisabled,
+            Color.Gray,
+            "Desconectado"
+        )
     }
 
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth()
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = color.copy(alpha = 0.1f)
+        ),
+        shape = RoundedCornerShape(8.dp)
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = color,
-            modifier = Modifier.size(24.dp)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = state.toString(),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = color,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = stateText,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
     }
 }
 
@@ -170,25 +297,51 @@ private fun DevicesList(
     devices: List<BluetoothDevice>,
     onDeviceSelected: (BluetoothDevice) -> Unit
 ) {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(max = 200.dp)
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                shape = RoundedCornerShape(8.dp)
-            )
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+        ),
+        shape = RoundedCornerShape(8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        items(devices) { device ->
-            DeviceItem(
-                device = device,
-                onClick = { onDeviceSelected(device) }
-            )
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 180.dp)
+                .padding(8.dp)
+        ) {
+            items(devices) { device ->
+                DeviceItem(
+                    device = device,
+                    onClick = { onDeviceSelected(device) }
+                )
+            }
         }
     }
 }
-
+@Composable
+private fun InfoMessage(message: String, icon: ImageVector, color: Color) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DeviceItem(
@@ -218,23 +371,28 @@ private fun DeviceItem(
             .fillMaxWidth()
             .padding(vertical = 4.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 imageVector = Icons.Default.Devices,
                 contentDescription = null,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(24.dp),
+                tint = MaterialTheme.colorScheme.primary
             )
             Spacer(modifier = Modifier.width(12.dp))
             Column {
                 Text(
-                    text = device.name ?: "Dispositivo desconocido",
-                    style = MaterialTheme.typography.bodyMedium
+                    text = deviceName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
                 )
                 Text(
                     text = device.address,
@@ -257,47 +415,75 @@ private fun ConnectedDeviceUI(
     } catch (e: SecurityException) {
         "Dispositivo Conectado"
     }
-    Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFF4CAF50).copy(alpha = 0.1f)
+        ),
+        shape = RoundedCornerShape(8.dp)
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Icon(
-                imageVector = Icons.Default.CheckCircle,
-                contentDescription = null,
-                tint = Color.Green,
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Column {
-                Text(
-                    text = "Conectado a:",
-                    style = MaterialTheme.typography.bodySmall
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = Color.Green,
+                    modifier = Modifier.size(24.dp)
                 )
-                Text(
-                    text = deviceName,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "Conectado a:",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Text(
+                        text = deviceName,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
-        }
 
-        ActionButton(
-            text = "Imprimir Nota",
-            icon = Icons.Default.Print,
-            onClick = onPrint
-        )
+            Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
 
-        OutlinedButton(
-            onClick = onDisconnect,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(text = "Desconectar")
+            Text(
+                text = "Puedes imprimir ahora tu nota de salida",
+                style = MaterialTheme.typography.bodyMedium
+            )
+
+            ActionButton(
+                text = "Imprimir Nota",
+                icon = Icons.Default.Print,
+                onClick = onPrint,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary // Color del texto/icono
+                )
+            )
+
+            OutlinedButton(
+                onClick = onDisconnect,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Logout,
+                    contentDescription = null
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(text = "Desconectar")
+            }
         }
     }
 }
-
 @Composable
 private fun ErrorStateUI(
     message: String,
@@ -323,18 +509,21 @@ private fun ErrorStateUI(
 }
 
 @Composable
-private fun ActionButton(
+fun ActionButton(
     text: String,
     icon: ImageVector,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    colors: ButtonColors = ButtonDefaults.buttonColors(), // <- Asegúrate de que sea de M3
+    modifier: Modifier = Modifier
 ) {
     Button(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth()
+        colors = colors, // Pasa los colores correctamente
+        modifier = modifier
     ) {
-        Icon(imageVector = icon, contentDescription = null)
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(text = text)
+        Icon(icon, contentDescription = null)
+        Spacer(Modifier.width(8.dp))
+        Text(text)
     }
 }
 
