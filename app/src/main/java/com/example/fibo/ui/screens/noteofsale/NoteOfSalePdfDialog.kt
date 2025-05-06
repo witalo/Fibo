@@ -59,7 +59,6 @@ fun NoteOfSalePdfDialog(
     onDismiss: () -> Unit,
     viewModel: NoteOfSaleViewModel = hiltViewModel()
 ) {
-    val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
     // Solicitar permisos Bluetooth en Android 12+
