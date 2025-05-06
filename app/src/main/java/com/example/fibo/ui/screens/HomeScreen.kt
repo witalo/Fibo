@@ -92,12 +92,12 @@ fun HomeScreen(
             when (option) {
                 "Inicio" -> navController.navigate(Screen.Home.route)
                 "Cotizaciones" -> navController.navigate(Screen.Quotation.route)
-                "Notas de salida" -> navController.navigate(Screen.NotesOfSale.route)
+                "Nota de salida" -> navController.navigate(Screen.NoteOfSale.route)
                 "Perfil" -> navController.navigate(Screen.Profile.route)
                 "Nueva Factura" -> navController.navigate(Screen.NewInvoice.route)
                 "Nueva Boleta" -> navController.navigate(Screen.NewReceipt.route)
                 "Nueva Cotización" -> navController.navigate(Screen.NewQuotation.route)
-                "Nueva Nota de salida" -> navController.navigate(Screen.NewNotesOfSale.route)
+                "Nueva Nota de salida" -> navController.navigate(Screen.NewNoteOfSale.route)
             }
             isMenuOpen = false
         },

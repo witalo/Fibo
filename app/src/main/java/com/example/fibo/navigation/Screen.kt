@@ -14,12 +14,12 @@ sealed class Screen(
     // Principal
     object Home : Screen("home")
     object Quotation : Screen("quotation")
-    object NotesOfSale : Screen("notes_of_sale")
+    object NoteOfSale : Screen("note_of_sale")
     object Profile : Screen("new_profile")
     object NewInvoice : Screen("new_invoice")
     object NewReceipt : Screen("new_receipt")
     object NewQuotation : Screen("new_quotation")
-    object NewNotesOfSale : Screen("new_notes_of_sale")
+    object NewNoteOfSale : Screen("new_note_of_sale")
 
     // Detalles
     object InvoiceDetail : Screen(
@@ -59,5 +59,17 @@ sealed class Screen(
     ) {
         fun createRoute(quotationId: Int) = "quotation/$quotationId"
         const val quotationIdArg = "quotationId"
+    }
+    object NoteOfSaleDetail : Screen(
+        route = "noteOfSale",
+        routeWithArgs = "noteOfSale/{noteOfSaleId}",
+        arguments = listOf(
+            navArgument("noteOfSaleId") {
+                type = NavType.StringType
+            }
+        )
+    ) {
+        fun createRoute(noteOfSaleId: Int) = "noteOfSale/$noteOfSaleId"
+        const val noteOfSaleIdArg = "noteOfSaleId"
     }
 }

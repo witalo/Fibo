@@ -54,22 +54,21 @@ import com.example.fibo.model.IOperation
 import com.example.fibo.navigation.Screen
 import com.example.fibo.ui.components.AppTopBar
 import com.example.fibo.ui.components.SideMenu
-import com.example.fibo.ui.screens.quotation.QuotationPdfDialog
-import com.example.fibo.ui.screens.quotation.QuotationPdfViewModel
+import com.example.fibo.ui.screens.noteofsale.NoteOfSalePdfDialog
 import com.example.fibo.utils.ColorGradients
-import com.example.fibo.utils.QuotationState
-import com.example.fibo.viewmodels.QuotationViewModel
+import com.example.fibo.utils.NoteOfSaleState
+import com.example.fibo.viewmodels.NoteOfSaleViewModel
 
 @Composable
-fun QuotationScreen(
+fun NoteOfSaleScreen(
     navController: NavController,
-    viewModel: QuotationViewModel = hiltViewModel(),
+    viewModel: NoteOfSaleViewModel = hiltViewModel(),
     onLogout: () -> Unit
 ) {
     val subsidiaryData by viewModel.subsidiaryData.collectAsState()
     val userData by viewModel.userData.collectAsState()
     val selectedDate by viewModel.selectedDate.collectAsState()
-    val quotationState by viewModel.quotationState.collectAsState()
+    val noteOfSaleState by viewModel.noteOfSaleState.collectAsState()
     var isMenuOpen by remember { mutableStateOf(false) }
     SideMenu(
         isOpen = isMenuOpen,
@@ -93,7 +92,7 @@ fun QuotationScreen(
             Scaffold(
                 topBar = {
                     AppTopBar(
-                        title = "Cotizaciones",
+                        title = "Nota de salida",
                         onMenuClick = { isMenuOpen = !isMenuOpen },
                         onDateSelected = { date ->
                             viewModel.updateDate(date)
@@ -109,9 +108,9 @@ fun QuotationScreen(
                             .background(MaterialTheme.colorScheme.background)
                     ) {
 
-                        when (quotationState) {
-                            is QuotationState.Loading -> CenterLoadingIndicator()
-                            is QuotationState.WaitingForUser -> {
+                        when (noteOfSaleState) {
+                            is NoteOfSaleState.Loading -> CenterLoadingIndicator()
+                            is NoteOfSaleState.WaitingForUser -> {
                                 // Mensaje de espera para autenticación
                                 Box(
                                     modifier = Modifier.fillMaxSize(),
@@ -126,24 +125,24 @@ fun QuotationScreen(
                                     }
                                 }
                             }
-                            is QuotationState.Success -> {
-                                val quotation =
-                                    (quotationState as QuotationState.Success).data
-                                QuotationContent(
-                                    quotation = quotation,
-                                    onQuotationClick = { q ->
-                                        navController.navigate("quotation_detail/${q.id}")
+                            is NoteOfSaleState.Success -> {
+                                val noteOfSale =
+                                    (noteOfSaleState as NoteOfSaleState.Success).data
+                                NoteOfSaleContent(
+                                    noteOfSale = noteOfSale,
+                                    onNoteOfSaleClick = { q ->
+                                        navController.navigate("note_sale_detail/${q.id}")
                                     },
-                                    onNewQuotation = { navController.navigate(Screen.NewQuotation.route) }
+                                    onNewNoteOfSale = { navController.navigate(Screen.NewNoteOfSale.route) }
                                 )
                             }
-                            is QuotationState.Error -> {
+                            is NoteOfSaleState.Error -> {
                                 ErrorMessage(
-                                    message = (quotationState as QuotationState.Error).message,
+                                    message = (noteOfSaleState as NoteOfSaleState.Error).message,
                                     onRetry = { userData?.id?.let { userId ->
-                                        viewModel.loadQuotation(selectedDate, userId)
+                                        viewModel.loadNoteOfSale(selectedDate, userId)
                                     } ?: run {
-                                        QuotationState.WaitingForUser
+                                        NoteOfSaleState.WaitingForUser
                                     } }
                                 )
                             }
@@ -155,16 +154,16 @@ fun QuotationScreen(
     )
 }
 @Composable
-fun QuotationContent(
-    quotation: List<IOperation>,
-    onQuotationClick: (IOperation) -> Unit,
-    onNewQuotation: () -> Unit
+fun NoteOfSaleContent(
+    noteOfSale: List<IOperation>,
+    onNoteOfSaleClick: (IOperation) -> Unit,
+    onNewNoteOfSale: () -> Unit
 ) {
-    val quotationCount = quotation.count { it.documentTypeReadable == "COMPROBANTE DE OPERACIONES" }
+    val noteOfSaleCount = noteOfSale.count { it.documentTypeReadable == "NOTA DE AJUSTE DE OPERACIONES" }
 
     // Calculate monetary totals
-    val quotationAmountTotal = quotation
-        .filter { it.documentTypeReadable == "COMPROBANTE DE OPERACIONES" }
+    val noteOfSaleAmountTotal = noteOfSale
+        .filter { it.documentTypeReadable == "NOTA DE AJUSTE DE OPERACIONES" }
         .sumOf { it.totalToPay }
 
     Column(
@@ -178,13 +177,13 @@ fun QuotationContent(
                 .weight(0.90f)
                 .fillMaxWidth()
         ) {
-            if (quotation.isEmpty()) {
-                EmptyState(message = "No hay cotizaciones para esta fecha")
+            if (noteOfSale.isEmpty()) {
+                EmptyState(message = "No hay notas de salida para esta fecha")
             } else {
                 // Wrap the InvoiceList in a Box to ensure scrolling works
-                QuotationList(
-                    quotation = quotation,
-                    onQuotationClick = onQuotationClick
+                NoteOfSaleList(
+                    noteOfSale = noteOfSale,
+                    onNoteOfSaleClick = onNoteOfSaleClick
                 )
             }
         }
@@ -198,50 +197,48 @@ fun QuotationContent(
                 .fillMaxWidth(),
 //            verticalArrangement = Arrangement.Bottom
         ) {
-            ActionButtonsQuotation(
-                onNewQuotation = onNewQuotation,
-                quotationCount = quotationCount,
-                quotationAmountTotal = quotationAmountTotal,
+            ActionButtonsNoteOfSale(
+                onNewNoteOfSale = onNewNoteOfSale,
+                noteOfSaleCount = noteOfSaleCount,
+                noteOfSaleAmountTotal = noteOfSaleAmountTotal,
             )
         }
     }
 }
 
 @Composable
-fun QuotationList(
-    quotation: List<IOperation>,
-    onQuotationClick: (IOperation) -> Unit
+fun NoteOfSaleList(
+    noteOfSale: List<IOperation>,
+    onNoteOfSaleClick: (IOperation) -> Unit
 ) {
     // Removed fillMaxSize to allow proper scrolling
     LazyColumn(
         contentPadding = PaddingValues(vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(quotation) { quotation ->
-            QuotationItem(
-                quotation = quotation,
-                onClick = { onQuotationClick(quotation) }
+        items(noteOfSale) { note ->
+            NoteOfSaleItem(
+                noteOfSale = note,
+                onClick = { onNoteOfSaleClick(note) }
             )
         }
     }
 }
 
 @Composable
-fun QuotationItem(
-    quotation: IOperation,
+fun NoteOfSaleItem(
+    noteOfSale: IOperation,
     onClick: () -> Unit,
 ) {
     val context = LocalContext.current
-    val isAnulado = quotation.operationStatus.replace("A_", "") == "06" || quotation.operationStatus.replace("A_", "") == "04"
+    val isAnulado = noteOfSale.operationStatus.replace("A_", "") == "06" || noteOfSale.operationStatus.replace("A_", "") == "04"
     var showPdfDialog by remember { mutableStateOf(false) }
-    val pdfViewModel: QuotationPdfViewModel = hiltViewModel()
-    // Show PDF Dialog if needed
+    // Show PDF Dialog
     if (showPdfDialog) {
-        QuotationPdfDialog(
+        NoteOfSalePdfDialog(
             isVisible = true,
-            quotation = quotation,
-            onDismiss = { showPdfDialog = false },
-            viewModel = pdfViewModel
+            noteOfSale = noteOfSale,
+            onDismiss = { showPdfDialog = false }
         )
     }
     Card(
@@ -255,7 +252,6 @@ fun QuotationItem(
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isAnulado)
-//                Color.Red.copy(alpha = 0.1f)
                 when (isSystemInDarkTheme()) {
                     true -> Color(0xFF7C1D1D)
                     false -> Color(0xFFFDCFCF)
@@ -271,7 +267,7 @@ fun QuotationItem(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "${quotation.serial}-${quotation.correlative}",
+                    text = "${noteOfSale.serial}-${noteOfSale.correlative}",
                     style = MaterialTheme.typography.titleSmall.copy(
                         brush = ColorGradients.orangeFire
                     ),
@@ -279,7 +275,7 @@ fun QuotationItem(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = quotation.emitDate,
+                    text = noteOfSale.emitDate,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                 )
@@ -287,7 +283,7 @@ fun QuotationItem(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            quotation.client.names?.let {
+            noteOfSale.client.names?.let {
                 Text(
                     text = it,
                     style = MaterialTheme.typography.titleSmall,
@@ -304,9 +300,9 @@ fun QuotationItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Chip(
-                    label = "COTIZACIÓN",//quotation.documentTypeReadable,
-                    gradient = when (quotation.documentTypeReadable) {
-                        "COTIZACIÓN" -> ColorGradients.blueOcean
+                    label = "NOTA DE SALIDA",//quotation.documentTypeReadable,
+                    gradient = when (noteOfSale.documentTypeReadable) {
+                        "NOTA DE SALIDA" -> ColorGradients.blueOcean
                         else -> ColorGradients.greenNature
                     }
                 )
@@ -326,7 +322,7 @@ fun QuotationItem(
                 }
 
                 Text(
-                    text = "S/. ${String.format("%.2f", quotation.totalToPay)}",
+                    text = "S/. ${String.format("%.2f", noteOfSale.totalToPay)}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = when (isSystemInDarkTheme()) {
@@ -340,10 +336,10 @@ fun QuotationItem(
 }
 
 @Composable
-fun ActionButtonsQuotation(
-    onNewQuotation: () -> Unit,
-    quotationCount: Int,
-    quotationAmountTotal: Double
+fun ActionButtonsNoteOfSale(
+    onNewNoteOfSale: () -> Unit,
+    noteOfSaleCount: Int,
+    noteOfSaleAmountTotal: Double
 ) {
     Column(
         modifier = Modifier
@@ -351,9 +347,9 @@ fun ActionButtonsQuotation(
             .padding(horizontal = 3.dp, vertical = 3.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        // Botón Nueva Cotización - Versión mejorada
+        // Botón Nueva Nota de Salida - Versión mejorada
         ElevatedButton(
-            onClick = onNewQuotation,
+            onClick = onNewNoteOfSale,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
@@ -384,7 +380,7 @@ fun ActionButtonsQuotation(
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Text(
-                        text = "Total: $quotationCount",
+                        text = "Total: $noteOfSaleCount",
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.White
                     )
@@ -396,7 +392,7 @@ fun ActionButtonsQuotation(
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Text(
-                        text = "S/. ${String.format("%.2f", quotationAmountTotal)}",
+                        text = "S/. ${String.format("%.2f", noteOfSaleAmountTotal)}",
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.White
                     )
@@ -406,12 +402,12 @@ fun ActionButtonsQuotation(
 
                 Icon(
                     imageVector = Icons.Default.ReceiptLong,
-                    contentDescription = "Nueva Cotización",
+                    contentDescription = "Nueva Nota",
                     modifier = Modifier.size(18.dp),
                     tint = Color.White
                 )
                 Text(
-                    text = "Nueva Cotización",
+                    text = "Nueva Nota",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1

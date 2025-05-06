@@ -9,10 +9,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.fibo.datastore.PreferencesManager
 import com.example.fibo.ui.screens.HomeScreen
+import com.example.fibo.ui.screens.NoteOfSaleScreen
 import com.example.fibo.ui.screens.QrScannerScreen
 import com.example.fibo.ui.screens.QuotationScreen
 import com.example.fibo.viewmodels.AuthViewModel
 import com.example.fibo.ui.screens.invoice.NewInvoiceScreen
+import com.example.fibo.ui.screens.noteofsale.NewNoteOfSaleScreen
 import com.example.fibo.ui.screens.profile.ProfileScreen
 import com.example.fibo.ui.screens.quotation.NewQuotationScreen
 import com.example.fibo.ui.screens.receipt.NewReceiptScreen
@@ -65,6 +67,18 @@ fun NavGraph(
                 }
             )
         }
+        // Pantallas de nota de salida
+        composable(Screen.NoteOfSale.route) {
+            NoteOfSaleScreen(
+                navController = navController,
+                onLogout = {
+                    authViewModel.logout()
+                    navController.navigate(Screen.QrScanner.route) {
+                        popUpTo(navController.graph.id) { inclusive = true }
+                    }
+                }
+            )
+        }
 
         // Perfil
         composable(Screen.Profile.route) {
@@ -98,6 +112,15 @@ fun NavGraph(
                 onBack = { navController.popBackStack() },
                 onQuotationCreated = { quotationId ->
                     navController.navigate(Screen.InvoiceDetail.createRoute(quotationId.toInt()))
+                }
+            )
+        }
+        // Pantallas de venta interna
+        composable(Screen.NewNoteOfSale.route) {
+            NewNoteOfSaleScreen(
+                onBack = { navController.popBackStack() },
+                onQuotationCreated = { noteId ->
+                    navController.navigate(Screen.NoteOfSaleDetail.createRoute(noteId.toInt()))
                 }
             )
         }
