@@ -4,9 +4,12 @@ import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.apollographql.apollo3.exception.ApolloException
 import com.example.fibo.datastore.PreferencesManager
+import com.example.fibo.model.IOperation
 import com.example.fibo.model.ISubsidiary
 import com.example.fibo.repository.OperationRepository
+import com.example.fibo.utils.PdfDialogUiState
 import com.example.fibo.utils.QuotationState
 import com.example.fibo.viewmodels.HomeViewModel.InvoiceState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -35,6 +38,18 @@ class QuotationViewModel @Inject constructor(
     val quotationState: StateFlow<QuotationState> = _quotationState.asStateFlow()
     val userData = preferencesManager.userData
     val subsidiaryData: StateFlow<ISubsidiary?> = preferencesManager.subsidiaryData
+
+    // Create a StateFlow to hold the quotation data
+    private val _quotationData = MutableStateFlow<IOperation?>(null)
+    val quotationData: StateFlow<IOperation?> = _quotationData
+
+    // Create a loading state
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading
+
+    // Create an error state
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error
 
     init {
         // Cargar cotizaciones cuando se inicializa el ViewModel y hay un usuario válido
@@ -76,5 +91,31 @@ class QuotationViewModel @Inject constructor(
         } else {
             _quotationState.value = QuotationState.WaitingForUser
         }
+    }
+    // Enhanced function to get quotation details by ID
+    fun getQuotationById(operationId: Int) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+
+            try {
+                val operation = operationRepository.getOperationById(operationId)
+                _quotationData.value = operation
+            } catch (e: ApolloException) {
+                _error.value = "Error de red: ${e.message}"
+                Log.e("QuotationViewModel", "Apollo exception", e)
+            } catch (e: Exception) {
+                _error.value = "Error al obtener datos: ${e.message}"
+                Log.e("QuotationViewModel", "General exception", e)
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    // Reset function to clear data when needed
+    fun resetQuotationData() {
+        _quotationData.value = null
+        _error.value = null
     }
 }

@@ -55,7 +55,6 @@ import com.example.fibo.navigation.Screen
 import com.example.fibo.ui.components.AppTopBar
 import com.example.fibo.ui.components.SideMenu
 import com.example.fibo.ui.screens.quotation.QuotationPdfDialog
-import com.example.fibo.ui.screens.quotation.QuotationPdfViewModel
 import com.example.fibo.utils.ColorGradients
 import com.example.fibo.utils.QuotationState
 import com.example.fibo.viewmodels.QuotationViewModel
@@ -231,17 +230,14 @@ fun QuotationItem(
     quotation: IOperation,
     onClick: () -> Unit,
 ) {
-    val context = LocalContext.current
     val isAnulado = quotation.operationStatus.replace("A_", "") == "06" || quotation.operationStatus.replace("A_", "") == "04"
     var showPdfDialog by remember { mutableStateOf(false) }
-    val pdfViewModel: QuotationPdfViewModel = hiltViewModel()
     // Show PDF Dialog if needed
     if (showPdfDialog) {
         QuotationPdfDialog(
             isVisible = true,
             quotation = quotation,
-            onDismiss = { showPdfDialog = false },
-            viewModel = pdfViewModel
+            onDismiss = { showPdfDialog = false }
         )
     }
     Card(
