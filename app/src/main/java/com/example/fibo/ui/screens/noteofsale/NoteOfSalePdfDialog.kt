@@ -3,18 +3,23 @@ import android.Manifest
 import android.app.Activity
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
+import android.content.ActivityNotFoundException
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Environment
+import android.util.Log
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -24,6 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Print
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -33,6 +39,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -40,11 +47,15 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.app.ActivityCompat
+import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.fibo.R
 import com.example.fibo.model.IOperation
 import com.example.fibo.viewmodels.NoteOfSaleViewModel
 import kotlinx.coroutines.*
 import java.io.BufferedInputStream
+import java.io.File
+import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.*
@@ -63,6 +74,8 @@ fun NoteOfSalePdfDialog(
     var bluetoothState by remember { mutableStateOf(BluetoothState.UNKNOWN) }
     var devicesList by remember { mutableStateOf<List<BluetoothDevice>>(emptyList()) }
     var selectedDevice by remember { mutableStateOf<BluetoothDevice?>(null) }
+    // Estado para almacenar el archivo PDF local
+    var pdfFile by remember { mutableStateOf<File?>(null) }
 
     // URL del PDF
     val pdfUrl = remember { "https://ng.tuf4ctur4.net.pe/operations/quotation/${noteOfSale.id}/" }
@@ -96,6 +109,8 @@ fun NoteOfSalePdfDialog(
             } else {
                 BluetoothState.DISABLED
             }
+            // Eliminar el archivo temporal si existe
+            pdfFile?.delete()
         }
     }
 
@@ -166,6 +181,86 @@ fun NoteOfSalePdfDialog(
         }
     }
 
+    // Función para descargar PDF y guardarlo localmente
+    fun downloadPdfToFile(context: Context, url: String, callback: (File?) -> Unit) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val urlConnection = URL(url).openConnection() as HttpURLConnection
+                urlConnection.connect()
+
+                if (urlConnection.responseCode != HttpURLConnection.HTTP_OK) {
+                    withContext(Dispatchers.Main) {
+                        callback(null)
+                    }
+                    return@launch
+                }
+
+                val inputStream = urlConnection.inputStream
+                // Crear un archivo temporal en el directorio de caché
+                val tempFile = File(context.cacheDir, "note_of_sale_${noteOfSale.id}.pdf")
+
+                withContext(Dispatchers.IO) {
+                    // Asegurarse de que el archivo se sobreescribe si ya existe
+                    if (tempFile.exists()) {
+                        tempFile.delete()
+                    }
+
+                    val outputStream = FileOutputStream(tempFile)
+                    val buffer = ByteArray(4 * 1024) // Buffer de 4KB
+                    var bytesRead: Int
+
+                    while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                        outputStream.write(buffer, 0, bytesRead)
+                    }
+
+                    outputStream.close()
+                    inputStream.close()
+                }
+
+                withContext(Dispatchers.Main) {
+                    callback(tempFile)
+                }
+            } catch (e: Exception) {
+                Log.e("PDF_DOWNLOAD", "Error downloading PDF: ${e.message}", e)
+                withContext(Dispatchers.Main) {
+                    callback(null)
+                }
+            }
+        }
+    }
+
+    // Función para compartir PDF
+    fun sharePdfViaWhatsApp(context: Context, pdfFile: File) {
+        try {
+            val uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.provider",
+                pdfFile
+            )
+
+            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "application/pdf"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                // Opcional: Especificar WhatsApp directamente
+                setPackage("com.whatsapp")
+            }
+
+            try {
+                context.startActivity(Intent.createChooser(shareIntent, "Compartir PDF via"))
+            } catch (e: ActivityNotFoundException) {
+                Toast.makeText(context, "WhatsApp no está instalado", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            Toast.makeText(
+                context,
+                "Error al compartir el PDF: ${e.message}",
+                Toast.LENGTH_LONG
+            ).show()
+            Log.e("SharePDF", "Error sharing PDF", e)
+        }
+    }
+
     // Diálogo principal
     Dialog(
         onDismissRequest = {
@@ -213,13 +308,21 @@ fun NoteOfSalePdfDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(headerHeight)
-                            .background(MaterialTheme.colorScheme.primary)
+                            .background(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(
+                                        Color(0xFFFF8C00),  // Naranja oscuro
+                                        Color(0xFFFFAB40)   // Naranja claro
+                                    )
+                                ),
+                                shape = RoundedCornerShape(4.dp)
+                            )
                             .padding(5.dp)
                     ) {
                         Text(
                             text = "Nota de salida",
                             style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onPrimary,
+                            color = Color.White,
                             modifier = Modifier.align(Alignment.Center)
                         )
 
@@ -253,7 +356,7 @@ fun NoteOfSalePdfDialog(
                             )
                         }
                     }
-                    // 3. Visualizador de PDF - ALTURA FIJA Y CONTROLADA
+                    // 2. Visualizador de PDF - ALTURA FIJA Y CONTROLADA
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -278,9 +381,15 @@ fun NoteOfSalePdfDialog(
                                 // Iniciar la carga del PDF
                                 LaunchedEffect(pdfUrl) {
                                     try {
-                                        // Aquí implementaríamos la lógica para cargar el PDF
-                                        delay(1000) // Simulamos tiempo de carga
-                                        pdfLoadingState = PdfLoadingState.SUCCESS
+                                        // Primero descargamos el PDF para obtener el archivo local
+                                        downloadPdfToFile(context, pdfUrl) { file ->
+                                            if (file != null) {
+                                                pdfFile = file
+                                                pdfLoadingState = PdfLoadingState.SUCCESS
+                                            } else {
+                                                pdfLoadingState = PdfLoadingState.ERROR
+                                            }
+                                        }
                                     } catch (e: Exception) {
                                         pdfLoadingState = PdfLoadingState.ERROR
                                     }
@@ -308,39 +417,45 @@ fun NoteOfSalePdfDialog(
                                         // Añadimos el PDFView al FrameLayout
                                         frameLayout.addView(pdfView)
 
-                                        // Configuramos el PDFView
-                                        CoroutineScope(Dispatchers.IO).launch {
-                                            try {
-                                                val url = URL(pdfUrl)
-                                                val connection = url.openConnection() as HttpURLConnection
-                                                connection.connect()
-
-                                                val inputStream = BufferedInputStream(connection.inputStream)
-                                                withContext(Dispatchers.Main) {
-                                                    pdfView.fromStream(inputStream)
-                                                        .enableSwipe(true)
-                                                        .enableDoubletap(true)
-                                                        .defaultPage(0)
-                                                        .swipeHorizontal(false)
-                                                        .onLoad {
-                                                            // PDF cargado completamente
-                                                        }
-                                                        .onError {
-                                                            pdfLoadingState = PdfLoadingState.ERROR
-                                                        }
-                                                        .load()
+                                        // Configuramos el PDFView desde el archivo local
+                                        pdfFile?.let { file ->
+                                            pdfView.fromFile(file)
+                                                .enableSwipe(true)
+                                                .enableDoubletap(true)
+                                                .defaultPage(0)
+                                                .swipeHorizontal(false)
+                                                .onLoad {
+                                                    // PDF cargado completamente
                                                 }
-                                            } catch (e: Exception) {
-                                                withContext(Dispatchers.Main) {
+                                                .onError {
                                                     pdfLoadingState = PdfLoadingState.ERROR
                                                 }
-                                            }
+                                                .load()
                                         }
 
                                         frameLayout  // Retornamos el FrameLayout
                                     },
                                     modifier = Modifier.fillMaxSize()
                                 )
+
+                                // Botón flotante para compartir
+                                pdfFile?.let { file ->
+                                    FloatingActionButton(
+                                        onClick = { sharePdfViaWhatsApp(context, file) },
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .padding(8.dp),
+                                        containerColor = Color.Transparent,
+                                        elevation = FloatingActionButtonDefaults.elevation(0.dp),
+                                        interactionSource = remember { MutableInteractionSource() } // Esto desactiva el ripple
+                                    ) {
+                                        Image(
+                                            painter = painterResource(id = R.drawable.ic_whasap),
+                                            contentDescription = "Compartir en WhatsApp",
+                                            modifier = Modifier.size(40.dp)
+                                        )
+                                    }
+                                }
                             }
                             PdfLoadingState.ERROR -> {
                                 Box(
@@ -374,8 +489,7 @@ fun NoteOfSalePdfDialog(
                             }
                         }
                     }
-                    // 2. Sección de controles Bluetooth - ALTURA FIJA
-// 2. Sección de controles Bluetooth - ALTURA FIJA
+                    // 3. Sección de controles Bluetooth - ALTURA FIJA
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -388,15 +502,8 @@ fun NoteOfSalePdfDialog(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(12.dp)
+                                .padding(5.dp)
                         ) {
-                            // Título sección Bluetooth
-                            Text(
-                                text = "Opciones de Impresión",
-                                style = MaterialTheme.typography.titleMedium,
-                                modifier = Modifier.padding(bottom = 4.dp)
-                            )
-
                             // Botón para Bluetooth con gradiente naranja
                             Button(
                                 onClick = {
@@ -523,14 +630,14 @@ fun NoteOfSalePdfDialog(
                                 }
                             }
 
-                            Spacer(modifier = Modifier.height(6.dp))
+                            Spacer(modifier = Modifier.height(2.dp))
 
                             // Lista de dispositivos - ALTURA LIMITADA
                             if (devicesList.isNotEmpty()) {
                                 Text(
                                     text = "Dispositivos Disponibles:",
                                     style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.padding(vertical = 4.dp)
+                                    modifier = Modifier.padding(vertical = 4.dp, horizontal = 16.dp)
                                 )
 
                                 // Limitamos la altura de la lista para que no ocupe todo el espacio
@@ -546,7 +653,7 @@ fun NoteOfSalePdfDialog(
                                                 .clickable {
                                                     selectedDevice = device
                                                 }
-                                                .padding(vertical = 4.dp),
+                                                .padding(vertical = 0.dp),
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             RadioButton(
@@ -629,7 +736,7 @@ fun NoteOfSalePdfDialog(
                                     containerColor = Color.Transparent,
                                     disabledContainerColor = Color.Transparent
                                 ),
-                                contentPadding = PaddingValues(0.dp)
+                                contentPadding = PaddingValues(vertical = 6.dp, horizontal = 12.dp)
                             ) {
                                 Box(
                                     modifier = Modifier
@@ -675,243 +782,6 @@ fun NoteOfSalePdfDialog(
                             }
                         }
                     }
-//                    Surface(
-//                        modifier = Modifier
-//                            .fillMaxWidth()
-//                            .height(controlsHeight)
-//                            .padding(horizontal = 16.dp, vertical = 8.dp),
-//                        shadowElevation = 4.dp,
-//                        shape = RoundedCornerShape(8.dp),
-//                        color = MaterialTheme.colorScheme.surface
-//                    ) {
-//                        Column(
-//                            modifier = Modifier
-//                                .fillMaxWidth()
-//                                .padding(5.dp)
-//                        ) {
-//                            // Título sección Bluetooth
-//                            Text(
-//                                text = "Opciones de Impresión",
-//                                style = MaterialTheme.typography.titleMedium,
-//                                modifier = Modifier.padding(bottom = 3.dp)
-//                            )
-//
-//                            // Botón para Bluetooth (Activar o Buscar dispositivos)
-//                            Button(
-//                                onClick = {
-//                                    when (bluetoothState) {
-//                                        BluetoothState.DISABLED -> {
-//                                            // Solicitar activación de Bluetooth
-//                                            val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-//                                            try {
-//                                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-//                                                    if (ActivityCompat.checkSelfPermission(
-//                                                            context,
-//                                                            Manifest.permission.BLUETOOTH_CONNECT
-//                                                        ) == PackageManager.PERMISSION_GRANTED) {
-//                                                        (context as? Activity)?.startActivityForResult(enableBtIntent, 1)
-//                                                    }
-//                                                } else {
-//                                                    (context as? Activity)?.startActivityForResult(enableBtIntent, 1)
-//                                                }
-//                                            } catch (e: Exception) {
-//                                                // Manejar posibles excepciones
-//                                                Toast.makeText(
-//                                                    context,
-//                                                    "No se pudo activar Bluetooth",
-//                                                    Toast.LENGTH_SHORT
-//                                                ).show()
-//                                            }
-//                                        }
-//                                        BluetoothState.ENABLED -> {
-//                                            // Buscar dispositivos
-//                                            devicesList = emptyList()
-//                                            bluetoothState = BluetoothState.DISCOVERING
-//
-//                                            // Verificar permisos según versión de Android
-//                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-//                                                if (ActivityCompat.checkSelfPermission(
-//                                                        context,
-//                                                        Manifest.permission.BLUETOOTH_SCAN
-//                                                    ) == PackageManager.PERMISSION_GRANTED &&
-//                                                    ActivityCompat.checkSelfPermission(
-//                                                        context,
-//                                                        Manifest.permission.BLUETOOTH_CONNECT
-//                                                    ) == PackageManager.PERMISSION_GRANTED
-//                                                ) {
-//                                                    bluetoothAdapter?.startDiscovery()
-//                                                } else {
-//                                                    Toast.makeText(
-//                                                        context,
-//                                                        "Se requieren permisos de Bluetooth",
-//                                                        Toast.LENGTH_SHORT
-//                                                    ).show()
-//                                                    bluetoothState = BluetoothState.ENABLED
-//                                                }
-//                                            } else {
-//                                                if (ActivityCompat.checkSelfPermission(
-//                                                        context,
-//                                                        Manifest.permission.ACCESS_FINE_LOCATION
-//                                                    ) == PackageManager.PERMISSION_GRANTED
-//                                                ) {
-//                                                    bluetoothAdapter?.startDiscovery()
-//                                                } else {
-//                                                    Toast.makeText(
-//                                                        context,
-//                                                        "Se requiere permiso de ubicación para buscar dispositivos",
-//                                                        Toast.LENGTH_SHORT
-//                                                    ).show()
-//                                                    bluetoothState = BluetoothState.ENABLED
-//                                                }
-//                                            }
-//                                        }
-//                                        else -> {
-//                                            // Estado no conocido o no soportado
-//                                            Toast.makeText(
-//                                                context,
-//                                                "Bluetooth no disponible",
-//                                                Toast.LENGTH_SHORT
-//                                            ).show()
-//                                        }
-//                                    }
-//                                },
-//                                modifier = Modifier.fillMaxWidth(),
-//                                colors = ButtonDefaults.buttonColors(
-//                                    containerColor = MaterialTheme.colorScheme.secondary
-//                                )
-//                            ) {
-//                                Icon(
-//                                    imageVector = Icons.Default.Bluetooth,
-//                                    contentDescription = null,
-//                                    modifier = Modifier.size(24.dp)
-//                                )
-//                                Spacer(modifier = Modifier.width(8.dp))
-//                                Text(
-//                                    text = when (bluetoothState) {
-//                                        BluetoothState.DISABLED -> "Activar Bluetooth"
-//                                        BluetoothState.ENABLED -> "Buscar Dispositivos"
-//                                        BluetoothState.DISCOVERING -> "Buscando..."
-//                                        else -> "Bluetooth No Disponible"
-//                                    }
-//                                )
-//                            }
-//
-//                            Spacer(modifier = Modifier.height(8.dp))
-//
-//                            // Lista de dispositivos - ALTURA LIMITADA
-//                            if (devicesList.isNotEmpty()) {
-//                                Text(
-//                                    text = "Dispositivos Disponibles:",
-//                                    style = MaterialTheme.typography.bodyMedium,
-//                                    modifier = Modifier.padding(vertical = 5.dp)
-//                                )
-//
-//                                // Limitamos la altura de la lista para que no ocupe todo el espacio
-//                                LazyColumn(
-//                                    modifier = Modifier
-//                                        .fillMaxWidth()
-//                                        .height(50.dp)
-//                                ) {
-//                                    items(devicesList) { device ->
-//                                        Row(
-//                                            modifier = Modifier
-//                                                .fillMaxWidth()
-//                                                .clickable {
-//                                                    selectedDevice = device
-//                                                }
-//                                                .padding(vertical = 8.dp),
-//                                            verticalAlignment = Alignment.CenterVertically
-//                                        ) {
-//                                            RadioButton(
-//                                                selected = selectedDevice == device,
-//                                                onClick = { selectedDevice = device }
-//                                            )
-//
-//                                            Spacer(modifier = Modifier.width(8.dp))
-//
-//                                            val deviceName = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-//                                                if (ActivityCompat.checkSelfPermission(
-//                                                        context,
-//                                                        Manifest.permission.BLUETOOTH_CONNECT
-//                                                    ) == PackageManager.PERMISSION_GRANTED
-//                                                ) {
-//                                                    device.name ?: "Dispositivo Desconocido"
-//                                                } else {
-//                                                    "Dispositivo Desconocido"
-//                                                }
-//                                            } else {
-//                                                device.name ?: "Dispositivo Desconocido"
-//                                            }
-//
-//                                            Text(
-//                                                text = deviceName,
-//                                                style = MaterialTheme.typography.bodyMedium
-//                                            )
-//                                        }
-//                                    }
-//                                }
-//                            } else if (bluetoothState == BluetoothState.DISCOVERING) {
-//                                Box(
-//                                    modifier = Modifier
-//                                        .fillMaxWidth()
-//                                        .height(100.dp),
-//                                    contentAlignment = Alignment.Center
-//                                ) {
-//                                    CircularProgressIndicator()
-//                                }
-//                            }
-//
-//                            Spacer(modifier = Modifier.height(8.dp))
-//
-//                            // Botón de impresión
-//                            Button(
-//                                onClick = {
-//                                    // Imprimir el texto básico del documento
-//                                    selectedDevice?.let { device ->
-//                                        try {
-//                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-//                                                if (ActivityCompat.checkSelfPermission(
-//                                                        context,
-//                                                        Manifest.permission.BLUETOOTH_CONNECT
-//                                                    ) == PackageManager.PERMISSION_GRANTED) {
-//                                                    printToBluetoothDevice(context, device, noteOfSale)
-//                                                } else {
-//                                                    Toast.makeText(
-//                                                        context,
-//                                                        "Se requiere permiso para conectar",
-//                                                        Toast.LENGTH_SHORT
-//                                                    ).show()
-//                                                }
-//                                            } else {
-//                                                printToBluetoothDevice(context, device, noteOfSale)
-//                                            }
-//                                        } catch (e: Exception) {
-//                                            Toast.makeText(
-//                                                context,
-//                                                "Error al imprimir: ${e.message}",
-//                                                Toast.LENGTH_SHORT
-//                                            ).show()
-//                                        }
-//                                    }
-//                                },
-//                                enabled = selectedDevice != null,
-//                                modifier = Modifier.fillMaxWidth(),
-//                                colors = ButtonDefaults.buttonColors(
-//                                    containerColor = MaterialTheme.colorScheme.primary
-//                                )
-//                            ) {
-//                                Icon(
-//                                    imageVector = Icons.Default.Print,
-//                                    contentDescription = null,
-//                                    modifier = Modifier.size(24.dp)
-//                                )
-//                                Spacer(modifier = Modifier.width(8.dp))
-//                                Text(text = "Imprimir")
-//                            }
-//                        }
-//                    }
-
-
                 }
             }
         }
