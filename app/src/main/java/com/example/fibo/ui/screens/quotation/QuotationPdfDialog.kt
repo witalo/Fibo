@@ -89,6 +89,16 @@ fun QuotationPdfDialog(
         mutableStateOf(BluetoothAdapter.getDefaultAdapter())
     }
 
+    // Estados de viewmodel
+    val isLoading by viewModel.isLoading.collectAsState()
+    val error by viewModel.error.collectAsState()
+    val quotationData by viewModel.quotationData.collectAsState()
+
+    // Load quotation data when needed
+    LaunchedEffect(quotation.id) {
+        viewModel.getQuotationById(quotation.id)
+    }
+
     // Verifica el estado de Bluetooth al inicio
     LaunchedEffect(bluetoothAdapter) {
         bluetoothState = if (bluetoothAdapter == null) {
@@ -706,12 +716,13 @@ fun QuotationPdfDialog(
                                     // Imprimir el texto básico del documento
                                     selectedDevice?.let { device ->
                                         try {
+                                            val dataToUse = quotationData ?: quotation
                                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                                                 if (ActivityCompat.checkSelfPermission(
                                                         context,
                                                         Manifest.permission.BLUETOOTH_CONNECT
                                                     ) == PackageManager.PERMISSION_GRANTED) {
-                                                    printToBluetoothDevice(context, device, quotation)
+                                                    viewModel.printToBluetoothDevice(context, device, dataToUse)
                                                 } else {
                                                     Toast.makeText(
                                                         context,
@@ -720,7 +731,7 @@ fun QuotationPdfDialog(
                                                     ).show()
                                                 }
                                             } else {
-                                                printToBluetoothDevice(context, device, quotation)
+                                                viewModel.printToBluetoothDevice(context, device, dataToUse)
                                             }
                                         } catch (e: Exception) {
                                             Toast.makeText(
@@ -731,7 +742,8 @@ fun QuotationPdfDialog(
                                         }
                                     }
                                 },
-                                enabled = selectedDevice != null,
+                                enabled = selectedDevice != null && (quotationData != null || !isLoading),
+//                                enabled = selectedDevice != null,
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = Color.Transparent,
@@ -744,16 +756,25 @@ fun QuotationPdfDialog(
                                         .fillMaxWidth()
                                         .background(
                                             brush = Brush.horizontalGradient(
-                                                colors = if (selectedDevice != null) {
-                                                    listOf(
-                                                        Color(0xFFFF8C00),  // Naranja oscuro
-                                                        Color(0xFFFFAB40)   // Naranja claro
-                                                    )
-                                                } else {
-                                                    listOf(
-                                                        Color(0xFFAAAAAA),  // Gris cuando está deshabilitado
-                                                        Color(0xFFCCCCCC)
-                                                    )
+                                                colors = when {
+                                                    selectedDevice == null -> {
+                                                        listOf(
+                                                            Color(0xFFAAAAAA),  // Gris cuando no hay dispositivo seleccionado
+                                                            Color(0xFFCCCCCC)
+                                                        )
+                                                    }
+                                                    isLoading -> {
+                                                        listOf(
+                                                            Color(0xFF999999),  // Gris más oscuro durante carga
+                                                            Color(0xFFBBBBBB)
+                                                        )
+                                                    }
+                                                    else -> {
+                                                        listOf(
+                                                            Color(0xFFFF8C00),  // Naranja oscuro (normal)
+                                                            Color(0xFFFFAB40)   // Naranja claro
+                                                        )
+                                                    }
                                                 }
                                             ),
                                             shape = RoundedCornerShape(4.dp)
@@ -765,20 +786,75 @@ fun QuotationPdfDialog(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.Center
                                     ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Print,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(20.dp),
-                                            tint = Color.White
-                                        )
+                                        if (isLoading) {
+                                            // Mostrar un indicador de progreso pequeño durante la carga
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(16.dp),
+                                                color = Color.White,
+                                                strokeWidth = 2.dp
+                                            )
+                                        } else {
+                                            Icon(
+                                                imageVector = Icons.Default.Print,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(20.dp),
+                                                tint = Color.White
+                                            )
+                                        }
                                         Spacer(modifier = Modifier.width(6.dp))
+
                                         Text(
-                                            text = "Imprimir",
+                                            text = when {
+                                                isLoading -> "Cargando datos..."
+                                                selectedDevice == null -> "Selecciona un dispositivo"
+                                                else -> "Imprimir cotización"
+                                            },
                                             color = Color.White,
                                             fontSize = 14.sp,
                                             fontWeight = FontWeight.Medium
                                         )
+//                                        Icon(
+//                                            imageVector = Icons.Default.Print,
+//                                            contentDescription = null,
+//                                            modifier = Modifier.size(20.dp),
+//                                            tint = Color.White
+//                                        )
+//                                        Spacer(modifier = Modifier.width(6.dp))
+//                                        Text(
+//                                            text = "Imprimir",
+//                                            color = Color.White,
+//                                            fontSize = 14.sp,
+//                                            fontWeight = FontWeight.Medium
+//                                        )
                                     }
+                                }
+                            }
+                            // Mostrar indicador de carga mientras se obtienen los datos
+                            if (isLoading) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        CircularProgressIndicator(
+                                            color = Color(0xFFFF8C00)  // Color naranja para el indicador
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = "Obteniendo detalles de la cotización...",
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    }
+                                }
+                            }
+                            // Mostrar mensajes de error usando LaunchedEffect para que no se repita en cada recomposición
+                            LaunchedEffect(error) {
+                                error?.let { errorMsg ->
+                                    Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
                                 }
                             }
                         }
@@ -786,82 +862,6 @@ fun QuotationPdfDialog(
                 }
             }
         }
-    }
-}
-
-// Función para imprimir a dispositivo Bluetooth
-private fun printToBluetoothDevice(context: Context, device: BluetoothDevice, quotation: IOperation) {
-    try {
-        // Crear un UUID para el servicio de impresión SPP
-        val uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
-
-        // Obtener un socket Bluetooth
-        val socket = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (ActivityCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.BLUETOOTH_CONNECT
-                ) == PackageManager.PERMISSION_GRANTED) {
-                device.createRfcommSocketToServiceRecord(uuid)
-            } else {
-                throw SecurityException("Se requiere permiso BLUETOOTH_CONNECT")
-            }
-        } else {
-            device.createRfcommSocketToServiceRecord(uuid)
-        }
-
-        // Cancelar descubrimiento antes de conectar
-        val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
-        // Verificar permisos antes de cancelar el descubrimiento
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (ActivityCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.BLUETOOTH_SCAN
-                ) == PackageManager.PERMISSION_GRANTED) {
-                bluetoothAdapter?.cancelDiscovery()
-            }
-        } else {
-            bluetoothAdapter?.cancelDiscovery()
-        }
-
-        // Conectar al dispositivo
-        socket.connect()
-
-        // Obtener flujo de salida
-        val outputStream = socket.outputStream
-
-        // Crear los datos para imprimir
-        val printData = """
-            |----------------------------
-            |COTIZACION
-            |----------------------------
-            |ID: ${quotation.id}
-            |SERIE: ${quotation.serial}
-            |CORRELATIVO: ${quotation.correlative}
-            |----------------------------
-            |
-            |
-        """.trimIndent()
-
-        // Enviar datos al dispositivo
-        outputStream.write(printData.toByteArray())
-
-        // Cerrar conexión
-        outputStream.close()
-        socket.close()
-
-        // Mostrar mensaje de éxito
-        Toast.makeText(
-            context,
-            "Impresión enviada correctamente",
-            Toast.LENGTH_SHORT
-        ).show()
-    } catch (e: Exception) {
-        // Mostrar mensaje de error
-        Toast.makeText(
-            context,
-            "Error en la impresión: ${e.message}",
-            Toast.LENGTH_SHORT
-        ).show()
     }
 }
 

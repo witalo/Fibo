@@ -66,6 +66,7 @@ fun QuotationScreen(
     onLogout: () -> Unit
 ) {
     val subsidiaryData by viewModel.subsidiaryData.collectAsState()
+    val companyData by viewModel.companyData.collectAsState()
     val userData by viewModel.userData.collectAsState()
     val selectedDate by viewModel.selectedDate.collectAsState()
     val quotationState by viewModel.quotationState.collectAsState()
