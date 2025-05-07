@@ -1,56 +1,53 @@
 package com.example.fibo.ui.screens.noteofsale
-
 import android.Manifest
+import android.app.Activity
+import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.os.Build
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import android.view.ViewGroup
+import android.widget.FrameLayout
+import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.ErrorOutline
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material.icons.filled.Print
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.app.ActivityCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.fibo.model.IOperation
-import com.example.fibo.ui.components.BluetoothStatusUI
-import com.example.fibo.utils.MyBluetoothState
-import com.example.fibo.utils.PdfState
-import com.example.fibo.utils.downloadAndSavePdf
 import com.example.fibo.viewmodels.NoteOfSaleViewModel
-import com.github.barteksc.pdfviewer.PDFView
-import com.github.barteksc.pdfviewer.scroll.DefaultScrollHandle
-import kotlinx.coroutines.launch
-import java.io.File
-
+import kotlinx.coroutines.*
+import java.io.BufferedInputStream
+import java.net.HttpURLConnection
+import java.net.URL
+import java.util.*
 
 @Composable
 fun NoteOfSalePdfDialog(
@@ -59,286 +56,950 @@ fun NoteOfSalePdfDialog(
     onDismiss: () -> Unit,
     viewModel: NoteOfSaleViewModel = hiltViewModel()
 ) {
-    val coroutineScope = rememberCoroutineScope()
+    if (!isVisible) return
 
-    // Solicitar permisos Bluetooth en Android 12+
-    val bluetoothPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val allGranted = permissions.entries.all { it.value }
-        if (allGranted) {
-            viewModel.enableBluetooth()
+    // Estados para el PDF y Bluetooth
+    var pdfLoadingState by remember { mutableStateOf(PdfLoadingState.LOADING) }
+    var bluetoothState by remember { mutableStateOf(BluetoothState.UNKNOWN) }
+    var devicesList by remember { mutableStateOf<List<BluetoothDevice>>(emptyList()) }
+    var selectedDevice by remember { mutableStateOf<BluetoothDevice?>(null) }
+
+    // URL del PDF
+    val pdfUrl = remember { "https://ng.tuf4ctur4.net.pe/operations/quotation/${noteOfSale.id}/" }
+
+    // Contexto para operaciones de sistema
+    val context = LocalContext.current
+
+    // BluetoothAdapter
+    val bluetoothAdapter: BluetoothAdapter? by remember {
+        mutableStateOf(BluetoothAdapter.getDefaultAdapter())
+    }
+
+    // Verifica el estado de Bluetooth al inicio
+    LaunchedEffect(bluetoothAdapter) {
+        bluetoothState = if (bluetoothAdapter == null) {
+            BluetoothState.NOT_SUPPORTED
+        } else if (bluetoothAdapter!!.isEnabled) {
+            BluetoothState.ENABLED
+        } else {
+            BluetoothState.DISABLED
         }
     }
-    if (isVisible) {
-        Dialog(
-            onDismissRequest = onDismiss,
-            properties = DialogProperties(usePlatformDefaultWidth = false)
-        ) {
-            val context = LocalContext.current
-            val pdfUrl = remember { "https://ng.tuf4ctur4.net.pe/operations/quotation/${noteOfSale.id}/" }
 
-            // Estados para el PDF
-            val (pdfState, setPdfState) = remember { mutableStateOf<PdfState>(PdfState.Loading) }
+    // Limpiar estados cuando se cierra el diálogo
+    DisposableEffect(isVisible) {
+        onDispose {
+            selectedDevice = null
+            devicesList = emptyList()
+            bluetoothState = if (bluetoothAdapter?.isEnabled == true) {
+                BluetoothState.ENABLED
+            } else {
+                BluetoothState.DISABLED
+            }
+        }
+    }
 
-            // Estados Bluetooth
-            val bluetoothState by viewModel.bluetoothState.collectAsState()
-            val selectedDevice = remember { mutableStateOf<BluetoothDevice?>(null) }
-
-            // Cargar PDF al abrir el diálogo
-            LaunchedEffect(Unit) {
-                try {
-                    coroutineScope.launch {
-                        try {
-                            val file = downloadAndSavePdf(context, pdfUrl, "note_${noteOfSale.id}.pdf")
-                            setPdfState(PdfState.Success(file))
-                        } catch (e: Exception) {
-                            setPdfState(PdfState.Error(e.message ?: "Error al cargar PDF"))
+    // Receptor de Broadcast para eventos Bluetooth
+    val bluetoothReceiver = remember {
+        object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                when (intent.action) {
+                    BluetoothAdapter.ACTION_STATE_CHANGED -> {
+                        val state = intent.getIntExtra(
+                            BluetoothAdapter.EXTRA_STATE,
+                            BluetoothAdapter.ERROR
+                        )
+                        when (state) {
+                            BluetoothAdapter.STATE_ON -> bluetoothState = BluetoothState.ENABLED
+                            BluetoothAdapter.STATE_OFF -> bluetoothState = BluetoothState.DISABLED
                         }
                     }
-                } catch (e: Exception) {
-                    setPdfState(PdfState.Error(e.message ?: "Error al cargar PDF"))
+                    BluetoothDevice.ACTION_FOUND -> {
+                        val device = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            intent.getParcelableExtra(
+                                BluetoothDevice.EXTRA_DEVICE,
+                                BluetoothDevice::class.java
+                            )
+                        } else {
+                            @Suppress("DEPRECATION")
+                            intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
+                        }
+
+                        if (device != null && !devicesList.contains(device)) {
+                            devicesList = devicesList + device
+                        }
+                    }
+                    BluetoothAdapter.ACTION_DISCOVERY_FINISHED -> {
+                        bluetoothState = BluetoothState.ENABLED
+                    }
                 }
             }
+        }
+    }
 
-            // Resetear estados al cerrar
-            DisposableEffect(Unit) {
-                onDispose { viewModel.resetBluetoothState() }
+    // Registrar el receptor para eventos Bluetooth
+    DisposableEffect(Unit) {
+        val intentFilter = IntentFilter().apply {
+            addAction(BluetoothAdapter.ACTION_STATE_CHANGED)
+            addAction(BluetoothDevice.ACTION_FOUND)
+            addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED)
+        }
+        context.registerReceiver(bluetoothReceiver, intentFilter)
+
+        onDispose {
+            try {
+                context.unregisterReceiver(bluetoothReceiver)
+                // Verificar permisos antes de cancelar el descubrimiento
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    if (ActivityCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.BLUETOOTH_SCAN
+                        ) == PackageManager.PERMISSION_GRANTED) {
+                        bluetoothAdapter?.cancelDiscovery()
+                    }
+                } else {
+                    bluetoothAdapter?.cancelDiscovery()
+                }
+            } catch (e: Exception) {
+                // Ignorar excepciones al desregistrar
             }
+        }
+    }
 
-            Surface(
-                modifier = Modifier
-                    .fillMaxSize(0.95f)  // Pequeño margen para no ocupar toda la pantalla
-                    .padding(16.dp),
-                shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.surface
+    // Diálogo principal
+    Dialog(
+        onDismissRequest = {
+            // Verificar permisos antes de cancelar el descubrimiento
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (ActivityCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.BLUETOOTH_SCAN
+                    ) == PackageManager.PERMISSION_GRANTED) {
+                    bluetoothAdapter?.cancelDiscovery()
+                }
+            } else {
+                bluetoothAdapter?.cancelDiscovery()
+            }
+            onDismiss()
+        },
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = false,
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.95f)
+                .fillMaxHeight(0.9f),
+            shape = RoundedCornerShape(16.dp),
+            shadowElevation = 8.dp,
+            color = MaterialTheme.colorScheme.surface
+        ) {
+            // Contenedor principal usando BoxWithConstraints para controlar el layout
+            BoxWithConstraints(
+                modifier = Modifier.fillMaxSize()
             ) {
+                val maxHeight = this.maxHeight
+                val headerHeight = 50.dp
+                val controlsHeight = 280.dp
+                val pdfViewHeight = maxHeight - headerHeight - controlsHeight
+
                 Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp)
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    // Header
-                    DialogHeader(noteOfSale, onDismiss)
+                    // 1. Header con título y botón de cierre - ALTURA FIJA
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(headerHeight)
+                            .background(MaterialTheme.colorScheme.primary)
+                            .padding(5.dp)
+                    ) {
+                        Text(
+                            text = "Nota de salida",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
 
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Contenedor principal (PDF + Controles)
-                    Row(modifier = Modifier.fillMaxSize()) {
-                        // Visor de PDF (70% del ancho)
-                        Box(
+                        IconButton(
+                            onClick = {
+                                // Verificar permisos antes de cancelar el descubrimiento
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                    if (ActivityCompat.checkSelfPermission(
+                                            context,
+                                            Manifest.permission.BLUETOOTH_SCAN
+                                        ) == PackageManager.PERMISSION_GRANTED) {
+                                        bluetoothAdapter?.cancelDiscovery()
+                                    }
+                                } else {
+                                    bluetoothAdapter?.cancelDiscovery()
+                                }
+                                onDismiss()
+                            },
                             modifier = Modifier
-                                .weight(0.7f)
-                                .fillMaxHeight()
+                                .size(40.dp)
+                                .align(Alignment.CenterEnd)
                                 .background(
-                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f),
-                                    shape = RoundedCornerShape(8.dp)
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    shape = CircleShape
                                 )
-                                .padding(8.dp),
-                            contentAlignment = Alignment.Center
                         ) {
-                            when (pdfState) {
-                                is PdfState.Loading -> {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.Center
-                                    ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Cerrar",
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
+                    // 3. Visualizador de PDF - ALTURA FIJA Y CONTROLADA
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(pdfViewHeight)
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
+                    ) {
+                        when (pdfLoadingState) {
+                            PdfLoadingState.LOADING -> {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         CircularProgressIndicator()
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text("Cargando PDF...")
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Text(text = "Cargando PDF...")
                                     }
                                 }
-                                is PdfState.Success -> {
-                                    ImprovedPdfViewer(file = (pdfState as PdfState.Success).file)
+
+                                // Iniciar la carga del PDF
+                                LaunchedEffect(pdfUrl) {
+                                    try {
+                                        // Aquí implementaríamos la lógica para cargar el PDF
+                                        delay(1000) // Simulamos tiempo de carga
+                                        pdfLoadingState = PdfLoadingState.SUCCESS
+                                    } catch (e: Exception) {
+                                        pdfLoadingState = PdfLoadingState.ERROR
+                                    }
                                 }
-                                is PdfState.Error -> {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.Center
-                                    ) {
+                            }
+                            PdfLoadingState.SUCCESS -> {
+                                // Solución: Contener el PDFView en un FrameLayout y controlarlo cuidadosamente
+                                AndroidView(
+                                    factory = { ctx ->
+                                        // Creamos primero un FrameLayout contenedor
+                                        val frameLayout = FrameLayout(ctx)
+                                        frameLayout.layoutParams = FrameLayout.LayoutParams(
+                                            FrameLayout.LayoutParams.MATCH_PARENT,
+                                            FrameLayout.LayoutParams.MATCH_PARENT
+                                        )
+
+                                        // Creamos el PDFView dentro del FrameLayout
+                                        val pdfView = com.github.barteksc.pdfviewer.PDFView(ctx, null)
+                                        val pdfLayoutParams = FrameLayout.LayoutParams(
+                                            FrameLayout.LayoutParams.MATCH_PARENT,
+                                            FrameLayout.LayoutParams.MATCH_PARENT
+                                        )
+                                        pdfView.layoutParams = pdfLayoutParams
+
+                                        // Añadimos el PDFView al FrameLayout
+                                        frameLayout.addView(pdfView)
+
+                                        // Configuramos el PDFView
+                                        CoroutineScope(Dispatchers.IO).launch {
+                                            try {
+                                                val url = URL(pdfUrl)
+                                                val connection = url.openConnection() as HttpURLConnection
+                                                connection.connect()
+
+                                                val inputStream = BufferedInputStream(connection.inputStream)
+                                                withContext(Dispatchers.Main) {
+                                                    pdfView.fromStream(inputStream)
+                                                        .enableSwipe(true)
+                                                        .enableDoubletap(true)
+                                                        .defaultPage(0)
+                                                        .swipeHorizontal(false)
+                                                        .onLoad {
+                                                            // PDF cargado completamente
+                                                        }
+                                                        .onError {
+                                                            pdfLoadingState = PdfLoadingState.ERROR
+                                                        }
+                                                        .load()
+                                                }
+                                            } catch (e: Exception) {
+                                                withContext(Dispatchers.Main) {
+                                                    pdfLoadingState = PdfLoadingState.ERROR
+                                                }
+                                            }
+                                        }
+
+                                        frameLayout  // Retornamos el FrameLayout
+                                    },
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                            PdfLoadingState.ERROR -> {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Icon(
-                                            imageVector = Icons.Default.ErrorOutline,
+                                            imageVector = Icons.Default.Warning,
                                             contentDescription = null,
                                             tint = MaterialTheme.colorScheme.error,
                                             modifier = Modifier.size(48.dp)
                                         )
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text(
-                                            text = (pdfState as PdfState.Error).message,
-                                            color = MaterialTheme.colorScheme.error,
-                                            style = MaterialTheme.typography.bodyMedium
-                                        )
                                         Spacer(modifier = Modifier.height(16.dp))
+                                        Text(
+                                            text = "Error al cargar el PDF",
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
                                         Button(
-                                            onClick = {
-                                                setPdfState(PdfState.Loading)
-                                                coroutineScope.launch {
-                                                    try {
-                                                        val file = downloadAndSavePdf(context, pdfUrl, "note_${noteOfSale.id}.pdf")
-                                                        setPdfState(PdfState.Success(file))
-                                                    } catch (e: Exception) {
-                                                        setPdfState(PdfState.Error(e.message ?: "Error al cargar PDF"))
-                                                    }
-                                                }
-                                            }
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Refresh,
-                                                contentDescription = null
+                                            onClick = { pdfLoadingState = PdfLoadingState.LOADING },
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = MaterialTheme.colorScheme.primary
                                             )
-                                            Spacer(modifier = Modifier.width(8.dp))
+                                        ) {
                                             Text("Reintentar")
                                         }
                                     }
                                 }
                             }
                         }
-                        Spacer(modifier = Modifier.width(16.dp))
-                        // Controles de impresión (30% del ancho)
+                    }
+                    // 2. Sección de controles Bluetooth - ALTURA FIJA
+// 2. Sección de controles Bluetooth - ALTURA FIJA
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(controlsHeight)
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                        shadowElevation = 4.dp,
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.surface
+                    ) {
                         Column(
                             modifier = Modifier
-                                .weight(0.3f)
-                                .fillMaxHeight()
+                                .fillMaxWidth()
+                                .padding(12.dp)
                         ) {
-                            Card(
-                                modifier = Modifier.fillMaxSize(),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                                ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                            ) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(16.dp),
-                                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                                ) {
-                                    Text(
-                                        text = "Controles de Impresión",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold
-                                    )
+                            // Título sección Bluetooth
+                            Text(
+                                text = "Opciones de Impresión",
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.padding(bottom = 4.dp)
+                            )
 
-                                    // Sección de Bluetooth
-                                    BluetoothStatusUI(
-                                        state = bluetoothState,
-                                        onEnableBluetooth = {
-                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                                bluetoothPermissionLauncher.launch(
-                                                    arrayOf(
-                                                        Manifest.permission.BLUETOOTH_CONNECT,
-                                                        Manifest.permission.BLUETOOTH_SCAN
-                                                    )
-                                                )
-                                            } else {
-                                                viewModel.enableBluetooth()
+                            // Botón para Bluetooth con gradiente naranja
+                            Button(
+                                onClick = {
+                                    when (bluetoothState) {
+                                        BluetoothState.DISABLED -> {
+                                            // Solicitar activación de Bluetooth
+                                            val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+                                            try {
+                                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                                    if (ActivityCompat.checkSelfPermission(
+                                                            context,
+                                                            Manifest.permission.BLUETOOTH_CONNECT
+                                                        ) == PackageManager.PERMISSION_GRANTED) {
+                                                        (context as? Activity)?.startActivityForResult(enableBtIntent, 1)
+                                                    }
+                                                } else {
+                                                    (context as? Activity)?.startActivityForResult(enableBtIntent, 1)
+                                                }
+                                            } catch (e: Exception) {
+                                                // Manejar posibles excepciones
+                                                Toast.makeText(
+                                                    context,
+                                                    "No se pudo activar Bluetooth",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
                                             }
-                                        },
-                                        onScanDevices = { viewModel.scanForDevices() },
-                                        onConnectDevice = { device ->
-                                            selectedDevice.value = device
-                                            viewModel.connectToDevice(device)
-                                        },
-                                        onPrint = {
-                                            viewModel.printNote(noteOfSale)
-                                        },
-                                        onDisconnect = {
-                                            viewModel.resetBluetoothState()
                                         }
+                                        BluetoothState.ENABLED -> {
+                                            // Buscar dispositivos
+                                            devicesList = emptyList()
+                                            bluetoothState = BluetoothState.DISCOVERING
+
+                                            // Verificar permisos según versión de Android
+                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                                if (ActivityCompat.checkSelfPermission(
+                                                        context,
+                                                        Manifest.permission.BLUETOOTH_SCAN
+                                                    ) == PackageManager.PERMISSION_GRANTED &&
+                                                    ActivityCompat.checkSelfPermission(
+                                                        context,
+                                                        Manifest.permission.BLUETOOTH_CONNECT
+                                                    ) == PackageManager.PERMISSION_GRANTED
+                                                ) {
+                                                    bluetoothAdapter?.startDiscovery()
+                                                } else {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Se requieren permisos de Bluetooth",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                    bluetoothState = BluetoothState.ENABLED
+                                                }
+                                            } else {
+                                                if (ActivityCompat.checkSelfPermission(
+                                                        context,
+                                                        Manifest.permission.ACCESS_FINE_LOCATION
+                                                    ) == PackageManager.PERMISSION_GRANTED
+                                                ) {
+                                                    bluetoothAdapter?.startDiscovery()
+                                                } else {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Se requiere permiso de ubicación para buscar dispositivos",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                    bluetoothState = BluetoothState.ENABLED
+                                                }
+                                            }
+                                        }
+                                        else -> {
+                                            // Estado no conocido o no soportado
+                                            Toast.makeText(
+                                                context,
+                                                "Bluetooth no disponible",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color.Transparent
+                                ),
+                                contentPadding = PaddingValues(vertical = 6.dp, horizontal = 12.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(
+                                            brush = Brush.horizontalGradient(
+                                                colors = listOf(
+                                                    Color(0xFFFF8C00),  // Naranja oscuro
+                                                    Color(0xFFFFAB40)   // Naranja claro
+                                                )
+                                            ),
+                                            shape = RoundedCornerShape(4.dp)
+                                        )
+                                        .padding(vertical = 6.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Bluetooth,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(20.dp),
+                                            tint = Color.White
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = when (bluetoothState) {
+                                                BluetoothState.DISABLED -> "Activar Bluetooth"
+                                                BluetoothState.ENABLED -> "Buscar Dispositivos"
+                                                BluetoothState.DISCOVERING -> "Buscando..."
+                                                else -> "Bluetooth No Disponible"
+                                            },
+                                            color = Color.White,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            // Lista de dispositivos - ALTURA LIMITADA
+                            if (devicesList.isNotEmpty()) {
+                                Text(
+                                    text = "Dispositivos Disponibles:",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(vertical = 4.dp)
+                                )
+
+                                // Limitamos la altura de la lista para que no ocupe todo el espacio
+                                LazyColumn(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(90.dp)
+                                ) {
+                                    items(devicesList) { device ->
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable {
+                                                    selectedDevice = device
+                                                }
+                                                .padding(vertical = 4.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            RadioButton(
+                                                selected = selectedDevice == device,
+                                                onClick = { selectedDevice = device }
+                                            )
+
+                                            Spacer(modifier = Modifier.width(4.dp))
+
+                                            val deviceName = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                                if (ActivityCompat.checkSelfPermission(
+                                                        context,
+                                                        Manifest.permission.BLUETOOTH_CONNECT
+                                                    ) == PackageManager.PERMISSION_GRANTED
+                                                ) {
+                                                    device.name ?: "Dispositivo Desconocido"
+                                                } else {
+                                                    "Dispositivo Desconocido"
+                                                }
+                                            } else {
+                                                device.name ?: "Dispositivo Desconocido"
+                                            }
+
+                                            Text(
+                                                text = deviceName,
+                                                style = MaterialTheme.typography.bodyMedium
+                                            )
+                                        }
+                                    }
+                                }
+                            } else if (bluetoothState == BluetoothState.DISCOVERING) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(90.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(
+                                        color = Color(0xFFFF8C00)  // Color naranja para el indicador
                                     )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            // Botón de impresión con gradiente naranja
+                            Button(
+                                onClick = {
+                                    // Imprimir el texto básico del documento
+                                    selectedDevice?.let { device ->
+                                        try {
+                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                                if (ActivityCompat.checkSelfPermission(
+                                                        context,
+                                                        Manifest.permission.BLUETOOTH_CONNECT
+                                                    ) == PackageManager.PERMISSION_GRANTED) {
+                                                    printToBluetoothDevice(context, device, noteOfSale)
+                                                } else {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Se requiere permiso para conectar",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                }
+                                            } else {
+                                                printToBluetoothDevice(context, device, noteOfSale)
+                                            }
+                                        } catch (e: Exception) {
+                                            Toast.makeText(
+                                                context,
+                                                "Error al imprimir: ${e.message}",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                    }
+                                },
+                                enabled = selectedDevice != null,
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color.Transparent,
+                                    disabledContainerColor = Color.Transparent
+                                ),
+                                contentPadding = PaddingValues(0.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(
+                                            brush = Brush.horizontalGradient(
+                                                colors = if (selectedDevice != null) {
+                                                    listOf(
+                                                        Color(0xFFFF8C00),  // Naranja oscuro
+                                                        Color(0xFFFFAB40)   // Naranja claro
+                                                    )
+                                                } else {
+                                                    listOf(
+                                                        Color(0xFFAAAAAA),  // Gris cuando está deshabilitado
+                                                        Color(0xFFCCCCCC)
+                                                    )
+                                                }
+                                            ),
+                                            shape = RoundedCornerShape(4.dp)
+                                        )
+                                        .padding(vertical = 6.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Print,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(20.dp),
+                                            tint = Color.White
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "Imprimir",
+                                            color = Color.White,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
+//                    Surface(
+//                        modifier = Modifier
+//                            .fillMaxWidth()
+//                            .height(controlsHeight)
+//                            .padding(horizontal = 16.dp, vertical = 8.dp),
+//                        shadowElevation = 4.dp,
+//                        shape = RoundedCornerShape(8.dp),
+//                        color = MaterialTheme.colorScheme.surface
+//                    ) {
+//                        Column(
+//                            modifier = Modifier
+//                                .fillMaxWidth()
+//                                .padding(5.dp)
+//                        ) {
+//                            // Título sección Bluetooth
+//                            Text(
+//                                text = "Opciones de Impresión",
+//                                style = MaterialTheme.typography.titleMedium,
+//                                modifier = Modifier.padding(bottom = 3.dp)
+//                            )
+//
+//                            // Botón para Bluetooth (Activar o Buscar dispositivos)
+//                            Button(
+//                                onClick = {
+//                                    when (bluetoothState) {
+//                                        BluetoothState.DISABLED -> {
+//                                            // Solicitar activación de Bluetooth
+//                                            val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+//                                            try {
+//                                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+//                                                    if (ActivityCompat.checkSelfPermission(
+//                                                            context,
+//                                                            Manifest.permission.BLUETOOTH_CONNECT
+//                                                        ) == PackageManager.PERMISSION_GRANTED) {
+//                                                        (context as? Activity)?.startActivityForResult(enableBtIntent, 1)
+//                                                    }
+//                                                } else {
+//                                                    (context as? Activity)?.startActivityForResult(enableBtIntent, 1)
+//                                                }
+//                                            } catch (e: Exception) {
+//                                                // Manejar posibles excepciones
+//                                                Toast.makeText(
+//                                                    context,
+//                                                    "No se pudo activar Bluetooth",
+//                                                    Toast.LENGTH_SHORT
+//                                                ).show()
+//                                            }
+//                                        }
+//                                        BluetoothState.ENABLED -> {
+//                                            // Buscar dispositivos
+//                                            devicesList = emptyList()
+//                                            bluetoothState = BluetoothState.DISCOVERING
+//
+//                                            // Verificar permisos según versión de Android
+//                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+//                                                if (ActivityCompat.checkSelfPermission(
+//                                                        context,
+//                                                        Manifest.permission.BLUETOOTH_SCAN
+//                                                    ) == PackageManager.PERMISSION_GRANTED &&
+//                                                    ActivityCompat.checkSelfPermission(
+//                                                        context,
+//                                                        Manifest.permission.BLUETOOTH_CONNECT
+//                                                    ) == PackageManager.PERMISSION_GRANTED
+//                                                ) {
+//                                                    bluetoothAdapter?.startDiscovery()
+//                                                } else {
+//                                                    Toast.makeText(
+//                                                        context,
+//                                                        "Se requieren permisos de Bluetooth",
+//                                                        Toast.LENGTH_SHORT
+//                                                    ).show()
+//                                                    bluetoothState = BluetoothState.ENABLED
+//                                                }
+//                                            } else {
+//                                                if (ActivityCompat.checkSelfPermission(
+//                                                        context,
+//                                                        Manifest.permission.ACCESS_FINE_LOCATION
+//                                                    ) == PackageManager.PERMISSION_GRANTED
+//                                                ) {
+//                                                    bluetoothAdapter?.startDiscovery()
+//                                                } else {
+//                                                    Toast.makeText(
+//                                                        context,
+//                                                        "Se requiere permiso de ubicación para buscar dispositivos",
+//                                                        Toast.LENGTH_SHORT
+//                                                    ).show()
+//                                                    bluetoothState = BluetoothState.ENABLED
+//                                                }
+//                                            }
+//                                        }
+//                                        else -> {
+//                                            // Estado no conocido o no soportado
+//                                            Toast.makeText(
+//                                                context,
+//                                                "Bluetooth no disponible",
+//                                                Toast.LENGTH_SHORT
+//                                            ).show()
+//                                        }
+//                                    }
+//                                },
+//                                modifier = Modifier.fillMaxWidth(),
+//                                colors = ButtonDefaults.buttonColors(
+//                                    containerColor = MaterialTheme.colorScheme.secondary
+//                                )
+//                            ) {
+//                                Icon(
+//                                    imageVector = Icons.Default.Bluetooth,
+//                                    contentDescription = null,
+//                                    modifier = Modifier.size(24.dp)
+//                                )
+//                                Spacer(modifier = Modifier.width(8.dp))
+//                                Text(
+//                                    text = when (bluetoothState) {
+//                                        BluetoothState.DISABLED -> "Activar Bluetooth"
+//                                        BluetoothState.ENABLED -> "Buscar Dispositivos"
+//                                        BluetoothState.DISCOVERING -> "Buscando..."
+//                                        else -> "Bluetooth No Disponible"
+//                                    }
+//                                )
+//                            }
+//
+//                            Spacer(modifier = Modifier.height(8.dp))
+//
+//                            // Lista de dispositivos - ALTURA LIMITADA
+//                            if (devicesList.isNotEmpty()) {
+//                                Text(
+//                                    text = "Dispositivos Disponibles:",
+//                                    style = MaterialTheme.typography.bodyMedium,
+//                                    modifier = Modifier.padding(vertical = 5.dp)
+//                                )
+//
+//                                // Limitamos la altura de la lista para que no ocupe todo el espacio
+//                                LazyColumn(
+//                                    modifier = Modifier
+//                                        .fillMaxWidth()
+//                                        .height(50.dp)
+//                                ) {
+//                                    items(devicesList) { device ->
+//                                        Row(
+//                                            modifier = Modifier
+//                                                .fillMaxWidth()
+//                                                .clickable {
+//                                                    selectedDevice = device
+//                                                }
+//                                                .padding(vertical = 8.dp),
+//                                            verticalAlignment = Alignment.CenterVertically
+//                                        ) {
+//                                            RadioButton(
+//                                                selected = selectedDevice == device,
+//                                                onClick = { selectedDevice = device }
+//                                            )
+//
+//                                            Spacer(modifier = Modifier.width(8.dp))
+//
+//                                            val deviceName = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+//                                                if (ActivityCompat.checkSelfPermission(
+//                                                        context,
+//                                                        Manifest.permission.BLUETOOTH_CONNECT
+//                                                    ) == PackageManager.PERMISSION_GRANTED
+//                                                ) {
+//                                                    device.name ?: "Dispositivo Desconocido"
+//                                                } else {
+//                                                    "Dispositivo Desconocido"
+//                                                }
+//                                            } else {
+//                                                device.name ?: "Dispositivo Desconocido"
+//                                            }
+//
+//                                            Text(
+//                                                text = deviceName,
+//                                                style = MaterialTheme.typography.bodyMedium
+//                                            )
+//                                        }
+//                                    }
+//                                }
+//                            } else if (bluetoothState == BluetoothState.DISCOVERING) {
+//                                Box(
+//                                    modifier = Modifier
+//                                        .fillMaxWidth()
+//                                        .height(100.dp),
+//                                    contentAlignment = Alignment.Center
+//                                ) {
+//                                    CircularProgressIndicator()
+//                                }
+//                            }
+//
+//                            Spacer(modifier = Modifier.height(8.dp))
+//
+//                            // Botón de impresión
+//                            Button(
+//                                onClick = {
+//                                    // Imprimir el texto básico del documento
+//                                    selectedDevice?.let { device ->
+//                                        try {
+//                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+//                                                if (ActivityCompat.checkSelfPermission(
+//                                                        context,
+//                                                        Manifest.permission.BLUETOOTH_CONNECT
+//                                                    ) == PackageManager.PERMISSION_GRANTED) {
+//                                                    printToBluetoothDevice(context, device, noteOfSale)
+//                                                } else {
+//                                                    Toast.makeText(
+//                                                        context,
+//                                                        "Se requiere permiso para conectar",
+//                                                        Toast.LENGTH_SHORT
+//                                                    ).show()
+//                                                }
+//                                            } else {
+//                                                printToBluetoothDevice(context, device, noteOfSale)
+//                                            }
+//                                        } catch (e: Exception) {
+//                                            Toast.makeText(
+//                                                context,
+//                                                "Error al imprimir: ${e.message}",
+//                                                Toast.LENGTH_SHORT
+//                                            ).show()
+//                                        }
+//                                    }
+//                                },
+//                                enabled = selectedDevice != null,
+//                                modifier = Modifier.fillMaxWidth(),
+//                                colors = ButtonDefaults.buttonColors(
+//                                    containerColor = MaterialTheme.colorScheme.primary
+//                                )
+//                            ) {
+//                                Icon(
+//                                    imageVector = Icons.Default.Print,
+//                                    contentDescription = null,
+//                                    modifier = Modifier.size(24.dp)
+//                                )
+//                                Spacer(modifier = Modifier.width(8.dp))
+//                                Text(text = "Imprimir")
+//                            }
+//                        }
+//                    }
+
+
                 }
             }
         }
     }
 }
-@Composable
-private fun DialogHeader(noteOfSale: IOperation, onDismiss: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = Icons.Default.Description,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "Nota de Salida ${noteOfSale.serial}-${noteOfSale.correlative}",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-        }
 
-        IconButton(onClick = onDismiss) {
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = "Cerrar",
-                tint = MaterialTheme.colorScheme.onSurface
-            )
-        }
-    }
-    Divider()
-}
+// Función para imprimir a dispositivo Bluetooth
+private fun printToBluetoothDevice(context: Context, device: BluetoothDevice, noteOfSale: IOperation) {
+    try {
+        // Crear un UUID para el servicio de impresión SPP
+        val uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
 
-@Composable
-fun ImprovedPdfViewer(file: File) {
-    AndroidView(
-        modifier = Modifier.fillMaxSize(),
-        factory = { context ->
-            PDFView(context, null).apply {
-                fromFile(file)
-                    .enableSwipe(true)
-                    .swipeHorizontal(false)
-                    .enableDoubletap(true)
-                    .defaultPage(0)
-                    .enableAnnotationRendering(true)
-                    .scrollHandle(DefaultScrollHandle(context))
-                    .spacing(10)
-                    .load()
+        // Obtener un socket Bluetooth
+        val socket = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (ActivityCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.BLUETOOTH_CONNECT
+                ) == PackageManager.PERMISSION_GRANTED) {
+                device.createRfcommSocketToServiceRecord(uuid)
+            } else {
+                throw SecurityException("Se requiere permiso BLUETOOTH_CONNECT")
             }
+        } else {
+            device.createRfcommSocketToServiceRecord(uuid)
         }
-    )
+
+        // Cancelar descubrimiento antes de conectar
+        val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+        // Verificar permisos antes de cancelar el descubrimiento
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (ActivityCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.BLUETOOTH_SCAN
+                ) == PackageManager.PERMISSION_GRANTED) {
+                bluetoothAdapter?.cancelDiscovery()
+            }
+        } else {
+            bluetoothAdapter?.cancelDiscovery()
+        }
+
+        // Conectar al dispositivo
+        socket.connect()
+
+        // Obtener flujo de salida
+        val outputStream = socket.outputStream
+
+        // Crear los datos para imprimir
+        val printData = """
+            |----------------------------
+            |NOTA DE VENTA
+            |----------------------------
+            |ID: ${noteOfSale.id}
+            |SERIE: ${noteOfSale.serial}
+            |CORRELATIVO: ${noteOfSale.correlative}
+            |----------------------------
+            |
+            |
+        """.trimIndent()
+
+        // Enviar datos al dispositivo
+        outputStream.write(printData.toByteArray())
+
+        // Cerrar conexión
+        outputStream.close()
+        socket.close()
+
+        // Mostrar mensaje de éxito
+        Toast.makeText(
+            context,
+            "Impresión enviada correctamente",
+            Toast.LENGTH_SHORT
+        ).show()
+    } catch (e: Exception) {
+        // Mostrar mensaje de error
+        Toast.makeText(
+            context,
+            "Error en la impresión: ${e.message}",
+            Toast.LENGTH_SHORT
+        ).show()
+    }
 }
 
-@Composable
-private fun PrintControlsSection(
-    bluetoothState: MyBluetoothState,
-    onEnableBluetooth: () -> Unit,
-    onScanDevices: () -> Unit,
-    onConnectDevice: (BluetoothDevice) -> Unit,
-    onPrint: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Column(modifier = Modifier.padding(8.dp)) {
-            // Estado actual Bluetooth
-            BluetoothStatusUI(
-                state = bluetoothState,
-                onEnableBluetooth = onEnableBluetooth,
-                onScanDevices = onScanDevices,
-                onConnectDevice = onConnectDevice,
-                onPrint = onPrint,
-                onDisconnect = { /* Implementar si es necesario */ }
-            )
-        }
-    }
+// Enumeración para estados de carga del PDF
+enum class PdfLoadingState {
+    LOADING, SUCCESS, ERROR
 }
-// PdfViewer.kt (simplificado)
-@Composable
-fun PdfViewer(file: File) {
-    // Implementación básica - en producción usaría una librería como AndroidPdfViewer
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("Visualización de PDF: ${file.name}")
-    }
+
+// Enumeración para estados de Bluetooth
+enum class BluetoothState {
+    UNKNOWN, NOT_SUPPORTED, DISABLED, ENABLED, DISCOVERING
 }
