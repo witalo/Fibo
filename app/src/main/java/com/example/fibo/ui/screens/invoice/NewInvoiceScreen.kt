@@ -81,6 +81,7 @@ import kotlin.math.min
 fun NewInvoiceScreen(
     onBack: () -> Unit,
     onInvoiceCreated: (String) -> Unit,
+    quotationId: Int? = null, // Nuevo parámetro opcional
     viewModel: NewInvoiceViewModel = hiltViewModel(),
     homeViewModel: HomeViewModel = hiltViewModel(),
 ) {
@@ -170,6 +171,20 @@ fun NewInvoiceScreen(
     LaunchedEffect(subsidiaryData) {
         subsidiaryData?.id?.let { subsidiaryId ->
             viewModel.loadSerials(subsidiaryId)
+        }
+    }
+    // Nuevo efecto para cargar datos de cotización si existe quotationId
+    // En tu Composable (NewInvoiceScreen)
+    LaunchedEffect(quotationId) {
+        quotationId?.let { id ->
+            viewModel.loadQuotationData(id) { quotation -> // <- Aquí pasas el callback
+                quotation?.let {
+                    // Actualiza los estados aquí
+                    clientData = it.client
+                    documentNumber = it.client.documentNumber ?: ""
+                    operationDetails = it.operationDetailSet.toList()
+                }
+            }
         }
     }
 

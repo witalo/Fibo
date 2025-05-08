@@ -16,10 +16,25 @@ sealed class Screen(
     object Quotation : Screen("quotation")
     object NoteOfSale : Screen("note_of_sale")
     object Profile : Screen("new_profile")
-    object NewInvoice : Screen("new_invoice")
+//    object NewInvoice : Screen("new_invoice")
     object NewReceipt : Screen("new_receipt")
     object NewQuotation : Screen("new_quotation")
     object NewNoteOfSale : Screen("new_note_of_sale")
+    object NewInvoice : Screen(
+        route = "new_invoice",
+        routeWithArgs = "new_invoice/{quotationId}",
+        arguments = listOf(
+            navArgument("quotationId") {
+                type = NavType.StringType
+            }
+        ) // <-- Este paréntesis estaba faltando
+    ) { // <-- Ahora sí se cierra correctamente
+        fun createRoute(quotationId: Int) = "new_invoice/$quotationId"
+        const val quotationIdArg = "quotationId"
+    }
+
+
+
 
     // Detalles
     object InvoiceDetail : Screen(

@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,6 +22,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -29,7 +32,9 @@ import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -134,7 +139,8 @@ fun QuotationScreen(
                                     onQuotationClick = { q ->
                                         navController.navigate("quotation_detail/${q.id}")
                                     },
-                                    onNewQuotation = { navController.navigate(Screen.NewQuotation.route) }
+                                    onNewQuotation = { navController.navigate(Screen.NewQuotation.route) },
+                                    navController = navController
                                 )
                             }
                             is QuotationState.Error -> {
@@ -158,7 +164,8 @@ fun QuotationScreen(
 fun QuotationContent(
     quotation: List<IOperation>,
     onQuotationClick: (IOperation) -> Unit,
-    onNewQuotation: () -> Unit
+    onNewQuotation: () -> Unit,
+    navController: NavController
 ) {
     val quotationCount = quotation.count { it.documentTypeReadable == "COMPROBANTE DE OPERACIONES" }
 
@@ -184,7 +191,8 @@ fun QuotationContent(
                 // Wrap the InvoiceList in a Box to ensure scrolling works
                 QuotationList(
                     quotation = quotation,
-                    onQuotationClick = onQuotationClick
+                    onQuotationClick = onQuotationClick,
+                    navController = navController
                 )
             }
         }
@@ -210,7 +218,8 @@ fun QuotationContent(
 @Composable
 fun QuotationList(
     quotation: List<IOperation>,
-    onQuotationClick: (IOperation) -> Unit
+    onQuotationClick: (IOperation) -> Unit,
+    navController: NavController
 ) {
     // Removed fillMaxSize to allow proper scrolling
     LazyColumn(
@@ -220,7 +229,8 @@ fun QuotationList(
         items(quotation) { quotation ->
             QuotationItem(
                 quotation = quotation,
-                onClick = { onQuotationClick(quotation) }
+                onClick = { onQuotationClick(quotation) },
+                navController = navController  // Pasar hacia abajo
             )
         }
     }
@@ -230,7 +240,13 @@ fun QuotationList(
 fun QuotationItem(
     quotation: IOperation,
     onClick: () -> Unit,
+    navController: NavController,
 ) {
+
+    var showConvertDialog by remember { mutableStateOf(false) }
+    var selectedDocumentType by remember { mutableStateOf("FACTURA") } // Default to Factura
+
+
     val isAnulado = quotation.operationStatus.replace("A_", "") == "06" || quotation.operationStatus.replace("A_", "") == "04"
     var showPdfDialog by remember { mutableStateOf(false) }
     // Show PDF Dialog if needed
@@ -239,6 +255,74 @@ fun QuotationItem(
             isVisible = true,
             quotation = quotation,
             onDismiss = { showPdfDialog = false }
+        )
+    }
+    // Show Convert Dialog
+    if (showConvertDialog) {
+        AlertDialog(
+            onDismissRequest = { showConvertDialog = false },
+            title = {
+                Text(
+                    text = "Convertir a documento",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        text = "${quotation.serial}-${quotation.correlative}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Document type selector
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        DocumentTypeChip(
+                            label = "FACTURA",
+                            isSelected = selectedDocumentType == "FACTURA",
+                            onClick = { selectedDocumentType = "FACTURA" }
+                        )
+                        DocumentTypeChip(
+                            label = "BOLETA",
+                            isSelected = selectedDocumentType == "BOLETA",
+                            onClick = { selectedDocumentType = "BOLETA" }
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showConvertDialog = false
+                        navController.navigate(Screen.NewInvoice.createRoute(quotation.id)) {
+                            popUpTo(Screen.Quotation.route) // Opcional: ajusta según tu flujo de navegación
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text("Generar")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { showConvertDialog = false },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Cancelar")
+                }
+            },
+            shape = RoundedCornerShape(16.dp)
         )
     }
     Card(
@@ -300,13 +384,18 @@ fun QuotationItem(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Chip(
-                    label = "COTIZACIÓN",//quotation.documentTypeReadable,
-                    gradient = when (quotation.documentTypeReadable) {
-                        "COTIZACIÓN" -> ColorGradients.blueOcean
-                        else -> ColorGradients.greenNature
-                    }
-                )
+                // Modified Chip to be clickable
+                Box(
+                    modifier = Modifier.clickable { showConvertDialog = true }
+                ) {
+                    Chip(
+                        label = "COTIZACIÓN",
+                        gradient = when (quotation.documentTypeReadable) {
+                            "COTIZACIÓN" -> ColorGradients.blueOcean
+                            else -> ColorGradients.greenNature
+                        }
+                    )
+                }
 
                 IconButton(
                     onClick = {
@@ -416,5 +505,32 @@ fun ActionButtonsQuotation(
                 Spacer(modifier = Modifier.weight(1f))
             }
         }
+    }
+}
+
+@Composable
+fun DocumentTypeChip(
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(16.dp),
+        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer
+        else MaterialTheme.colorScheme.surfaceVariant,
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (isSelected) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.outline
+        )
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
+            else MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
