@@ -52,6 +52,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.fibo.R
@@ -263,17 +264,23 @@ fun QuotationItem(
             onDismissRequest = { showConvertDialog = false },
             title = {
                 Text(
-                    text = "Convertir a documento",
+                    text = "${quotation.serial}-${quotation.correlative}",
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
                 )
             },
             text = {
-                Column {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                ) {
                     Text(
-                        text = "${quotation.serial}-${quotation.correlative}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(bottom = 8.dp)
+                        text = "Convertir a documento",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(bottom = 16.dp)
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -281,17 +288,20 @@ fun QuotationItem(
                     // Document type selector
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         DocumentTypeChip(
                             label = "FACTURA",
                             isSelected = selectedDocumentType == "FACTURA",
-                            onClick = { selectedDocumentType = "FACTURA" }
+                            onClick = { selectedDocumentType = "FACTURA" },
+                            modifier = Modifier.weight(1f)
                         )
                         DocumentTypeChip(
                             label = "BOLETA",
                             isSelected = selectedDocumentType == "BOLETA",
-                            onClick = { selectedDocumentType = "BOLETA" }
+                            onClick = { selectedDocumentType = "BOLETA" },
+                            modifier = Modifier.weight(1f)
                         )
                     }
                 }
@@ -300,31 +310,57 @@ fun QuotationItem(
                 Button(
                     onClick = {
                         showConvertDialog = false
-                        navController.navigate(Screen.NewInvoice.createRoute(quotation.id)) {
-                            popUpTo(Screen.Quotation.route) // Opcional: ajusta según tu flujo de navegación
+                        // Lógica condicional para navegar según el tipo de documento
+                        if (selectedDocumentType == "FACTURA") {
+                            navController.navigate(Screen.NewInvoice.createRoute(quotation.id)) {
+                                popUpTo(Screen.Quotation.route)
+                            }
+                        } else {
+                            navController.navigate(Screen.NewReceipt.createRoute(quotation.id)) {
+                                popUpTo(Screen.Quotation.route)
+                            }
                         }
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
                     shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
+                        containerColor = Color(0xFF2196F3) // Azul más vibrante
                     )
                 ) {
-                    Text("Generar")
+                    Text(
+                        "Generar",
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 16.sp
+                    )
                 }
             },
             dismissButton = {
                 OutlinedButton(
                     onClick = { showConvertDialog = false },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, Color(0xFF2196F3)),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Color(0xFF2196F3)
+                    )
                 ) {
-                    Text("Cancelar")
+                    Text(
+                        "Cancelar",
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 16.sp
+                    )
                 }
             },
-            shape = RoundedCornerShape(16.dp)
+            shape = RoundedCornerShape(16.dp),
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp
         )
     }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -512,25 +548,31 @@ fun ActionButtonsQuotation(
 fun DocumentTypeChip(
     label: String,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
-        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer
-        else MaterialTheme.colorScheme.surfaceVariant,
-        border = BorderStroke(
-            width = 1.dp,
-            color = if (isSelected) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.outline
+    Card(
+        modifier = modifier
+            .height(48.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) Color(0xFF2196F3) else MaterialTheme.colorScheme.surfaceVariant
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isSelected) 4.dp else 0.dp
         )
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
-            else MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = label,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }

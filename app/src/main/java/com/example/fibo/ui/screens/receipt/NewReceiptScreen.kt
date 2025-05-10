@@ -74,6 +74,7 @@ import kotlin.math.min
 fun NewReceiptScreen(
     onBack: () -> Unit,
     onReceiptCreated: (String) -> Unit,
+    quotationId: Int? = null, // Nuevo parámetro opcional
     viewModel: NewReceiptViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
@@ -163,6 +164,31 @@ fun NewReceiptScreen(
     LaunchedEffect(subsidiaryData) {
         subsidiaryData?.id?.let { subsidiaryId ->
             viewModel.loadSerials(subsidiaryId)
+        }
+    }
+    // Nuevo efecto para cargar datos de cotización si existe quotationId
+    LaunchedEffect(quotationId) {
+        quotationId?.let { id ->
+            viewModel.loadQuotationData(id) { quotation -> // <- Aquí pasas el callback
+                quotation?.let {
+                    // Actualiza los estados aquí
+                    clientData = it.client
+                    documentNumber = it.client.documentNumber ?: ""
+                    operationDetails = it.operationDetailSet.toList()
+                    // Manejo del descuento
+                    if (it.discountGlobal > 0) {
+                        applyGlobalDiscount = true
+                        discountGlobalValue = it.discountGlobal
+                        discountGlobalPercentage = it.discountPercentageGlobal
+                        discountGlobalString = "%.2f".format(it.discountGlobal)
+                    } else {
+                        applyGlobalDiscount = false
+                        discountGlobalValue = 0.0
+                        discountGlobalPercentage = 0.0
+                        discountGlobalString = "0.00"
+                    }
+                }
+            }
         }
     }
     // Agrega este estado al inicio de tu composable

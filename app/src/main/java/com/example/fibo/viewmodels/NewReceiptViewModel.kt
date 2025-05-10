@@ -186,4 +186,15 @@ class NewReceiptViewModel @Inject constructor(
     fun clearProductSelection() {
         _selectedProduct.value = null
     }
+    fun loadQuotationData(quotationId: Int, callback: (IOperation?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val result = operationRepository.getOperationById(quotationId)
+                callback(result)
+            } catch (e: Exception) {
+                _error.value = "Error al cargar cotización: ${e.message}"
+                callback(null)
+            }
+        }
+    }
 }

@@ -120,6 +120,20 @@ fun NavGraph(
                 }
             )
         }
+        composable(
+            route = Screen.NewReceipt.routeWithArgs ?: Screen.NewReceipt.route,
+            arguments = Screen.NewReceipt.arguments
+        ) { backStackEntry ->
+            val quotationId = backStackEntry.arguments?.getString(Screen.NewReceipt.quotationIdArg)?.toIntOrNull()
+
+            NewReceiptScreen(
+                onBack = { navController.popBackStack() },
+                onReceiptCreated = { receiptId ->
+                    navController.navigate(Screen.ReceiptDetail.createRoute(receiptId.toInt()))
+                },
+                quotationId = quotationId // Pasamos el ID de la cotización
+            )
+        }
         // Pantallas de facturas y recibos
         composable(Screen.NewQuotation.route) {
             NewQuotationScreen(

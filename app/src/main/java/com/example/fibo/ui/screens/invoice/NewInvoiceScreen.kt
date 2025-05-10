@@ -174,7 +174,6 @@ fun NewInvoiceScreen(
         }
     }
     // Nuevo efecto para cargar datos de cotización si existe quotationId
-    // En tu Composable (NewInvoiceScreen)
     LaunchedEffect(quotationId) {
         quotationId?.let { id ->
             viewModel.loadQuotationData(id) { quotation -> // <- Aquí pasas el callback
@@ -183,12 +182,22 @@ fun NewInvoiceScreen(
                     clientData = it.client
                     documentNumber = it.client.documentNumber ?: ""
                     operationDetails = it.operationDetailSet.toList()
+                    // Manejo del descuento
+                    if (it.discountGlobal > 0) {
+                        applyGlobalDiscount = true
+                        discountGlobalValue = it.discountGlobal
+                        discountGlobalPercentage = it.discountPercentageGlobal
+                        discountGlobalString = "%.2f".format(it.discountGlobal)
+                    } else {
+                        applyGlobalDiscount = false
+                        discountGlobalValue = 0.0
+                        discountGlobalPercentage = 0.0
+                        discountGlobalString = "0.00"
+                    }
                 }
             }
         }
     }
-
-
     // Agrega este estado al inicio de tu composable
     var showConfirmationDialog by remember { mutableStateOf(false) }
     Scaffold(
@@ -1001,6 +1010,10 @@ fun NewInvoiceScreen(
 
                                             if (operationDetails.isEmpty()) {
                                                 Toast.makeText(context, "Agregue al menos un producto", Toast.LENGTH_SHORT).show()
+                                                return@Button
+                                            }
+                                            if ((clientData?.documentNumber)?.length != 11) {
+                                                Toast.makeText(context, "La factura requiere un numero de RUC", Toast.LENGTH_SHORT).show()
                                                 return@Button
                                             }
                                             val operation = IOperation(
