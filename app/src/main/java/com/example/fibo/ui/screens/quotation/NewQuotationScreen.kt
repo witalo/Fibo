@@ -17,6 +17,8 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -33,6 +35,7 @@ import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -43,14 +46,27 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.fibo.model.IOperation
@@ -70,6 +86,7 @@ import com.example.fibo.viewmodels.NewQuotationViewModel
 import kotlinx.coroutines.delay
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.random.Random
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -168,6 +185,31 @@ fun NewQuotationScreen(
         }
     }
 
+    //Editar cantidad********
+    // 1. Estado para controlar la edición (debe estar en el ámbito superior del composable)
+    var editingDetailId by remember { mutableStateOf<Int?>(null) }
+    val focusRequester = remember { FocusRequester() }
+
+    // 2. Función para actualizar cantidades (también en el ámbito superior)
+    fun updateQuantity(detail: IOperationDetail, newQuantity: Double) {
+        operationDetails = operationDetails.map {
+            if (it.id == detail.id) {
+                it.copy(
+                    quantity = newQuantity,
+                    totalValue = newQuantity * it.unitValue,
+                    totalIgv = if (it.typeAffectationId == 1) {
+                        (newQuantity * it.unitValue) * (it.igvPercentage / 100)
+                    } else 0.0,
+                    totalAmount = if (it.typeAffectationId == 1) {
+                        (newQuantity * it.unitValue) * (1 + it.igvPercentage / 100)
+                    } else {
+                        newQuantity * it.unitValue
+                    }
+                )
+            } else it
+        }
+    }
+    //Editar cantidad********
 
     // Agrega este estado al inicio de tu composable
     var showConfirmationDialog by remember { mutableStateOf(false) }
@@ -572,12 +614,97 @@ fun NewQuotationScreen(
 //                                        textAlign = TextAlign.Center,
 //                                        color = getAffectationColor(detail.typeAffectationId)
 //                                    )
-                                    Text(
-                                        "${detail.quantity}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        modifier = Modifier.width(30.dp),
-                                        textAlign = TextAlign.Center
-                                    )
+//                                    Text(
+//                                        "${detail.quantity}",
+//                                        style = MaterialTheme.typography.bodySmall,
+//                                        modifier = Modifier.width(30.dp),
+//                                        textAlign = TextAlign.Center
+//                                    )
+                                    // Luego, en tu lista de productos, reemplaza la parte de cantidad con esto:
+                                    Box(
+                                        modifier = Modifier.width(80.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (editingDetailId == detail.id) {
+                                            var textFieldValue by remember(detail.id) {
+                                                mutableStateOf(TextFieldValue(
+                                                    text = "%.2f".format(detail.quantity),
+                                                    selection = TextRange(0, "%.2f".format(detail.quantity).length)
+                                                ))
+                                            }
+
+                                            val focusManager = LocalFocusManager.current
+                                            val keyboardController = LocalSoftwareKeyboardController.current
+
+                                            DisposableEffect(Unit) {
+                                                focusRequester.requestFocus()
+                                                keyboardController?.show()
+                                                onDispose { }
+                                            }
+
+                                            BasicTextField(
+                                                value = textFieldValue,
+                                                onValueChange = { newValue ->
+                                                    if (newValue.text.matches(Regex("^\\d*\\.?\\d{0,2}\$")) || newValue.text.isEmpty()) {
+                                                        textFieldValue = newValue
+                                                        val quantity = newValue.text.toDoubleOrNull() ?: 0.0
+                                                        updateQuantity(detail, quantity)
+                                                    }
+                                                },
+                                                modifier = Modifier
+                                                    .width(80.dp)
+                                                    .height(32.dp)
+                                                    .focusRequester(focusRequester),
+                                                keyboardOptions = KeyboardOptions(
+                                                    keyboardType = KeyboardType.Number,
+                                                    imeAction = ImeAction.Done
+                                                ),
+                                                keyboardActions = KeyboardActions(
+                                                    onDone = {
+                                                        editingDetailId = null
+                                                        focusManager.clearFocus()
+                                                        keyboardController?.hide()
+                                                    }
+                                                ),
+                                                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                                    textAlign = TextAlign.Center,
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                ),
+                                                singleLine = true,
+                                                decorationBox = { innerTextField ->
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .fillMaxSize()
+                                                            .background(
+                                                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f),
+                                                                shape = MaterialTheme.shapes.small
+                                                            )
+                                                            .border(
+                                                                width = 1.dp,
+                                                                color = MaterialTheme.colorScheme.outline,
+                                                                shape = MaterialTheme.shapes.small
+                                                            ),
+                                                        contentAlignment = Alignment.Center
+                                                    ) {
+                                                        innerTextField()
+                                                    }
+                                                }
+                                            )
+                                        } else {
+                                            Text(
+                                                "%.2f".format(detail.quantity),
+                                                style = MaterialTheme.typography.bodyLarge,
+                                                modifier = Modifier
+                                                    .width(80.dp)
+                                                    .clickable {
+                                                        editingDetailId = detail.id
+                                                    },
+                                                textAlign = TextAlign.Center
+                                            )
+                                        }
+                                    }
+
+
                                     Text(
                                         "S/ ${detail.unitPrice}",
                                         style = MaterialTheme.typography.bodySmall,
@@ -1726,7 +1853,7 @@ fun AddProductQuotationDialog(
                                         )
 
                                         val operationDetail = IOperationDetail(
-                                            id = 0,
+                                            id = Random.nextInt(1, Int.MAX_VALUE), // Genera un ID único,
                                             tariff = tariff,
                                             description = observaciones,
                                             typeAffectationId = selectedAffectationType, // Usar el tipo seleccionado, no el del producto
