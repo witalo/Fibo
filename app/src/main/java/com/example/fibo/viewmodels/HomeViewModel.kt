@@ -20,6 +20,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 import android.widget.Toast
 import android.content.Context
+import com.example.fibo.model.IPerson
 import dagger.hilt.android.qualifiers.ApplicationContext
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -53,6 +54,20 @@ class HomeViewModel @Inject constructor(
 
     private val _currentOperationId = MutableStateFlow(0)
     val currentOperationId: StateFlow<Int> = _currentOperationId.asStateFlow()
+
+    // Nuevos estados para la búsqueda de clientes
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    private val _searchResults = MutableStateFlow<List<IPerson>>(emptyList())
+    val searchResults: StateFlow<List<IPerson>> = _searchResults.asStateFlow()
+
+    private val _isSearching = MutableStateFlow(false)
+    val isSearching: StateFlow<Boolean> = _isSearching.asStateFlow()
+
+    private val _selectedClient = MutableStateFlow<IPerson?>(null)
+    val selectedClient: StateFlow<IPerson?> = _selectedClient.asStateFlow()
+    // Nuevos estados para la búsqueda de clientes
 
     fun triggerRefresh() {
         viewModelScope.launch {
@@ -186,6 +201,69 @@ class HomeViewModel @Inject constructor(
             } catch (e: Exception) {
                 Toast.makeText(context, e.message ?: "Error al anular el comprobante", Toast.LENGTH_SHORT).show()
             }
+        }
+    }
+
+    // Función para buscar clientes
+    fun searchClients(query: String) {
+        _searchQuery.value = query
+        if (query.length >= 3) { // Solo buscar si hay al menos 3 caracteres
+            viewModelScope.launch {
+                _isSearching.value = true
+                try {
+                    val results = operationRepository.searchPersons(query)
+                    _searchResults.value = results
+                } catch (e: Exception) {
+                    _searchResults.value = emptyList()
+                    // Podrías manejar el error aquí si lo deseas
+                } finally {
+                    _isSearching.value = false
+                }
+            }
+        } else {
+            _searchResults.value = emptyList()
+        }
+    }
+
+    // Función para seleccionar un cliente y cargar sus cotizaciones
+    fun selectClient(client: IPerson) {
+        _selectedClient.value = client
+        val userId = _currentUserId.value
+        if (userId != null) {
+            loadInvoicesByPersonAndUser(client.id, userId)
+        }
+    }
+
+    // Función para cargar cotizaciones por cliente
+    fun loadInvoicesByPersonAndUser(personId: Int, userId: Int) {
+        viewModelScope.launch {
+            _invoiceState.value = InvoiceState.Loading
+            val types = listOf("01", "03") // Tipo para cotizaciones
+            try {
+                val invoices = operationRepository.getOperationsByPersonAndUser(
+                    personId = personId,
+                    userId = userId,
+                    types = types
+                )
+                _invoiceState.value = InvoiceState.Success(invoices)
+            } catch (e: Exception) {
+                _invoiceState.value = InvoiceState.Error(
+                    e.message ?: "Error al cargar los comprobantes del cliente"
+                )
+            }
+        }
+    }
+
+    // Función para limpiar la búsqueda y volver a las cotizaciones por fecha
+    fun clearClientSearch() {
+        _selectedClient.value = null
+        _searchQuery.value = ""
+        _searchResults.value = emptyList()
+        // Volver a cargar por fecha
+        val userId = _currentUserId.value
+        val date = selectedDate.value
+        if (userId != null) {
+            loadInvoices(date)
         }
     }
 }

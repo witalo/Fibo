@@ -61,6 +61,10 @@ type Query {
 
   operationsApp(date: Date, userId: Int): [OperationType]
 
+  operationsByPersonAndUser(personId: Int, userId: Int, types: [String]): [OperationType]
+
+  searchPersons(search: String): [PersonType]
+
   operationsByDateAndUserId(date: Date, userId: Int, types: [String]): [OperationType]
 
   clientById(clientId: ID): PersonType
@@ -289,6 +293,14 @@ type CompanyType {
   updatedAt: DateTime!
 
   accountNumber: String
+
+  comment: String
+
+  disableContinuePay: Boolean!
+
+  registerDate: String
+
+  isRus: Boolean!
 
   subsidiarySet: [SubsidiaryType!]!
 }
@@ -3698,11 +3710,13 @@ type Mutation {
 
   updateQuote(clientId: Int = 0, commentSet: [String], correlative: Int = 0, currencyType: String = "PEN", descriptionSet: [String], discountForItem: Float = 0, discountGlobal: Float = 0, discountPercentageGlobal: Float = 0, discountPercentageSet: [Float], documentType: String = "NA", dueDate: Date = null, emitDate: Date = null, igvPercentageSet: [Float], igvType: Int = 0, observation: String = "", operationType: String = "NA", perceptionPercentageSet: [Float], productTariffIdSet: [Int], quantitySet: [Float], quoteId: ID, saleExchangeRate: Float = 0, serial: String = "", totalAmount: Float = 0, totalAmountSet: [Float], totalDiscount: Float = 0, totalDiscountSet: [Float], totalExonerated: Float = 0, totalFree: Float = 0, totalIgv: Float = 0, totalIgvSet: [Float], totalPayed: Float = 0, totalPerception: Float = 0, totalPerceptionSet: [Float], totalSet: [Float], totalTaxed: Float = 0, totalToPay: Float = 0, totalToPaySet: [Float], totalTurned: Float = 0, totalUnaffected: Float = 0, totalValueSet: [Float], typeAffectationIdSet: [Int], unitPriceSet: [Float], unitValueSet: [Float], wayPaySet: [Int]): UpdateQuoteMutation
 
-  registerSale(cliente: ClienteType, items: [ItemType], venta: VentaType): RegisterSaleMutation
+  registerSale(cliente: ClienteType, creditPay: [CreditPay], items: [ItemType], venta: VentaType): RegisterSaleMutation
 
   annulInvoice(correlative: Int, serial: String): AnnulInvoiceMutation
 
   registerGuide(carrier: CarrierType, client: ClienteType, guide: GuideType, items: [ItemType], points: StopPointType, relatedDocuments: VentaType, transportation: TransportationType): RegisterGuideMutation
+
+  registerCreditNote(client: ClienteType, creditNote: VentaType, items: [ItemType], relatedDocuments: RelatedDocumentType): RegisterCreditNoteMutation
 
   createWarehouse(category: String, name: String, subsidiaryId: Int): CreateWarehouseMutation
 
@@ -3742,9 +3756,9 @@ type Mutation {
 
   accountCompany(document: String, email: String, firstName: String, lastName: String, password: String, phone: String, ruc: String): AccountCompanyMutation
 
-  createCompany(address: String, app: Boolean, businessName: String, catalog: Boolean, certification: String, certificationExpirationDate: String, certificationKey: String, deductionAccount: String, doc: String, email: String, emissionInvoiceWithPreviousDate: Int, emissionReceiptWithPreviousDate: Int, guide: Boolean, guideClientId: String, guideClientSecret: String, includeIgv: Boolean, invoiceB: Boolean, invoiceF: Boolean, isEnabled: Boolean, isProduction: Boolean, keySol: String, limit: Int, logo: String, ose: Boolean, percentageIgv: Int, phone: String, shortName: String, typeDoc: String, userSol: String, withStock: Boolean): CreateCompanyMutation
+  createCompany(accountNumber: String, address: String!, app: Boolean = false, businessName: String!, catalog: Boolean = false, certification: String, certificationExpirationDate: String, certificationKey: String, comment: String, deductionAccount: String, disableContinuePay: Boolean = false, doc: String!, email: String!, emissionInvoiceWithPreviousDate: Int = 0, emissionReceiptWithPreviousDate: Int = 0, guide: Boolean = false, guideClientId: String, guideClientSecret: String, includeIgv: Boolean = false, invoiceB: Boolean = false, invoiceF: Boolean = false, isEnabled: Boolean = false, isProduction: Boolean = false, isRus: Boolean, keySol: String, limit: Int = 500, logo: String, ose: Boolean = false, percentageIgv: Int = 18, phone: String, registerDate: String, shortName: String!, typeDoc: String!, userSol: String, withStock: Boolean = false): CompanyMutationResult
 
-  updateCompany(address: String, app: Boolean, businessName: String, catalog: Boolean, certification: String, certificationExpirationDate: String, certificationKey: String, deductionAccount: String, doc: String, email: String, emissionInvoiceWithPreviousDate: Int, emissionReceiptWithPreviousDate: Int, guide: Boolean, guideClientId: String, guideClientSecret: String, id: ID!, includeIgv: Boolean, invoiceB: Boolean, invoiceF: Boolean, isEnabled: Boolean, isProduction: Boolean, keySol: String, limit: Int, logo: String, ose: Boolean, percentageIgv: Int, phone: String, shortName: String, typeDoc: String, userSol: String, withStock: Boolean): UpdateCompanyMutation
+  updateCompany(accountNumber: String, address: String, app: Boolean, businessName: String, catalog: Boolean, certification: String, certificationExpirationDate: String, certificationKey: String, comment: String, deductionAccount: String, disableContinuePay: Boolean, doc: String, email: String, emissionInvoiceWithPreviousDate: Int, emissionReceiptWithPreviousDate: Int, guide: Boolean, guideClientId: String, guideClientSecret: String, id: ID!, includeIgv: Boolean, invoiceB: Boolean, invoiceF: Boolean, isEnabled: Boolean, isProduction: Boolean, isRus: Boolean, keySol: String, limit: Int, logo: String, ose: Boolean, percentageIgv: Int, phone: String, registerDate: String, shortName: String, typeDoc: String, userSol: String, withStock: Boolean): CompanyMutationResult
 
   createSubsidiary(address: String, companyId: Int, districtId: String, fillColor: String, name: String, pdfFormatForGuides: Int, pdfFormatForInvoices: Int, pdfFormatForReceiptInvoices: Int, phone: String, serial: String): CreateSubsidiaryMutation
 
@@ -3857,6 +3871,8 @@ input VentaType {
   monedaId: Int
 
   formaPagoId: Int
+
+  motiveCreditNote: String = "NA"
 
   totalGravada: Float
 
@@ -4075,6 +4091,16 @@ type RegisterSaleMutation {
   operationId: Int
 }
 
+input CreditPay {
+  transactionDate: String
+
+  amount: Float
+
+  quota: String
+
+  description: String
+}
+
 type AnnulInvoiceMutation {
   message: String
 
@@ -4155,6 +4181,22 @@ input TransportationType {
   reasonTransfer: String
 
   modeTransfer: String
+}
+
+type RegisterCreditNoteMutation {
+  message: String
+
+  error: Boolean
+
+  operationId: Int
+}
+
+input RelatedDocumentType {
+  serial: String
+
+  number: String
+
+  codeTypeDocument: String
 }
 
 type CreateWarehouseMutation {
@@ -4280,14 +4322,14 @@ type AccountCompanyMutation {
   success: Boolean
 }
 
-type CreateCompanyMutation {
+type CompanyMutationResult {
+  success: Boolean!
+
   message: String
 
-  success: Boolean
-}
+  errors: [String]
 
-type UpdateCompanyMutation {
-  message: String
+  company: CompanyType
 }
 
 type CreateSubsidiaryMutation {

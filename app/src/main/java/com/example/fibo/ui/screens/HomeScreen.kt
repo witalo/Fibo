@@ -54,6 +54,10 @@ import com.example.fibo.ui.components.AppTopBar
 import com.example.fibo.ui.components.SideMenu
 import com.example.fibo.utils.ColorGradients
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material.icons.filled.Close
+import com.example.fibo.model.IPerson
+import com.example.fibo.ui.components.ClientFilterChip
+import com.example.fibo.ui.components.ClientSearchDialog
 
 
 @Composable
@@ -66,6 +70,13 @@ fun HomeScreen(
     val selectedDate by homeViewModel.selectedDate.collectAsState()
     val invoiceState by homeViewModel.invoiceState.collectAsState()
     var isMenuOpen by remember { mutableStateOf(false) }
+
+    // Estados para el diálogo de búsqueda
+    var isSearchDialogOpen by remember { mutableStateOf(false) }
+    val searchQuery by homeViewModel.searchQuery.collectAsState()
+    val searchResults by homeViewModel.searchResults.collectAsState()
+    val isSearching by homeViewModel.isSearching.collectAsState()
+    val selectedClient by homeViewModel.selectedClient.collectAsState()
 
     // Maneja el refresco cuando la pantalla obtiene foco
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -106,12 +117,18 @@ fun HomeScreen(
             Scaffold(
                 topBar = {
                     AppTopBar(
-                        title = "Inicio",
+//                        title = "Inicio",
+                        title = if (selectedClient != null) {
+                            "${selectedClient?.names?.take(15)}..."
+                        } else {
+                            "Comprobantes"
+                        },
                         onMenuClick = { isMenuOpen = !isMenuOpen },
                         onDateSelected = { date ->
                             homeViewModel.updateSelectedDate(date)
                         },
-                        currentDate = selectedDate
+                        currentDate = selectedDate,
+                        onTitleClick = { isSearchDialogOpen = true }
                     )
                 },
                 content = { paddingValues ->
@@ -148,7 +165,9 @@ fun HomeScreen(
                                         navController.navigate("invoice_detail/${invoice.id}")
                                     },
                                     onNewInvoice = { navController.navigate(Screen.NewInvoice.route) },
-                                    onNewReceipt = { navController.navigate(Screen.NewReceipt.route) }
+                                    onNewReceipt = { navController.navigate(Screen.NewReceipt.route) },
+                                    selectedClient = selectedClient,
+                                    onClearClientFilter = { homeViewModel.clearClientSearch() }
                                 )
                             }
                             is HomeViewModel.InvoiceState.Error -> {
@@ -183,6 +202,19 @@ fun HomeScreen(
                     }
                 }
             )
+            // Diálogo de búsqueda de clientes
+            ClientSearchDialog(
+                isVisible = isSearchDialogOpen,
+                onDismiss = { isSearchDialogOpen = false },
+                searchQuery = searchQuery,
+                onSearchQueryChange = { query -> homeViewModel.searchClients(query) },
+                searchResults = searchResults,
+                isLoading = isSearching,
+                onClientSelected = { client ->
+                    homeViewModel.selectClient(client)
+                    isSearchDialogOpen = false
+                }
+            )
         }
     )
 }
@@ -192,7 +224,9 @@ fun InvoiceContent(
     invoices: List<IOperation>,
     onInvoiceClick: (IOperation) -> Unit,
     onNewInvoice: () -> Unit,
-    onNewReceipt: () -> Unit
+    onNewReceipt: () -> Unit,
+    selectedClient: IPerson?,
+    onClearClientFilter: () -> Unit
 ) {
     // Calculate cantidad de facturas y boletas
     val invoiceCount = invoices.count { it.documentTypeReadable == "FACTURA" }
@@ -212,6 +246,14 @@ fun InvoiceContent(
             .fillMaxSize()
             .padding(horizontal = 8.dp)
     ) {
+        // Mostrar información del cliente seleccionado (si hay uno)
+        if (selectedClient != null) {
+            ClientFilterChip(
+                client = selectedClient,
+                onClear = onClearClientFilter,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+        }
         // Sección de Listado (82% del espacio)
         Box(
             modifier = Modifier
@@ -219,7 +261,7 @@ fun InvoiceContent(
                 .fillMaxWidth()
         ) {
             if (invoices.isEmpty()) {
-                EmptyState(message = "No hay comprobantes para esta fecha")
+                EmptyState(message = "No hay comprobantes")
             } else {
                 // Wrap the InvoiceList in a Box to ensure scrolling works
                 InvoiceList(

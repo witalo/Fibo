@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -47,7 +48,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -57,9 +57,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.fibo.R
 import com.example.fibo.model.IOperation
+import com.example.fibo.model.IPerson
 import com.example.fibo.navigation.Screen
 import com.example.fibo.ui.components.AppTopBar
+import com.example.fibo.ui.components.ClientFilterChip
 import com.example.fibo.ui.components.SideMenu
+import com.example.fibo.ui.components.ClientSearchDialog
 import com.example.fibo.ui.screens.quotation.QuotationPdfDialog
 import com.example.fibo.utils.ColorGradients
 import com.example.fibo.utils.QuotationState
@@ -77,6 +80,13 @@ fun QuotationScreen(
     val selectedDate by viewModel.selectedDate.collectAsState()
     val quotationState by viewModel.quotationState.collectAsState()
     var isMenuOpen by remember { mutableStateOf(false) }
+
+    // Estados para el diálogo de búsqueda
+    var isSearchDialogOpen by remember { mutableStateOf(false) }
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val searchResults by viewModel.searchResults.collectAsState()
+    val isSearching by viewModel.isSearching.collectAsState()
+    val selectedClient by viewModel.selectedClient.collectAsState()
     SideMenu(
         isOpen = isMenuOpen,
         onClose = { isMenuOpen = false },
@@ -99,12 +109,18 @@ fun QuotationScreen(
             Scaffold(
                 topBar = {
                     AppTopBar(
-                        title = "Cotizaciones",
+//                        title = "Cotizaciones",
+                        title = if (selectedClient != null) {
+                            "${selectedClient?.names?.take(15)}..."
+                        } else {
+                            "Cotizaciones"
+                        },
                         onMenuClick = { isMenuOpen = !isMenuOpen },
                         onDateSelected = { date ->
                             viewModel.updateDate(date)
                         },
-                        currentDate = selectedDate
+                        currentDate = selectedDate,
+                        onTitleClick = { isSearchDialogOpen = true }
                     )
                 },
                 content = { paddingValues ->
@@ -141,7 +157,9 @@ fun QuotationScreen(
                                         navController.navigate("quotation_detail/${q.id}")
                                     },
                                     onNewQuotation = { navController.navigate(Screen.NewQuotation.route) },
-                                    navController = navController
+                                    navController = navController,
+                                    selectedClient = selectedClient,
+                                    onClearClientFilter = { viewModel.clearClientSearch() }
                                 )
                             }
                             is QuotationState.Error -> {
@@ -158,6 +176,19 @@ fun QuotationScreen(
                     }
                 }
             )
+            // Diálogo de búsqueda de clientes
+            ClientSearchDialog(
+                isVisible = isSearchDialogOpen,
+                onDismiss = { isSearchDialogOpen = false },
+                searchQuery = searchQuery,
+                onSearchQueryChange = { query -> viewModel.searchClients(query) },
+                searchResults = searchResults,
+                isLoading = isSearching,
+                onClientSelected = { client ->
+                    viewModel.selectClient(client)
+                    isSearchDialogOpen = false
+                }
+            )
         }
     )
 }
@@ -166,7 +197,9 @@ fun QuotationContent(
     quotation: List<IOperation>,
     onQuotationClick: (IOperation) -> Unit,
     onNewQuotation: () -> Unit,
-    navController: NavController
+    navController: NavController,
+    selectedClient: IPerson?,
+    onClearClientFilter: () -> Unit
 ) {
     val quotationCount = quotation.count { it.documentTypeReadable == "COMPROBANTE DE OPERACIONES" }
 
@@ -180,6 +213,15 @@ fun QuotationContent(
             .fillMaxSize()
             .padding(horizontal = 8.dp)
     ) {
+        // Mostrar información del cliente seleccionado (si hay uno)
+        if (selectedClient != null) {
+            ClientFilterChip(
+                client = selectedClient,
+                onClear = onClearClientFilter,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+        }
+
         // Sección de Listado (90% del espacio)
         Box(
             modifier = Modifier
@@ -187,7 +229,7 @@ fun QuotationContent(
                 .fillMaxWidth()
         ) {
             if (quotation.isEmpty()) {
-                EmptyState(message = "No hay cotizaciones para esta fecha")
+                EmptyState(message = "No hay cotizaciones")
             } else {
                 // Wrap the InvoiceList in a Box to ensure scrolling works
                 QuotationList(
@@ -576,3 +618,4 @@ fun DocumentTypeChip(
         }
     }
 }
+

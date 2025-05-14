@@ -70,6 +70,9 @@ fun NoteOfSaleScreen(
     val selectedDate by viewModel.selectedDate.collectAsState()
     val noteOfSaleState by viewModel.noteOfSaleState.collectAsState()
     var isMenuOpen by remember { mutableStateOf(false) }
+
+    // Estados para el diálogo de búsqueda
+    var isSearchDialogOpen by remember { mutableStateOf(false) }
     SideMenu(
         isOpen = isMenuOpen,
         onClose = { isMenuOpen = false },
@@ -97,7 +100,8 @@ fun NoteOfSaleScreen(
                         onDateSelected = { date ->
                             viewModel.updateDate(date)
                         },
-                        currentDate = selectedDate
+                        currentDate = selectedDate,
+                        onTitleClick = { isSearchDialogOpen = true }
                     )
                 },
                 content = { paddingValues ->

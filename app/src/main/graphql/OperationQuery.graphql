@@ -184,3 +184,56 @@ query GetOperationsByDateAndUserId($date: Date!, $userId: Int!, $types:  [String
     }
 
 }
+query SearchPersons($query: String!) {
+    searchPersons(search: $query) {
+        id
+        documentType
+        documentNumber
+        names
+        phone
+        email
+        address
+    }
+}
+query GetOperationsByPersonAndUser($personId: Int!, $userId: Int!, $types:  [String!]) {
+    operationsByPersonAndUser(personId: $personId, userId: $userId, types: $types) {
+        id
+        emitDate
+        operationDate
+        currencyType
+        documentType
+        documentTypeReadable
+        serial
+        correlative
+        totalAmount
+        totalTaxed
+        totalDiscount
+        totalExonerated
+        totalUnaffected
+        totalFree
+        totalIgv
+        totalToPay
+        totalPayed
+        operationStatus
+        operationStatusReadable
+        subsidiaryId
+        sendWhatsapp
+        linkXml
+        linkXmlLow
+        linkCdr
+        linkCdrLow
+        sunatStatus
+        sendSunat
+        sunatDescription
+        sunatDescriptionLow
+        codeHash
+        client {
+            id
+            names
+            documentNumber
+            phone
+            email
+        }
+    }
+
+}

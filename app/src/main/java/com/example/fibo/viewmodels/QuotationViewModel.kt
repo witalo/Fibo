@@ -15,6 +15,7 @@ import com.apollographql.apollo3.exception.ApolloException
 import com.example.fibo.datastore.PreferencesManager
 import com.example.fibo.model.ICompany
 import com.example.fibo.model.IOperation
+import com.example.fibo.model.IPerson
 import com.example.fibo.model.ISubsidiary
 import com.example.fibo.reports.PrinterCommands
 import com.example.fibo.repository.OperationRepository
@@ -70,6 +71,20 @@ class QuotationViewModel @Inject constructor(
     // Create an error state
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
+
+    // Nuevos estados para la búsqueda de clientes
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    private val _searchResults = MutableStateFlow<List<IPerson>>(emptyList())
+    val searchResults: StateFlow<List<IPerson>> = _searchResults.asStateFlow()
+
+    private val _isSearching = MutableStateFlow(false)
+    val isSearching: StateFlow<Boolean> = _isSearching.asStateFlow()
+
+    private val _selectedClient = MutableStateFlow<IPerson?>(null)
+    val selectedClient: StateFlow<IPerson?> = _selectedClient.asStateFlow()
+    // Nuevos estados para la búsqueda de clientes
 
     init {
         // Cargar cotizaciones cuando se inicializa el ViewModel y hay un usuario válido
@@ -471,6 +486,71 @@ class QuotationViewModel @Inject constructor(
         } catch (e: Exception) {
             // En caso de error, devolver el string original
             return this
+        }
+    }
+
+
+
+    // Función para buscar clientes
+    fun searchClients(query: String) {
+        _searchQuery.value = query
+        if (query.length >= 3) { // Solo buscar si hay al menos 3 caracteres
+            viewModelScope.launch {
+                _isSearching.value = true
+                try {
+                    val results = operationRepository.searchPersons(query)
+                    _searchResults.value = results
+                } catch (e: Exception) {
+                    _searchResults.value = emptyList()
+                    // Podrías manejar el error aquí si lo deseas
+                } finally {
+                    _isSearching.value = false
+                }
+            }
+        } else {
+            _searchResults.value = emptyList()
+        }
+    }
+
+    // Función para seleccionar un cliente y cargar sus cotizaciones
+    fun selectClient(client: IPerson) {
+        _selectedClient.value = client
+        val user = userData.value
+        if (user != null) {
+            loadQuotationsByPersonAndUser(client.id, user.id)
+        }
+    }
+
+    // Función para cargar cotizaciones por cliente
+    fun loadQuotationsByPersonAndUser(personId: Int, userId: Int) {
+        viewModelScope.launch {
+            _quotationState.value = QuotationState.Loading
+            val types = listOf("48") // Tipo para cotizaciones
+            try {
+                val quotations = operationRepository.getOperationsByPersonAndUser(
+                    personId = personId,
+                    userId = userId,
+                    types = types
+                )
+                _quotationState.value = QuotationState.Success(quotations)
+            } catch (e: Exception) {
+                _quotationState.value = QuotationState.Error(
+                    e.message ?: "Error al cargar las cotizaciones del cliente"
+                )
+            }
+        }
+    }
+
+    // Función para limpiar la búsqueda y volver a las cotizaciones por fecha
+    fun clearClientSearch() {
+        _selectedClient.value = null
+        _searchQuery.value = ""
+        _searchResults.value = emptyList()
+        // Volver a cargar por fecha
+        val user = userData.value
+        val date = selectedDate.value
+        if (user != null) {
+            loadQuotation(date, user.id)
         }
     }
 }

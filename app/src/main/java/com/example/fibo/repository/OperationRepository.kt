@@ -25,6 +25,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import com.example.fibo.CancelInvoiceMutation
 import com.example.fibo.GetOperationsByDateAndUserIdQuery
+import com.example.fibo.GetOperationsByPersonAndUserQuery
+import com.example.fibo.SearchPersonsQuery
 
 
 @Singleton
@@ -470,5 +472,88 @@ class OperationRepository @Inject constructor(
             )
         } ?: emptyList()
 
+    }
+
+    suspend fun searchPersons(query: String): List<IPerson> {
+        return try {
+            val response = apolloClient.query(
+                SearchPersonsQuery(query = query)
+            ).execute()
+
+            if (response.hasErrors()) {
+                val errorMessage = response.errors?.joinToString { it.message } ?: "Error desconocido"
+                throw Exception("Error al buscar clientes: $errorMessage")
+            }
+
+            response.data?.searchPersons?.filterNotNull()?.map { person ->
+                IPerson(
+                    id = person.id.toInt(),
+                    names = person.names,
+                    documentType = person.documentType?.toString(),
+                    documentNumber = person.documentNumber,
+                    phone = person.phone,
+                    email = person.email,
+                    address = person.address
+                )
+            } ?: emptyList()
+        } catch (e: Exception) {
+            println("Error en searchPersons: ${e.message}")
+            emptyList()
+        }
+    }
+
+    suspend fun getOperationsByPersonAndUser(
+        personId: Int,
+        userId: Int,
+        types: List<String>
+    ): List<IOperation> {
+        return try {
+            val response = apolloClient.query(
+                GetOperationsByPersonAndUserQuery(
+                    personId = personId,
+                    userId = userId,
+                    types = Optional.Present(types)
+                )
+            ).execute()
+
+            if (response.hasErrors()) {
+                val errorMessage = response.errors?.joinToString { it.message } ?: "Error desconocido"
+                throw Exception("Error al buscar operaciones: $errorMessage")
+            }
+
+            response.data?.operationsByPersonAndUser?.filterNotNull()?.map { operation ->
+                IOperation(
+                    id = operation.id.toInt(),
+                    documentType = operation.documentType.toString(),
+                    documentTypeReadable = operation.documentTypeReadable.toString(),
+                    emitDate = operation.emitDate.toString(),
+                    serial = operation.serial ?: "",
+                    correlative = operation.correlative ?: 0,
+                    totalAmount = operation.totalAmount.toSafeDouble(),
+                    totalTaxed = operation.totalTaxed.toSafeDouble(),
+                    totalDiscount = operation.totalDiscount.toSafeDouble(),
+                    totalExonerated = operation.totalExonerated.toSafeDouble(),
+                    totalUnaffected = operation.totalUnaffected.toSafeDouble(),
+                    totalFree = operation.totalFree.toSafeDouble(),
+                    totalIgv = operation.totalIgv.toSafeDouble(),
+                    totalToPay = operation.totalToPay.toSafeDouble(),
+                    totalPayed = operation.totalPayed.toSafeDouble(),
+                    operationStatus = operation.operationStatus.toString(),
+                    subsidiaryId = operation.subsidiaryId!!,
+                    client = operation.client?.let { client ->
+                        IPerson(
+                            id = client.id.toInt(),
+                            names = client.names,
+                            documentNumber = client.documentNumber,
+                            phone = client.phone,
+                            email = client.email
+                        )
+                    } ?: IPerson(id = 0, names = "", documentNumber = "", phone = "", email = "")
+                )
+            } ?: emptyList()
+        } catch (e: Exception) {
+            println("Error en getOperationsByPersonAndUser: ${e.message}")
+            emptyList()
+        }
     }
 }
