@@ -31,11 +31,13 @@ class PreferencesManager(context: Context) {
         val COMPANY_NAME = stringPreferencesKey("company_name")
         val COMPANY_LOGO = stringPreferencesKey("company_logo")
         val COMPANY_IGV = doublePreferencesKey("percentage_igv")
+        val COMPANY_STOCK = booleanPreferencesKey("company_stock")
+        val COMPANY_ENABLED = booleanPreferencesKey("company_enabled")
         val SUBSIDIARY_ID = intPreferencesKey("subsidiary_id")
         val SUBSIDIARY_SERIAL = stringPreferencesKey("subsidiary_serial")
         val SUBSIDIARY_NAME = stringPreferencesKey("subsidiary_name")
         val SUBSIDIARY_ADDRESS = stringPreferencesKey("subsidiary_address")
-        val SUBSIDIARY_TOKEN = stringPreferencesKey("subsidiary_token")
+        val SUBSIDIARY_TOKEN = stringPreferencesKey("subsidiary_tok en")
         val USER_ID = intPreferencesKey("user_id")
     }
 
@@ -58,6 +60,8 @@ class PreferencesManager(context: Context) {
                     businessName = preferences[COMPANY_NAME] ?: "",
                     logo = preferences[COMPANY_LOGO] ?: "",
                     percentageIgv = preferences[COMPANY_IGV] ?: 18.0,
+                    withStock = preferences[COMPANY_STOCK] ?: false,
+                    isEnabled = preferences[COMPANY_ENABLED] ?: false
                 )
             } else {
                 null
@@ -114,6 +118,8 @@ class PreferencesManager(context: Context) {
                 preferences[COMPANY_NAME] = company.businessName
                 preferences[COMPANY_LOGO] = company.logo
                 preferences[COMPANY_IGV] = company.percentageIgv
+                preferences[COMPANY_STOCK] = company.withStock
+                preferences[COMPANY_ENABLED] = company.isEnabled
             }
             userData.subsidiary?.let { subsidiary ->
                 preferences[SUBSIDIARY_ID] = subsidiary.id
@@ -150,7 +156,9 @@ class PreferencesManager(context: Context) {
                             doc = preferences[COMPANY_DOC] ?: "",
                             businessName = preferences[COMPANY_NAME] ?: "",
                             logo = preferences[COMPANY_LOGO] ?: "",
-                            percentageIgv = preferences[COMPANY_IGV] ?: 18.0
+                            percentageIgv = preferences[COMPANY_IGV] ?: 18.0,
+                            withStock = preferences[COMPANY_STOCK] ?: false,
+                            isEnabled = preferences[COMPANY_ENABLED] ?: false
                         )
                     },
                     subsidiary = preferences[SUBSIDIARY_ID]?.let {
