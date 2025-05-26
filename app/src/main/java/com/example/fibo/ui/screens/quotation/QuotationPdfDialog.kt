@@ -79,7 +79,7 @@ fun QuotationPdfDialog(
     var pdfFile by remember { mutableStateOf<File?>(null) }
 
     // URL del PDF
-    val pdfUrl = remember { "https://ng.tuf4ctur4.net.pe/operations/quotation/${quotation.id}/" }
+    val pdfUrl = remember { "https://ng.tuf4ctur4.net.pe/operations/print_quotation/${quotation.id}/" }
 
     // Contexto para operaciones de sistema
     val context = LocalContext.current

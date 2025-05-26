@@ -42,7 +42,13 @@ import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.CancellationException
 import javax.inject.Inject
-
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Color
+import android.util.Base64
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.MultiFormatWriter
+import java.io.ByteArrayOutputStream
 @HiltViewModel
 class PdfDialogViewModel @Inject constructor(
     private val operationRepository: OperationRepository,
@@ -447,9 +453,11 @@ class PdfDialogViewModel @Inject constructor(
             outputStream.write(PrinterCommands.INIT)
             outputStream.write(PrinterCommands.ESC_ALIGN_CENTER)
             outputStream.write(PrinterCommands.ESC_BOLD_ON)
+            writer.write("${pdfGenerator.company.logo}\n")
             writer.write("${pdfGenerator.company.businessName}\n")
             outputStream.write(PrinterCommands.ESC_BOLD_OFF)
-
+            // 1. Imprimir logo (versión simplificada)
+            printLogo(outputStream, pdfGenerator.company.logo)
             // Datos de la empresa
             writer.write("RUC: ${pdfGenerator.company.doc}\n")
             writer.write("DIRECCION: ${pdfGenerator.subsidiary.address}\n\n")
@@ -544,7 +552,23 @@ class PdfDialogViewModel @Inject constructor(
             outputStream.write(PrinterCommands.ESC_BOLD_ON)
             writer.write("$total\n")
             outputStream.write(PrinterCommands.ESC_BOLD_OFF)
+            // Antes de "Gracias por su compra"
+            outputStream.write(PrinterCommands.ESC_ALIGN_CENTER)
 
+            // Generar contenido del QR
+            val qrContent = buildString {
+                appendln("${pdfGenerator.company.businessName}")
+                appendln("RUC:${pdfGenerator.company.doc}")
+                appendln("${operation.documentTypeReadable}")
+                appendln("${operation.serial}-${operation.correlative}")
+                appendln("Total:${numberFormat.format(operation.totalAmount)}")
+                appendln(operation.emitDate.formatToDisplayDateTime())
+            }
+
+            // Imprimir QR
+            val qrBitmap = generateQrCode(qrContent, 180) // Tamaño ajustable
+            val qrBytes = convertBitmapToEscPos(qrBitmap)
+            outputStream.write(qrBytes)
             // Pie de página
             outputStream.write(PrinterCommands.ESC_ALIGN_CENTER)
             writer.write("\nGracias por su compra\n")
@@ -560,7 +584,130 @@ class PdfDialogViewModel @Inject constructor(
             writer.close()
         }
     }
+    private fun printLogo(outputStream: OutputStream, base64Logo: String) {
+        try {
+            // Extraer solo los datos Base64 si viene con prefijo
+            val cleanBase64 = base64Logo.substringAfter("base64,")
 
+            // Decodificar a bitmap
+            val imageBytes = Base64.decode(cleanBase64, Base64.DEFAULT)
+            val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+
+            // Redimensionar (ancho máximo 384px para impresoras térmicas)
+            val scaledBitmap = Bitmap.createScaledBitmap(
+                bitmap,
+                384,
+                (384 * bitmap.height / bitmap.width).toInt(),
+                true
+            )
+
+            // Convertir a formato imprimible (versión corregida)
+            val logoBytes = ByteArrayOutputStream().apply {
+                // 1. Escribir comando de alineación
+                write(PrinterCommands.ESC_ALIGN_CENTER)
+
+                // 2. Escribir cabecera de comando de imagen ESC/POS
+                write(byteArrayOf(0x1D, 0x76, 0x30, 0x00)) // GS v 0
+
+                // 3. Escribir dimensiones de la imagen (little-endian)
+                val width = scaledBitmap.width
+                val height = scaledBitmap.height
+                val widthBytes = (width + 7) / 8 // Ancho en bytes (redondeado hacia arriba)
+
+                write(byteArrayOf(
+                    (widthBytes % 256).toByte(),  // LSB del ancho
+                    (widthBytes / 256).toByte(),  // MSB del ancho
+                    (height % 256).toByte(),      // LSB del alto
+                    (height / 256).toByte()       // MSB del alto
+                ))
+
+                // 4. Escribir datos de imagen (versión corregida)
+                val imageData = ByteArray(widthBytes * height)
+
+                for (y in 0 until height) {
+                    for (x in 0 until width) {
+                        val pixel = scaledBitmap.getPixel(x, y)
+                        val isBlack = Color.red(pixel) < 128 &&
+                                Color.green(pixel) < 128 &&
+                                Color.blue(pixel) < 128
+
+                        if (isBlack) {
+                            val bytePos = y * widthBytes + x / 8
+                            val bitPos = 7 - (x % 8)
+                            imageData[bytePos] = (imageData[bytePos].toInt() or (1 shl bitPos)).toByte()
+                        }
+                    }
+                }
+
+                // Escribir todos los datos de imagen de una vez
+                write(imageData)
+            }.toByteArray()
+
+            outputStream.write(logoBytes)
+            outputStream.write(PrinterCommands.FEED_LINE) // Salto de línea
+
+        } catch (e: Exception) {
+            // Si falla, imprimir texto alternativo
+            outputStream.write(PrinterCommands.ESC_ALIGN_CENTER)
+            outputStream.write(PrinterCommands.ESC_BOLD_ON)
+            outputStream.write("[LOGO]".toByteArray())
+            outputStream.write(PrinterCommands.ESC_ALIGN_CENTER)
+        }
+    }
+    private fun printQrCode(outputStream: OutputStream, qrText: String) {
+        try {
+            val qrBitmap = generateQrCode(qrText)
+            val qrBytes = convertBitmapToEscPos(qrBitmap)
+
+            outputStream.write(PrinterCommands.ESC_ALIGN_CENTER)
+            outputStream.write(qrBytes)
+            outputStream.write(PrinterCommands.ESC_ALIGN_LEFT)
+        } catch (e: Exception) {
+            Log.e("PrintQR", "Error al imprimir QR: ${e.message}")
+        }
+    }
+    private fun generateQrCode(text: String, size: Int = 200): Bitmap {
+        val writer = MultiFormatWriter()
+        val bitMatrix = writer.encode(text, BarcodeFormat.QR_CODE, size, size)
+        val width = bitMatrix.width
+        val height = bitMatrix.height
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+
+        for (x in 0 until width) {
+            for (y in 0 until height) {
+                bitmap.setPixel(x, y, if (bitMatrix[x, y]) Color.BLACK else Color.WHITE)
+            }
+        }
+        return bitmap
+    }
+    private fun convertBitmapToEscPos(bitmap: Bitmap): ByteArray {
+        val width = bitmap.width
+        val height = bitmap.height
+        val widthBytes = (width + 7) / 8
+        val imageData = ByteArray(widthBytes * height)
+
+        // Convertir bitmap a datos monocromo
+        for (y in 0 until height) {
+            for (x in 0 until width) {
+                val pixel = bitmap.getPixel(x, y)
+                val luminance = (Color.red(pixel) * 0.299 + Color.green(pixel) * 0.587 + Color.blue(pixel) * 0.114)
+                if (luminance < 160) { // Umbral para negro
+                    val bytePos = y * widthBytes + x / 8
+                    val bitPos = 7 - (x % 8)
+                    imageData[bytePos] = (imageData[bytePos].toInt() or (1 shl bitPos)).toByte()
+                }
+            }
+        }
+
+        // Construir comando ESC/POS correctamente
+        return byteArrayOf(
+            0x1D, 0x76, 0x30, 0x00,  // GS v 0
+            (widthBytes % 256).toByte(),
+            (widthBytes / 256).toByte(),
+            (height % 256).toByte(),
+            (height / 256).toByte()
+        ) + imageData // Concatenar arrays de bytes
+    }
     private fun closeResources(socket: BluetoothSocket?, outputStream: OutputStream?) {
         try {
             outputStream?.close()

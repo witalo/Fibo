@@ -1339,6 +1339,7 @@ fun AddReceiptProductDialog(
     val selectedProduct by viewModel.selectedProduct.collectAsState()
 
     // Estados del producto seleccionado
+    var observaciones by remember { mutableStateOf("") }
     var quantity by remember { mutableStateOf("1") }
     var discount by remember { mutableStateOf("0.00") }
     var selectedAffectationType by remember(selectedProduct) {
@@ -1625,6 +1626,21 @@ fun AddReceiptProductDialog(
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold
                             )
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                OutlinedTextField(
+                                    value = observaciones,
+                                    onValueChange = { observaciones = it },
+                                    label = { Text("Descripción") },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp),
+                                    maxLines = 2
+                                )
+                            }
 
                             Spacer(modifier = Modifier.height(8.dp))
 
@@ -1834,7 +1850,7 @@ fun AddReceiptProductDialog(
                                         val operationDetail = IOperationDetail(
                                             id = Random.nextInt(1, Int.MAX_VALUE),
                                             tariff = tariff,
-                                            //typeAffectationId = product.typeAffectationId,
+                                            description = observaciones,
                                             typeAffectationId = selectedAffectationType,
                                             quantity = qtyValue,
                                             unitValue = priceWithoutIgvValue,
