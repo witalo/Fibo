@@ -44,11 +44,18 @@ import java.util.concurrent.CancellationException
 import javax.inject.Inject
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
+import android.graphics.Paint
 import android.util.Base64
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
+import com.google.zxing.qrcode.QRCodeWriter
 import java.io.ByteArrayOutputStream
+import kotlin.math.min
+
 @HiltViewModel
 class PdfDialogViewModel @Inject constructor(
     private val operationRepository: OperationRepository,
@@ -336,58 +343,7 @@ class PdfDialogViewModel @Inject constructor(
 //    }
 
 
-    fun printOperation(context: Context, pdfFile: File) {
-        _uiState.value = PdfDialogUiState.Printing
-        // Cancelar job anterior si existe
-        printOperationJob?.cancel()
 
-        printOperationJob = viewModelScope.launch(Dispatchers.IO) {
-            var socket: BluetoothSocket? = null
-            var outputStream: OutputStream? = null
-
-            try {
-                // Validaciones iniciales
-                val printer = _selectedPrinter.value ?: run {
-                    updateUiState(PdfDialogUiState.Error("No hay impresora seleccionada"))
-                    return@launch
-                }
-
-                val operation = currentOperation ?: run {
-                    updateUiState(PdfDialogUiState.Error("No hay operación para imprimir"))
-                    return@launch
-                }
-
-                // Verificación de permisos
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                    !hasBluetoothConnectPermission(context)) {
-                    updateUiState(PdfDialogUiState.Error("Permiso BLUETOOTH_CONNECT requerido"))
-                    return@launch
-                }
-
-                // Conexión con timeout
-                socket = connectWithTimeout(context, printer) ?: return@launch
-
-                // Configurar output stream
-                outputStream = socket.outputStream
-
-                // Generar y enviar contenido
-                sendPrintContent(outputStream, operation)
-
-                // Finalización exitosa
-                updateUiState(PdfDialogUiState.PrintComplete)
-            }  catch (e: CancellationException) {
-                // Manejar cancelación explícitamente
-                Log.d("PrintViewModel", "Operación de impresión cancelada normalmente")
-                closeResources(socket, outputStream)
-                updateUiState(PdfDialogUiState.Initial)
-            } catch (e: Exception) {
-                Log.e("PrintViewModel", "Error en impresión", e)
-                updateUiState(PdfDialogUiState.Error("Error al imprimir: ${e.message ?: "Desconocido"}"))
-            } finally {
-                closeResources(socket, outputStream)
-            }
-        }
-    }
 
     // Funciones auxiliares
     private suspend fun updateUiState(state: PdfDialogUiState) {
@@ -442,27 +398,83 @@ class PdfDialogViewModel @Inject constructor(
             null
         }
     }
+    fun printOperation(context: Context, pdfFile: File) {
+        _uiState.value = PdfDialogUiState.Printing
+        // Cancelar job anterior si existe
+        printOperationJob?.cancel()
 
+        printOperationJob = viewModelScope.launch(Dispatchers.IO) {
+            var socket: BluetoothSocket? = null
+            var outputStream: OutputStream? = null
+
+            try {
+                // Validaciones iniciales
+                val printer = _selectedPrinter.value ?: run {
+                    updateUiState(PdfDialogUiState.Error("No hay impresora seleccionada"))
+                    return@launch
+                }
+
+                val operation = currentOperation ?: run {
+                    updateUiState(PdfDialogUiState.Error("No hay operación para imprimir"))
+                    return@launch
+                }
+
+                // Verificación de permisos
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                    !hasBluetoothConnectPermission(context)) {
+                    updateUiState(PdfDialogUiState.Error("Permiso BLUETOOTH_CONNECT requerido"))
+                    return@launch
+                }
+
+                // Conexión con timeout
+                socket = connectWithTimeout(context, printer) ?: return@launch
+
+                // Configurar output stream
+                outputStream = socket.outputStream
+
+                // Generar y enviar contenido
+                sendPrintContent(outputStream, operation)
+
+                // Finalización exitosa
+                updateUiState(PdfDialogUiState.PrintComplete)
+            }  catch (e: CancellationException) {
+                // Manejar cancelación explícitamente
+                Log.d("PrintViewModel", "Operación de impresión cancelada normalmente")
+                closeResources(socket, outputStream)
+                updateUiState(PdfDialogUiState.Initial)
+            } catch (e: Exception) {
+                Log.e("PrintViewModel", "Error en impresión", e)
+                updateUiState(PdfDialogUiState.Error("Error al imprimir: ${e.message ?: "Desconocido"}"))
+            } finally {
+                closeResources(socket, outputStream)
+            }
+        }
+    }
     private fun sendPrintContent(outputStream: OutputStream, operation: IOperation) {
         // Usar buffer para escritura más eficiente
         val writer = BufferedWriter(OutputStreamWriter(outputStream))
         val numberFormat = DecimalFormat("#,##0.00")
 
         try {
-            // Encabezado - Logo/Nombre de la empresa
+            // Inicialización de la impresora
             outputStream.write(PrinterCommands.INIT)
+
+            // === ENCABEZADO CENTRADO ===
             outputStream.write(PrinterCommands.ESC_ALIGN_CENTER)
+
+            // IMPRIMIR LOGO PRIMERO
+            printLogo(outputStream, pdfGenerator.company.logo)
+
+            // Encabezado - Nombre de la empresa (CENTRADO)
             outputStream.write(PrinterCommands.ESC_BOLD_ON)
-            writer.write("${pdfGenerator.company.logo}\n")
             writer.write("${pdfGenerator.company.businessName}\n")
             outputStream.write(PrinterCommands.ESC_BOLD_OFF)
-            // 1. Imprimir logo (versión simplificada)
-            printLogo(outputStream, pdfGenerator.company.logo)
-            // Datos de la empresa
+
+            // Datos de la empresa (CENTRADO)
             writer.write("RUC: ${pdfGenerator.company.doc}\n")
             writer.write("DIRECCION: ${pdfGenerator.subsidiary.address}\n\n")
 
-            // Tipo de documento
+            // Tipo de documento (CENTRADO)
             outputStream.write(PrinterCommands.ESC_BOLD_ON)
             writer.write("${operation.documentTypeReadable}\n")
             writer.write("${operation.serial}-${operation.correlative}\n")
@@ -470,7 +482,7 @@ class PdfDialogViewModel @Inject constructor(
 
             writer.write("--------------------------------\n")
 
-            // Sección de cliente - Todo alineado a la izquierda
+            // === SECCIÓN DE CLIENTE A LA IZQUIERDA ===
             outputStream.write(PrinterCommands.ESC_ALIGN_LEFT)
             outputStream.write(PrinterCommands.ESC_BOLD_ON)
             writer.write("DATOS DEL CLIENTE\n")
@@ -487,20 +499,20 @@ class PdfDialogViewModel @Inject constructor(
 
             writer.write("--------------------------------\n")
 
-            // Encabezado de productos
+            // === DETALLES CENTRADO ===
+            outputStream.write(PrinterCommands.ESC_ALIGN_CENTER)
             outputStream.write(PrinterCommands.ESC_BOLD_ON)
             writer.write("DETALLE DE PRODUCTOS\n")
             outputStream.write(PrinterCommands.ESC_BOLD_OFF)
 
-            // Encabezado de columnas para la segunda línea
+            // Encabezado de columnas para la segunda línea (CENTRADO)
             writer.write("CANT   P.UNIT   DSCTO   IMPORTE\n")
             writer.write("--------------------------------\n")
 
-            // Añadir productos - Formato ajustado según requerimiento
+            // Añadir productos
             operation.operationDetailSet.forEach { detail ->
-                // Primera línea: Descripción completa del producto
+                // Primera línea: Descripción completa del producto (IZQUIERDA)
                 outputStream.write(PrinterCommands.ESC_ALIGN_LEFT)
-//                writer.write("${detail.tariff.productName}\n")
                 writer.write(
                     if (detail.description != null && detail.description.isNotBlank()) {
                         "${detail.tariff.productName} (${detail.description})\n"
@@ -524,13 +536,13 @@ class PdfDialogViewModel @Inject constructor(
                 writer.write("----------------------------\n")
             }
 
-            // Sección de totales - Todo alineado a la derecha
-            outputStream.write(PrinterCommands.ESC_ALIGN_RIGHT)
+            // === TOTALES CENTRADO ===
+            outputStream.write(PrinterCommands.ESC_ALIGN_CENTER)
             outputStream.write(PrinterCommands.ESC_BOLD_ON)
             writer.write("RESUMEN\n")
             outputStream.write(PrinterCommands.ESC_BOLD_OFF)
 
-            // Formatear los montos para que queden alineados
+            // Formatear los montos para que queden alineados (CENTRADO)
             val labelWidth = 15 // Ancho para las etiquetas
 
             val opDescuento = "DESCUENTO:".padEnd(labelWidth) + numberFormat.format(operation.totalDiscount).padStart(10)
@@ -552,27 +564,24 @@ class PdfDialogViewModel @Inject constructor(
             outputStream.write(PrinterCommands.ESC_BOLD_ON)
             writer.write("$total\n")
             outputStream.write(PrinterCommands.ESC_BOLD_OFF)
-            // Antes de "Gracias por su compra"
-            outputStream.write(PrinterCommands.ESC_ALIGN_CENTER)
 
-            // Generar contenido del QR
-            val qrContent = buildString {
-                appendln("${pdfGenerator.company.businessName}")
-                appendln("RUC:${pdfGenerator.company.doc}")
-                appendln("${operation.documentTypeReadable}")
-                appendln("${operation.serial}-${operation.correlative}")
-                appendln("Total:${numberFormat.format(operation.totalAmount)}")
-                appendln(operation.emitDate.formatToDisplayDateTime())
-            }
+            // ===== QR CODE NATIVO =====
+            writer.flush() // MUY IMPORTANTE: Flush antes del QR
 
-            // Imprimir QR
-            val qrBitmap = generateQrCode(qrContent, 180) // Tamaño ajustable
-            val qrBytes = convertBitmapToEscPos(qrBitmap)
-            outputStream.write(qrBytes)
-            // Pie de página
-            outputStream.write(PrinterCommands.ESC_ALIGN_CENTER)
+            val qrText = "|${operation.serial}-${operation.correlative}|${operation.totalAmount}|${operation.documentTypeReadable}|${operation.client.documentNumber}|${operation.client.names}"
+
+            printNativeQRLarge(outputStream, qrText)
+
+            // ===== DESPUÉS DEL QR: RESTABLECER ALINEACIÓN CENTRADA =====
+            // 1. Flush completo para asegurar que el QR se procesó
+            writer.flush()
+            outputStream.flush()
+
+            // 2. FORZAR alineación centrada para el separador y final
+            outputStream.write(byteArrayOf(0x1B, 0x61, 0x01)) // ESC a 1 (CENTRAR)
+            writer.write("--------------------------------\n")
             writer.write("\nGracias por su compra\n")
-            writer.write("4 SOLUCIONES\n")
+            writer.write("DESARROLLADO POR 4 SOLUCIONES\n")
             writer.write("https://www.tuf4ct.com\n\n")
             writer.write("\n\n\n")
 
@@ -584,130 +593,7 @@ class PdfDialogViewModel @Inject constructor(
             writer.close()
         }
     }
-    private fun printLogo(outputStream: OutputStream, base64Logo: String) {
-        try {
-            // Extraer solo los datos Base64 si viene con prefijo
-            val cleanBase64 = base64Logo.substringAfter("base64,")
 
-            // Decodificar a bitmap
-            val imageBytes = Base64.decode(cleanBase64, Base64.DEFAULT)
-            val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
-
-            // Redimensionar (ancho máximo 384px para impresoras térmicas)
-            val scaledBitmap = Bitmap.createScaledBitmap(
-                bitmap,
-                384,
-                (384 * bitmap.height / bitmap.width).toInt(),
-                true
-            )
-
-            // Convertir a formato imprimible (versión corregida)
-            val logoBytes = ByteArrayOutputStream().apply {
-                // 1. Escribir comando de alineación
-                write(PrinterCommands.ESC_ALIGN_CENTER)
-
-                // 2. Escribir cabecera de comando de imagen ESC/POS
-                write(byteArrayOf(0x1D, 0x76, 0x30, 0x00)) // GS v 0
-
-                // 3. Escribir dimensiones de la imagen (little-endian)
-                val width = scaledBitmap.width
-                val height = scaledBitmap.height
-                val widthBytes = (width + 7) / 8 // Ancho en bytes (redondeado hacia arriba)
-
-                write(byteArrayOf(
-                    (widthBytes % 256).toByte(),  // LSB del ancho
-                    (widthBytes / 256).toByte(),  // MSB del ancho
-                    (height % 256).toByte(),      // LSB del alto
-                    (height / 256).toByte()       // MSB del alto
-                ))
-
-                // 4. Escribir datos de imagen (versión corregida)
-                val imageData = ByteArray(widthBytes * height)
-
-                for (y in 0 until height) {
-                    for (x in 0 until width) {
-                        val pixel = scaledBitmap.getPixel(x, y)
-                        val isBlack = Color.red(pixel) < 128 &&
-                                Color.green(pixel) < 128 &&
-                                Color.blue(pixel) < 128
-
-                        if (isBlack) {
-                            val bytePos = y * widthBytes + x / 8
-                            val bitPos = 7 - (x % 8)
-                            imageData[bytePos] = (imageData[bytePos].toInt() or (1 shl bitPos)).toByte()
-                        }
-                    }
-                }
-
-                // Escribir todos los datos de imagen de una vez
-                write(imageData)
-            }.toByteArray()
-
-            outputStream.write(logoBytes)
-            outputStream.write(PrinterCommands.FEED_LINE) // Salto de línea
-
-        } catch (e: Exception) {
-            // Si falla, imprimir texto alternativo
-            outputStream.write(PrinterCommands.ESC_ALIGN_CENTER)
-            outputStream.write(PrinterCommands.ESC_BOLD_ON)
-            outputStream.write("[LOGO]".toByteArray())
-            outputStream.write(PrinterCommands.ESC_ALIGN_CENTER)
-        }
-    }
-    private fun printQrCode(outputStream: OutputStream, qrText: String) {
-        try {
-            val qrBitmap = generateQrCode(qrText)
-            val qrBytes = convertBitmapToEscPos(qrBitmap)
-
-            outputStream.write(PrinterCommands.ESC_ALIGN_CENTER)
-            outputStream.write(qrBytes)
-            outputStream.write(PrinterCommands.ESC_ALIGN_LEFT)
-        } catch (e: Exception) {
-            Log.e("PrintQR", "Error al imprimir QR: ${e.message}")
-        }
-    }
-    private fun generateQrCode(text: String, size: Int = 200): Bitmap {
-        val writer = MultiFormatWriter()
-        val bitMatrix = writer.encode(text, BarcodeFormat.QR_CODE, size, size)
-        val width = bitMatrix.width
-        val height = bitMatrix.height
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-
-        for (x in 0 until width) {
-            for (y in 0 until height) {
-                bitmap.setPixel(x, y, if (bitMatrix[x, y]) Color.BLACK else Color.WHITE)
-            }
-        }
-        return bitmap
-    }
-    private fun convertBitmapToEscPos(bitmap: Bitmap): ByteArray {
-        val width = bitmap.width
-        val height = bitmap.height
-        val widthBytes = (width + 7) / 8
-        val imageData = ByteArray(widthBytes * height)
-
-        // Convertir bitmap a datos monocromo
-        for (y in 0 until height) {
-            for (x in 0 until width) {
-                val pixel = bitmap.getPixel(x, y)
-                val luminance = (Color.red(pixel) * 0.299 + Color.green(pixel) * 0.587 + Color.blue(pixel) * 0.114)
-                if (luminance < 160) { // Umbral para negro
-                    val bytePos = y * widthBytes + x / 8
-                    val bitPos = 7 - (x % 8)
-                    imageData[bytePos] = (imageData[bytePos].toInt() or (1 shl bitPos)).toByte()
-                }
-            }
-        }
-
-        // Construir comando ESC/POS correctamente
-        return byteArrayOf(
-            0x1D, 0x76, 0x30, 0x00,  // GS v 0
-            (widthBytes % 256).toByte(),
-            (widthBytes / 256).toByte(),
-            (height % 256).toByte(),
-            (height / 256).toByte()
-        ) + imageData // Concatenar arrays de bytes
-    }
     private fun closeResources(socket: BluetoothSocket?, outputStream: OutputStream?) {
         try {
             outputStream?.close()
@@ -785,5 +671,384 @@ class PdfDialogViewModel @Inject constructor(
             // En caso de error, devolver el string original
             return this
         }
+    }
+    //------------------------Logo PEQUEÑO CENTRADO-----------------------------------------------
+//    private fun printLogo(outputStream: OutputStream, base64Logo: String?) {
+//        if (base64Logo.isNullOrEmpty()) return
+//
+//        try {
+//            val logoData = base64Logo
+//            val base64Data = if (logoData.contains("data:image")) {
+//                logoData.substring(logoData.indexOf(",") + 1)
+//            } else {
+//                logoData
+//            }
+//
+//            val imageBytes = Base64.decode(base64Data, Base64.DEFAULT)
+//            val originalBitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+//
+//            if (originalBitmap != null) {
+//                // TAMAÑO MODERADO Y SEGURO
+//                val centeredBitmap = createSimpleCenteredBitmap(originalBitmap)
+//                val processedBitmap = convertToMonochrome(centeredBitmap)
+//                val imageData = convertBitmapToThermalPrinter(processedBitmap)
+//
+//                // SIN RESET - Solo alineación izquierda
+//                outputStream.write(byteArrayOf(0x1B, 0x61, 0x00)) // Alineación izquierda
+//
+//                // Enviar imagen directamente
+//                outputStream.write(imageData)
+//                outputStream.flush()
+//
+//                // UNA SOLA LÍNEA EN BLANCO Y CONTINUAR
+//                outputStream.write("\n".toByteArray())
+//
+//                // Limpiar recursos
+//                processedBitmap.recycle()
+//                centeredBitmap.recycle()
+//                originalBitmap.recycle()
+//            }
+//        } catch (e: Exception) {
+//            Log.e("PrintViewModel", "Error al imprimir logo: ${e.message}", e)
+//        }
+//    }
+//
+//    private fun createSimpleCenteredBitmap(originalBitmap: Bitmap): Bitmap {
+//        // TAMAÑO CONSERVADOR PARA EVITAR PROBLEMAS
+//        val logoMaxWidth = 220   // Tamaño moderado
+//        val logoMaxHeight = 110  // Altura moderada
+//        val paperWidth = 384
+//
+//        // Redimensionar logo
+//        val resizedLogo = resizeBitmap(originalBitmap, logoMaxWidth, logoMaxHeight)
+//
+//        // Crear bitmap centrado
+//        val centeredBitmap = Bitmap.createBitmap(paperWidth, resizedLogo.height, Bitmap.Config.RGB_565)
+//        val canvas = Canvas(centeredBitmap)
+//        canvas.drawColor(Color.WHITE)
+//
+//        // Centrar horizontalmente
+//        val x = (paperWidth - resizedLogo.width) / 2
+//        canvas.drawBitmap(resizedLogo, x.toFloat(), 0f, null)
+//
+//        if (resizedLogo != originalBitmap) {
+//            resizedLogo.recycle()
+//        }
+//
+//        return centeredBitmap
+//    }
+//
+//    private fun resizeBitmap(original: Bitmap, maxWidth: Int, maxHeight: Int): Bitmap {
+//        val width = original.width
+//        val height = original.height
+//
+//        if (width <= maxWidth && height <= maxHeight) {
+//            return original
+//        }
+//
+//        val ratioWidth = maxWidth.toFloat() / width.toFloat()
+//        val ratioHeight = maxHeight.toFloat() / height.toFloat()
+//        val ratio = minOf(ratioWidth, ratioHeight)
+//
+//        val newWidth = (width * ratio).toInt()
+//        val newHeight = (height * ratio).toInt()
+//
+//        return Bitmap.createScaledBitmap(original, newWidth, newHeight, true)
+//    }
+//
+//    private fun convertToMonochrome(bitmap: Bitmap): Bitmap {
+//        val width = bitmap.width
+//        val height = bitmap.height
+//        val monoBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
+//
+//        for (x in 0 until width) {
+//            for (y in 0 until height) {
+//                val pixel = bitmap.getPixel(x, y)
+//                val gray = (Color.red(pixel) * 0.299 + Color.green(pixel) * 0.587 + Color.blue(pixel) * 0.114).toInt()
+//                val monoColor = if (gray < 128) Color.BLACK else Color.WHITE
+//                monoBitmap.setPixel(x, y, monoColor)
+//            }
+//        }
+//
+//        return monoBitmap
+//    }
+//
+//    private fun convertBitmapToThermalPrinter(bitmap: Bitmap): ByteArray {
+//        val width = bitmap.width
+//        val height = bitmap.height
+//        val bytesPerRow = (width + 7) / 8
+//
+//        val commands = mutableListOf<Byte>()
+//
+//        // Comando GS v 0
+//        commands.add(0x1D.toByte()) // GS
+//        commands.add(0x76.toByte()) // v
+//        commands.add(0x30.toByte()) // 0
+//        commands.add(0x00.toByte()) // m = 0
+//
+//        // Ancho en bytes (little endian)
+//        commands.add((bytesPerRow and 0xFF).toByte())
+//        commands.add(((bytesPerRow shr 8) and 0xFF).toByte())
+//
+//        // Alto en píxeles (little endian)
+//        commands.add((height and 0xFF).toByte())
+//        commands.add(((height shr 8) and 0xFF).toByte())
+//
+//        // Convertir bitmap a datos binarios
+//        for (y in 0 until height) {
+//            for (x in 0 until width step 8) {
+//                var byteValue = 0
+//
+//                for (bit in 0 until 8) {
+//                    val pixelX = x + bit
+//                    if (pixelX < width) {
+//                        val pixel = bitmap.getPixel(pixelX, y)
+//                        if (pixel == Color.BLACK || Color.red(pixel) < 128) {
+//                            byteValue = byteValue or (0x80 shr bit)
+//                        }
+//                    }
+//                }
+//
+//                commands.add(byteValue.toByte())
+//            }
+//        }
+//
+//        return commands.toByteArray()
+//    }
+    //-------------------------logo-----------------------------------------------
+
+    //-----------------------------QR---------------------------------
+    private fun printNativeQR(outputStream: OutputStream, text: String) {
+        try {
+            val textBytes = text.toByteArray(Charsets.UTF_8)
+            val dataLength = textBytes.size
+
+            // 1. Centrar
+            outputStream.write(byteArrayOf(0x1B, 0x61, 0x01)) // ESC a 1
+
+            // 2. Seleccionar modelo QR (Modelo 2)
+            outputStream.write(byteArrayOf(0x1D, 0x28, 0x6B, 0x04, 0x00, 0x31, 0x41, 0x32, 0x00))
+
+            // 3. Configurar tamaño del módulo (3 = tamaño medio)
+            outputStream.write(byteArrayOf(0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x43, 0x03))
+
+            // 4. Configurar nivel de corrección de errores (L = 48, M = 49, Q = 50, H = 51)
+            outputStream.write(byteArrayOf(0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x45, 0x30)) // Nivel L
+
+            // 5. Almacenar datos del QR
+            val pL = (dataLength + 3) and 0xFF
+            val pH = ((dataLength + 3) shr 8) and 0xFF
+            outputStream.write(byteArrayOf(0x1D, 0x28, 0x6B, pL.toByte(), pH.toByte(), 0x31, 0x50, 0x30))
+            outputStream.write(textBytes)
+
+            // 6. Imprimir QR
+            outputStream.write(byteArrayOf(0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x51, 0x30))
+
+            // 7. Volver a alineación izquierda
+            outputStream.write(byteArrayOf(0x1B, 0x61, 0x00))
+
+            outputStream.write("\n\n".toByteArray())
+            outputStream.flush()
+
+            Log.d("QR", "QR nativo enviado correctamente")
+
+        } catch (e: Exception) {
+            Log.e("QR", "Error QR nativo: ${e.message}")
+        }
+    }
+
+    // VERSIÓN ALTERNATIVA CON TAMAÑO DIFERENTE (CORREGIDA)
+    private fun printNativeQRLarge(outputStream: OutputStream, text: String) {
+        try {
+            val textBytes = text.toByteArray(Charsets.UTF_8)
+            val dataLength = textBytes.size
+            outputStream.write("\n\n".toByteArray())
+
+            // 1. Centrar para el QR
+            outputStream.write(byteArrayOf(0x1B, 0x61, 0x01)) // Centrar
+
+            // 2. Modelo QR 2
+            outputStream.write(byteArrayOf(0x1D, 0x28, 0x6B, 0x04, 0x00, 0x31, 0x41, 0x32, 0x00))
+
+            // 3. Tamaño más grande (5)
+            outputStream.write(byteArrayOf(0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x43, 0x05))
+
+            // 4. Nivel de corrección M (mejor que L)
+            outputStream.write(byteArrayOf(0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x45, 0x31))
+
+            // 5. Almacenar datos
+            val pL = (dataLength + 3) and 0xFF
+            val pH = ((dataLength + 3) shr 8) and 0xFF
+            outputStream.write(byteArrayOf(0x1D, 0x28, 0x6B, pL.toByte(), pH.toByte(), 0x31, 0x50, 0x30))
+            outputStream.write(textBytes)
+
+            // 6. Imprimir QR
+            outputStream.write(byteArrayOf(0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x51, 0x30))
+
+            // 7. IMPORTANTE: Salto de línea ANTES de cambiar alineación
+            outputStream.write("".toByteArray())
+
+            // 8. RESETEAR completamente la alineación a izquierda
+            outputStream.write(byteArrayOf(0x1B, 0x61, 0x00)) // Izquierda
+
+            // 9. Salto adicional para separar
+//            outputStream.write("\n".toByteArray())
+
+            outputStream.flush()
+
+        } catch (e: Exception) {
+            Log.e("QR", "Error QR grande: ${e.message}")
+        }
+    }
+
+    // VERSIÓN SIMPLE Y PEQUEÑA
+    private fun printNativeQRSmall(outputStream: OutputStream, text: String) {
+        try {
+            val textBytes = text.toByteArray(Charsets.UTF_8)
+            val dataLength = textBytes.size
+
+            outputStream.write(byteArrayOf(0x1B, 0x61, 0x01)) // Centrar
+
+            // Comandos básicos para QR pequeño
+            outputStream.write(byteArrayOf(0x1D, 0x28, 0x6B, 0x04, 0x00, 0x31, 0x41, 0x32, 0x00)) // Modelo
+            outputStream.write(byteArrayOf(0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x43, 0x02)) // Tamaño 2
+            outputStream.write(byteArrayOf(0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x45, 0x30)) // Error L
+
+            // Datos
+            val pL = (dataLength + 3) and 0xFF
+            val pH = ((dataLength + 3) shr 8) and 0xFF
+            outputStream.write(byteArrayOf(0x1D, 0x28, 0x6B, pL.toByte(), pH.toByte(), 0x31, 0x50, 0x30))
+            outputStream.write(textBytes)
+
+            // Imprimir
+            outputStream.write(byteArrayOf(0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x51, 0x30))
+
+            outputStream.write(byteArrayOf(0x1B, 0x61, 0x00))
+            outputStream.write("\n".toByteArray())
+            outputStream.flush()
+
+        } catch (e: Exception) {
+            Log.e("QR", "Error QR pequeño: ${e.message}")
+        }
+    }
+    //---------------------------QR--------------------------------------------
+
+    //------------------------LOGO VERSION MEJORADA-----------------------------
+    private fun printLogo(outputStream: OutputStream, base64Logo: String?) {
+        if (base64Logo.isNullOrEmpty()) return
+
+        try {
+            val pureBase64 = base64Logo.substringAfter(",")
+            val imageBytes = Base64.decode(pureBase64, Base64.DEFAULT)
+            val originalBitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size) ?: return
+
+            val maxWidth = 300
+            val maxHeight = 150
+
+            val scaledBitmap = resizeBitmap(originalBitmap, maxWidth, maxHeight)
+            val monoBitmap = convertToMonochromeSimple(scaledBitmap)
+            val printCommands = generatePrintCommands(monoBitmap)
+
+            // Enviar directamente los comandos (sin usar 0x1B 0x61 0x01)
+            outputStream.write(printCommands)
+            outputStream.write("\n".toByteArray())
+            outputStream.flush()
+
+            monoBitmap.recycle()
+            scaledBitmap.recycle()
+            originalBitmap.recycle()
+        } catch (e: Exception) {
+            Log.e("PrintLogo", "Error: ${e.message}")
+        }
+    }
+
+    private fun resizeBitmap(bitmap: Bitmap, maxWidth: Int, maxHeight: Int): Bitmap {
+        val aspectRatio = bitmap.width.toFloat() / bitmap.height.toFloat()
+        val newWidth: Int
+        val newHeight: Int
+
+        if (aspectRatio > 1) {
+            // Horizontal
+            newWidth = min(bitmap.width, maxWidth)
+            newHeight = (newWidth / aspectRatio).toInt()
+        } else {
+            // Vertical
+            newHeight = min(bitmap.height, maxHeight)
+            newWidth = (newHeight * aspectRatio).toInt()
+        }
+
+        return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
+    }
+
+    private fun convertToMonochromeSimple(bitmap: Bitmap): Bitmap {
+        val result = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(result)
+        val paint = Paint()
+
+        val matrix = ColorMatrix()
+        matrix.setSaturation(0f) // Escala de grises
+
+        val threshold = 128 // Ajusta este valor para más/menos negro
+        val thresholdMatrix = ColorMatrix(floatArrayOf(
+            0.299f, 0.587f, 0.114f, 0f, -threshold.toFloat(),
+            0.299f, 0.587f, 0.114f, 0f, -threshold.toFloat(),
+            0.299f, 0.587f, 0.114f, 0f, -threshold.toFloat(),
+            0f,     0f,     0f,     1f, 255f
+        ))
+
+        matrix.postConcat(thresholdMatrix)
+        paint.colorFilter = ColorMatrixColorFilter(matrix)
+        canvas.drawBitmap(bitmap, 0f, 0f, paint)
+
+        return result
+    }
+
+    private fun generatePrintCommands(bitmap: Bitmap): ByteArray {
+        val width = bitmap.width
+        val height = bitmap.height
+        val bytesPerLine = (width + 7) / 8
+        val output = ByteArrayOutputStream()
+
+        // --- Centrado manual: calcular padding horizontal ---
+        // Ancho máximo de impresión (en píxeles, típicamente 384 para impresoras de 80mm)
+        val printerMaxWidthPixels = 384
+        val paddingPixels = (printerMaxWidthPixels - width) / 2
+        val paddingBytes = paddingPixels / 8
+
+        // Comando GS v 0 (modo raster)
+        output.write(byteArrayOf(0x1D, 0x76, 0x30, 0x00))
+
+        // Ancho en bytes (little endian) incluyendo padding
+        val totalBytesPerLine = bytesPerLine + paddingBytes
+        output.write(byteArrayOf(
+            (totalBytesPerLine % 256).toByte(),
+            (totalBytesPerLine / 256).toByte()
+        ))
+
+        // Alto en píxeles (little endian)
+        output.write(byteArrayOf(
+            (height % 256).toByte(),
+            (height / 256).toByte()
+        ))
+
+        // Datos de la imagen con padding
+        for (y in 0 until height) {
+            // Añadir bytes de padding (blanco) al inicio de cada línea
+            repeat(paddingBytes) { output.write(0x00) }
+
+            // Bytes de la imagen
+            for (x in 0 until width step 8) {
+                var byteValue = 0
+                for (bit in 0..7) {
+                    val px = x + bit
+                    if (px < width && bitmap.getPixel(px, y) == Color.BLACK) {
+                        byteValue = byteValue or (1 shl (7 - bit))
+                    }
+                }
+                output.write(byteValue)
+            }
+        }
+
+        return output.toByteArray()
     }
 }
