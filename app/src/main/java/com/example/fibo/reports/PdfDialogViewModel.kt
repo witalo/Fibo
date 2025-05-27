@@ -946,10 +946,9 @@ class PdfDialogViewModel @Inject constructor(
             val maxHeight = 150
 
             val scaledBitmap = resizeBitmap(originalBitmap, maxWidth, maxHeight)
-            val monoBitmap = convertToMonochromeSimple(scaledBitmap)
+            val monoBitmap = convertToMonochromeProper(scaledBitmap) // Cambiado a nueva función
             val printCommands = generatePrintCommands(monoBitmap)
 
-            // Enviar directamente los comandos (sin usar 0x1B 0x61 0x01)
             outputStream.write(printCommands)
             outputStream.write("\n".toByteArray())
             outputStream.flush()
@@ -960,6 +959,38 @@ class PdfDialogViewModel @Inject constructor(
         } catch (e: Exception) {
             Log.e("PrintLogo", "Error: ${e.message}")
         }
+    }
+
+// ... (resizeBitmap sigue igual) ...
+
+    private fun convertToMonochromeProper(bitmap: Bitmap): Bitmap {
+        val result = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(result)
+        val paint = Paint()
+
+        // Convertir a escala de grises
+        val grayscaleMatrix = ColorMatrix().apply {
+            setSaturation(0f)
+        }
+
+        // Aplicar umbral manteniendo la relación original (negro sigue negro, blanco sigue blanco)
+        val threshold = 128
+        val thresholdMatrix = ColorMatrix(floatArrayOf(
+            85f, 85f, 85f, 0f, -128f * 85f,  // R
+            85f, 85f, 85f, 0f, -128f * 85f,  // G
+            85f, 85f, 85f, 0f, -128f * 85f,  // B
+            0f, 0f, 0f, 1f, 0f               // A
+        ))
+
+        val combinedMatrix = ColorMatrix().apply {
+            postConcat(grayscaleMatrix)
+            postConcat(thresholdMatrix)
+        }
+
+        paint.colorFilter = ColorMatrixColorFilter(combinedMatrix)
+        canvas.drawBitmap(bitmap, 0f, 0f, paint)
+
+        return result
     }
 
     private fun resizeBitmap(bitmap: Bitmap, maxWidth: Int, maxHeight: Int): Bitmap {
@@ -985,19 +1016,27 @@ class PdfDialogViewModel @Inject constructor(
         val canvas = Canvas(result)
         val paint = Paint()
 
-        val matrix = ColorMatrix()
-        matrix.setSaturation(0f) // Escala de grises
+        // 1. Convertir a escala de grises
+        val grayscaleMatrix = ColorMatrix().apply {
+            setSaturation(0f) // Eliminar saturación (escala de grises)
+        }
 
-        val threshold = 128 // Ajusta este valor para más/menos negro
+        // 2. Aplicar umbral (threshold) para convertir a blanco/negro
+        val threshold = 128 // Puntos más oscuros que esto se vuelven negros
         val thresholdMatrix = ColorMatrix(floatArrayOf(
-            0.299f, 0.587f, 0.114f, 0f, -threshold.toFloat(),
-            0.299f, 0.587f, 0.114f, 0f, -threshold.toFloat(),
-            0.299f, 0.587f, 0.114f, 0f, -threshold.toFloat(),
-            0f,     0f,     0f,     1f, 255f
+            0.299f, 0.587f, 0.114f, 0f, (-threshold).toFloat(),
+            0.299f, 0.587f, 0.114f, 0f, (-threshold).toFloat(),
+            0.299f, 0.587f, 0.114f, 0f, (-threshold).toFloat(),
+            0f, 0f, 0f, 1f, 255f
         ))
 
-        matrix.postConcat(thresholdMatrix)
-        paint.colorFilter = ColorMatrixColorFilter(matrix)
+        // Combinar ambas matrices
+        val combinedMatrix = ColorMatrix().apply {
+            postConcat(grayscaleMatrix)
+            postConcat(thresholdMatrix)
+        }
+
+        paint.colorFilter = ColorMatrixColorFilter(combinedMatrix)
         canvas.drawBitmap(bitmap, 0f, 0f, paint)
 
         return result
