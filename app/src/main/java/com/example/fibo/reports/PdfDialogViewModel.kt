@@ -463,7 +463,7 @@ class PdfDialogViewModel @Inject constructor(
             outputStream.write(PrinterCommands.ESC_ALIGN_CENTER)
 
             // IMPRIMIR LOGO PRIMERO
-            printLogo(outputStream, pdfGenerator.company.logo)
+//            printLogo(outputStream, pdfGenerator.company.logo)
 
             // Encabezado - Nombre de la empresa (CENTRADO)
             outputStream.write(PrinterCommands.ESC_BOLD_ON)

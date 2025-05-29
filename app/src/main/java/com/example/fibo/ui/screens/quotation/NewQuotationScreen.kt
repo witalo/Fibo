@@ -58,6 +58,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TextFieldValue
@@ -105,6 +106,7 @@ fun NewQuotationScreen(
 
     var clientData by remember { mutableStateOf<IPerson?>(null) }
     var documentNumber by remember { mutableStateOf("") }
+
     var showAddItemDialog by remember { mutableStateOf(false) }
     var operationDetails by remember { mutableStateOf<List<IOperationDetail>>(emptyList()) }
 
@@ -1645,11 +1647,14 @@ fun AddProductQuotationDialog(
                             ) {
                                 OutlinedTextField(
                                     value = observaciones,
-                                    onValueChange = { observaciones = it },
+                                    onValueChange = { observaciones = it.uppercase() },
                                     label = { Text("Descripción") },
                                     modifier = Modifier.weight(1f),
                                     shape = RoundedCornerShape(12.dp),
-                                    maxLines = 2
+                                    maxLines = 2,
+                                    keyboardOptions = KeyboardOptions(
+                                        capitalization = KeyboardCapitalization.Characters // Opcional: teclado en mayúsculas
+                                    )
                                 )
                             }
                             Spacer(modifier = Modifier.height(8.dp))

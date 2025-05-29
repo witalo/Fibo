@@ -54,6 +54,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
@@ -96,7 +97,22 @@ fun NewReceiptScreen(
     val error by viewModel.error.collectAsState()
 
     var clientData by remember { mutableStateOf<IPerson?>(null) }
-    var documentNumber by remember { mutableStateOf("") }
+    var documentNumber by remember { mutableStateOf("00000000") }
+    // Efecto para buscar cliente por defecto al iniciar
+    LaunchedEffect(Unit) {
+        // Solo si no hay un quotationId (para no sobreescribir los datos de cotización)
+        if (quotationId == null) {
+            viewModel.fetchClientData("00000000") { person ->
+                val modifiedPerson = person?.copy(
+                    names = person.names?.uppercase(),
+                    documentType = "1",
+                    documentNumber = person.documentNumber,
+                    address = person.address?.trim(),
+                )
+                clientData = modifiedPerson
+            }
+        }
+    }
     var showAddItemDialog by remember { mutableStateOf(false) }
     var operationDetails by remember { mutableStateOf<List<IOperationDetail>>(emptyList()) }
 
@@ -1650,11 +1666,14 @@ fun AddReceiptProductDialog(
                             ) {
                                 OutlinedTextField(
                                     value = observaciones,
-                                    onValueChange = { observaciones = it },
+                                    onValueChange = { observaciones = it.uppercase() },
                                     label = { Text("Descripción") },
                                     modifier = Modifier.weight(1f),
                                     shape = RoundedCornerShape(12.dp),
-                                    maxLines = 2
+                                    maxLines = 2,
+                                    keyboardOptions = KeyboardOptions(
+                                        capitalization = KeyboardCapitalization.Characters // Opcional: teclado en mayúsculas
+                                    )
                                 )
                             }
 

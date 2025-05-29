@@ -57,6 +57,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
@@ -1656,11 +1657,14 @@ fun AddProductDialog(
                             ) {
                                 OutlinedTextField(
                                     value = observaciones,
-                                    onValueChange = { observaciones = it },
+                                    onValueChange = { observaciones = it.uppercase() },
                                     label = { Text("Descripción") },
                                     modifier = Modifier.weight(1f),
                                     shape = RoundedCornerShape(12.dp),
-                                    maxLines = 2
+                                    maxLines = 2,
+                                    keyboardOptions = KeyboardOptions(
+                                        capitalization = KeyboardCapitalization.Characters // Opcional: teclado en mayúsculas
+                                    )
                                 )
                             }
                             Spacer(modifier = Modifier.height(8.dp))
