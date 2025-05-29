@@ -1432,7 +1432,7 @@ fun AddProductQuotationDialog(
                                             ProductQuotationListItem(
                                                 product = product,
                                                 onClick = {
-                                                    viewModel.getTariff(product.id, subsidiaryId)
+                                                    viewModel.getTariff(product.id)
                                                 }
                                             )
 
@@ -1716,7 +1716,7 @@ fun AddProductQuotationDialog(
                                             productName = product.productName,
                                             unitId = product.unitId,
                                             unitName = product.unitName,
-                                            remainingQuantity = product.remainingQuantity,
+                                            stock = product.stock,
                                             priceWithIgv = priceWithIgv.toDoubleOrNull() ?: 0.0,
                                             priceWithoutIgv = priceWithoutIgv.toDoubleOrNull()
                                                 ?: 0.0,
@@ -1949,7 +1949,7 @@ private fun SelectedProductQuotationCard(
                         Spacer(modifier = Modifier.height(4.dp))
                         InfoQuotationRow(
                             label = "Stock:",
-                            value = "${product.remainingQuantity} ${product.unitName}",
+                            value = "${product.stock} ${product.unitName}",
                             labelColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }

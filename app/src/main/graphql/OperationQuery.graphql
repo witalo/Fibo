@@ -47,14 +47,14 @@ query SearchProducts($query: String!, $subsidiaryId: Int!) {
                 name
     }
 }
-query GetTariffByProductId($productId: Int!, $subsidiaryId: Int!) {
-    tariffByProductId(productId: $productId, subsidiaryId: $subsidiaryId) {
+query GetTariffByProductId($productId: Int!) {
+    tariffByProductId(productId: $productId) {
         productId
         productCode
         productName
         unitId
         unitName
-        remainingQuantity
+        stock
         priceWithIgv
         priceWithoutIgv
         productTariffId

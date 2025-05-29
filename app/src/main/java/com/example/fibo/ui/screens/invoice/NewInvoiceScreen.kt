@@ -129,15 +129,33 @@ fun NewInvoiceScreen(
 
     // 3. CALCULAR DESCUENTOS
     val discountForItem = operationDetails.sumOf { it.totalDiscount } // Descuentos por ítem
-    // Aplicar descuento global solo a operaciones gravadas (tipo 1)
+
+    // *********MODIFICACIÓN: Convertir el descuento global a valor sin IGV para aplicarlo a la base gravada
+    val discountGlobalWithoutIgv = if (applyGlobalDiscount) {
+        discountGlobalValue / (1 + igvFactor) // Quitar IGV al descuento
+    } else {
+        0.0
+    }
+    // Aplicar descuento global SIN IGV solo a operaciones gravadas (tipo 1)
     val effectiveGlobalDiscount = if (applyGlobalDiscount) {
         min(
-            discountGlobalValue,
+            discountGlobalWithoutIgv, // <-- AQUÍ está el cambio principal
             totalTaxedBeforeDiscount
         ) // No puede ser mayor que el total gravado
     } else {
         0.0
     }
+    // *********MODIFICACIÓN: Convertir el descuento global a valor sin IGV para aplicarlo a la base gravada
+
+    // Aplicar descuento global solo a operaciones gravadas (tipo 1)
+//    val effectiveGlobalDiscount = if (applyGlobalDiscount) {
+//        min(
+//            discountGlobalValue,
+//            totalTaxedBeforeDiscount
+//        ) // No puede ser mayor que el total gravado
+//    } else {
+//        0.0
+//    }
     // 4. CALCULAR VALORES DESPUÉS DE DESCUENTOS
     val totalTaxedAfterDiscount = max(0.0, totalTaxedBeforeDiscount - effectiveGlobalDiscount)
     val totalIgv =
@@ -1569,7 +1587,7 @@ fun AddProductDialog(
                                             ProductListItem(
                                                 product = product,
                                                 onClick = {
-                                                    viewModel.getTariff(product.id, subsidiaryId)
+                                                    viewModel.getTariff(product.id)
                                                 }
                                             )
 
@@ -1853,7 +1871,7 @@ fun AddProductDialog(
                                             productName = product.productName,
                                             unitId = product.unitId,
                                             unitName = product.unitName,
-                                            remainingQuantity = product.remainingQuantity,
+                                            stock = product.stock,
                                             priceWithIgv = priceWithIgv.toDoubleOrNull() ?: 0.0,
                                             priceWithoutIgv = priceWithoutIgv.toDoubleOrNull()
                                                 ?: 0.0,
@@ -2086,7 +2104,7 @@ private fun SelectedProductCard(
                         Spacer(modifier = Modifier.height(4.dp))
                         InfoRow(
                             label = "Stock:",
-                            value = "${product.remainingQuantity} ${product.unitName}",
+                            value = "${product.stock} ${product.unitName}",
                             labelColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }

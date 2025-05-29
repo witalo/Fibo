@@ -6,7 +6,7 @@ data class ITariff(
     val productName: String,
     val unitId: Int,
     val unitName: String,
-    val remainingQuantity: Double = 0.0,
+    val stock: Double = 0.0,
     val priceWithIgv: Double = 0.0,
     val priceWithoutIgv: Double = 0.0,
     val productTariffId: Int,

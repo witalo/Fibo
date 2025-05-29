@@ -157,12 +157,11 @@ class OperationRepository @Inject constructor(
         }
     }
 
-    suspend fun getTariffByProductID(productId: Int, subsidiaryId: Int): ITariff {
+    suspend fun getTariffByProductID(productId: Int): ITariff {
         return try {
             val response = apolloClient.query(
                 GetTariffByProductIdQuery(
-                    productId = productId,
-                    subsidiaryId = subsidiaryId
+                    productId = productId
                 )
             ).execute()
 
@@ -181,7 +180,7 @@ class OperationRepository @Inject constructor(
                 productName = tariffData.productName.orEmpty(),
                 unitId = tariffData.unitId ?: 0,
                 unitName = tariffData.unitName.orEmpty(),
-                remainingQuantity = tariffData.remainingQuantity ?: 0.0,
+                stock = tariffData.stock ?: 0.0,
                 priceWithIgv = tariffData.priceWithIgv ?: 0.0,
                 priceWithoutIgv = tariffData.priceWithoutIgv ?: 0.0,
                 productTariffId = tariffData.productTariffId ?: 0,
@@ -203,7 +202,7 @@ class OperationRepository @Inject constructor(
                     productName = Optional.present(detail.tariff.productName),
                     unitId = Optional.present(detail.tariff.unitId),
                     unitName = Optional.present(detail.tariff.unitName),
-                    remainingQuantity = Optional.present(detail.tariff.remainingQuantity),
+                    stock = Optional.present(detail.tariff.stock),
                     priceWithIgv = Optional.present(detail.tariff.priceWithIgv),
                     priceWithoutIgv = Optional.present(detail.tariff.priceWithoutIgv),
                     productTariffId = Optional.present(detail.tariff.productTariffId),

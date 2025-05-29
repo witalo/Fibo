@@ -39,6 +39,8 @@ type Query {
 
   allClients: [PersonType]
 
+  allCustomers(subsidiaryId: Int): [PersonType]
+
   allSuppliers: [PersonType]
 
   cpeShippingQuery(operationId: Int, status: String): CpeType
@@ -91,11 +93,11 @@ type Query {
 
   productDetailByProductId(productId: Int): ProductDetailType
 
-  allPurchases(supplierId: Int, startDate: Date, endDate: Date): [OperationType]
+  allPurchases(subsidiaryId: Int, supplierId: Int, startDate: Date, endDate: Date, documentType: String, page: Int, pageSize: Int, serial: String, correlative: Int): PurchasesSummaryType
 
   searchProduct(search: String, subsidiaryId: Int, first: Int): [ProductType]
 
-  tariffByProductId(productId: Int, subsidiaryId: Int): TariffType
+  tariffByProductId(productId: Int): TariffType
 
   myProfile: UserType
 
@@ -183,6 +185,8 @@ type SubsidiaryType {
   pdfFormatForReceiptInvoices: Int
 
   pdfFormatForGuides: Int
+
+  pdfFormatForQuotation: UsersSubsidiaryPdfFormatForQuotationChoices!
 
   fillColor: String
 
@@ -392,6 +396,8 @@ type PersonType {
   clientAccount: [CashType!]!
 
   cashflowSet: [CashFlowType!]!
+
+  documentTypeReadable: String
 }
 
 """
@@ -1898,6 +1904,16 @@ enum OperationsOperationDocumentTypeChoices {
   A_89
 
   """
+  NOTA DE ENTRADA
+  """
+  NE
+
+  """
+  NOTA DE SALIDA
+  """
+  NS
+
+  """
   NO APLICA
   """
   NA
@@ -3127,6 +3143,16 @@ enum OperationsDocumentEmittedDocumentTypeChoices {
   A_89
 
   """
+  NOTA DE ENTRADA
+  """
+  NE
+
+  """
+  NOTA DE SALIDA
+  """
+  NS
+
+  """
   NO APLICA
   """
   NA
@@ -3267,6 +3293,8 @@ type ProductType {
   priceWithIgv4: Float
 
   priceWithoutIgv4: Float
+
+  stock: Float
 }
 
 """
@@ -3433,6 +3461,26 @@ enum LogisticsProductTariffTypePriceChoices {
   A_4
 }
 
+"""
+An enumeration.
+"""
+enum UsersSubsidiaryPdfFormatForQuotationChoices {
+  """
+  TAMAÑO A4
+  """
+  A_1
+
+  """
+  TAMAÑO A5 (MITAD DE A4)
+  """
+  A_2
+
+  """
+  TAMAÑO TICKETERA
+  """
+  A_3
+}
+
 type SerialAssignedType {
   id: Int
 
@@ -3500,6 +3548,16 @@ enum OperationsSerialAssignedDocumentTypeChoices {
   NOTA DE AJUSTE DE OPERACIONES
   """
   A_89
+
+  """
+  NOTA DE ENTRADA
+  """
+  NE
+
+  """
+  NOTA DE SALIDA
+  """
+  NS
 
   """
   NO APLICA
@@ -3657,6 +3715,22 @@ type ProductDetailType {
   typeAffectationId: Int
 }
 
+type PurchasesSummaryType {
+  purchases: [OperationType]
+
+  totalInvoices: Float
+
+  totalPurchasesTickets: Float
+
+  totalCreditNotes: Float
+
+  totalDebitNotes: Float
+
+  totalNumberOfPages: Int
+
+  totalNumberOfPurchases: Int
+}
+
 type TariffType {
   productId: Int
 
@@ -3677,6 +3751,8 @@ type TariffType {
   productTariffId: Int
 
   typeAffectationId: Int
+
+  stock: Float
 }
 
 type Mutation {
@@ -3686,7 +3762,7 @@ type Mutation {
 
   createPerson(address: String, country: String, districtId: String, documentNumber: String, documentType: String, economicActivityMain: Int, email: String, isClient: Boolean, isEnabled: Boolean, isSupplier: Boolean, names: String, phone: String, shortName: String): CreatePersonMutation
 
-  updatePerson(address: String, country: String, districtId: String, documentNumber: String, documentType: String, economicActivityMain: Int, email: String, id: ID!, isClient: Boolean, isEnabled: Boolean, isSupplier: Boolean, names: String, phone: String, shortName: String): UpdatePersonMutation
+  updatePerson(address: String, code: String, country: String, districtId: String, documentNumber: String, documentType: String, driverLicense: String, economicActivityMain: Int, email: String, id: ID!, isClient: Boolean, isEnabled: Boolean, isSupplier: Boolean, names: String, phone: String, shortName: String): UpdatePersonMutation
 
   createInvoice(cliente: ClienteType, empresa: EmpresaType, items: [ItemType], sucursal: SucursalType, venta: VentaType): CreateInvoiceMutation
 
@@ -3722,17 +3798,17 @@ type Mutation {
 
   updateWarehouse(category: String, id: ID!, name: String, subsidiaryId: Int): UpdateWarehouseMutation
 
-  createProduct(activeType: String, available: Boolean, code: String, ean: String, maximumFactor: Int, maximumUnitId: Int, minimumFactor: Int, minimumUnitId: Int, name: String, observation: String, priceWithIgv1: Float, priceWithIgv2: Float, priceWithIgv3: Float, priceWithIgv4: Float, priceWithoutIgv1: Float, priceWithoutIgv2: Float, priceWithoutIgv3: Float, priceWithoutIgv4: Float, subjectPerception: Boolean, typeAffectationId: Int, weightInKilograms: Float): CreateProductMutation
+  createProduct(activeType: String, available: Boolean, code: String, ean: String, maximumFactor: Int, maximumUnitId: Int, minimumFactor: Int, minimumUnitId: Int, name: String, observation: String, priceWithIgv1: Float, priceWithIgv2: Float, priceWithIgv3: Float, priceWithIgv4: Float, priceWithoutIgv1: Float, priceWithoutIgv2: Float, priceWithoutIgv3: Float, priceWithoutIgv4: Float, stock: Float, subjectPerception: Boolean, typeAffectationId: Int, weightInKilograms: Float): CreateProductMutation
 
   deleteProduct(id: ID!): DeleteProductMutation
 
-  updateProduct(activeType: String, available: Boolean, code: String, ean: String, id: ID!, maximumFactor: Int, maximumUnitId: Int, minimumFactor: Int, minimumUnitId: Int, name: String, observation: String, priceWithIgv1: Float, priceWithIgv2: Float, priceWithIgv3: Float, priceWithIgv4: Float, priceWithoutIgv1: Float, priceWithoutIgv2: Float, priceWithoutIgv3: Float, priceWithoutIgv4: Float, subjectPerception: Boolean, typeAffectationId: Int, weightInKilograms: Float): UpdateProductMutation
+  updateProduct(activeType: String, available: Boolean, code: String, ean: String, id: ID!, maximumFactor: Int, maximumUnitId: Int, minimumFactor: Int, minimumUnitId: Int, name: String, observation: String, priceWithIgv1: Float, priceWithIgv2: Float, priceWithIgv3: Float, priceWithIgv4: Float, priceWithoutIgv1: Float, priceWithoutIgv2: Float, priceWithoutIgv3: Float, priceWithoutIgv4: Float, stock: Float, subjectPerception: Boolean, typeAffectationId: Int, weightInKilograms: Float): UpdateProductMutation
 
   createUnit(code: String, description: String, shortName: String): CreateUnitMutation
 
   updateUnit(code: String, description: String, id: ID!, shortName: String): UpdateUnitMutation
 
-  createPurchase(correlative: Int, currencyType: String, descriptionSet: [String!], discountForItem: Float, discountGlobal: Float, discountPercentageGlobal: Float, discountPercentageSet: [Float!], documentType: String, emitDate: String, igvPercentageSet: [Float!], igvType: Int, perceptionPercentageSet: [Float!], productTariffIdSet: [Int!], quantitySet: [Int!], saleExchangeRate: Float, serial: String, supplierId: Int, totalAmount: Float, totalAmountSet: [Float!], totalDiscount: Float, totalDiscountSet: [Float!], totalExonerated: Float, totalFree: Float, totalIgv: Float, totalIgvSet: [Float!], totalPayed: Float, totalPerception: Float, totalPerceptionSet: [Float!], totalSet: [Float!], totalTaxed: Float, totalToPay: Float, totalToPaySet: [Float!], totalTurned: Float, totalUnaffected: Float, totalValueSet: [Float!], typeAffectationIdSet: [Int!], unitPriceSet: [Float!], unitValueSet: [Float!], wayPaySet: [Int!]): CreatePurchaseMutation
+  createPurchase(commentSet: [String!], correlative: Int, currencyType: String, descriptionSet: [String!], detractionPaymentMethod: Int = 0, detractionPercentage: Float = 0, detractionType: Int = 0, discountForItem: Float, discountGlobal: Float, discountPercentageGlobal: Float, discountPercentageSet: [Float!], documentType: String, dueDate: String, emitDate: String, hasDetraction: Boolean = false, hasPerception: Boolean = false, hasRetention: Boolean = false, igvPercentageSet: [Float!], igvType: Int, observation: String, operationType: String, perceptionPercentage: Float = 0, perceptionPercentageSet: [Float!], perceptionType: Int = 0, productTariffIdSet: [Int!], quantitySet: [Float!], retentionPercentage: Float = 0, retentionType: Int = 0, saleExchangeRate: Float, serial: String, supplierId: Int, totalAmount: Float, totalAmountSet: [Float!], totalDetraction: Float = 0, totalDiscount: Float, totalDiscountSet: [Float!], totalExonerated: Float, totalFree: Float, totalIgv: Float, totalIgvSet: [Float!], totalPayed: Float, totalPerception: Float, totalPerceptionSet: [Float!], totalRetention: Float = 0, totalSet: [Float!], totalTaxed: Float, totalToPay: Float, totalToPaySet: [Float!], totalTurned: Float, totalUnaffected: Float, totalValueSet: [Float!], transactionDateSet: [Date!], typeAffectationIdSet: [Int!], unitPriceSet: [Float!], unitValueSet: [Float!], wayPaySet: [Int!]): CreatePurchaseMutation
 
   updatePrice(id: ID!, priceWithIgv: Float, priceWithoutIgv: Float): UpdatePriceMutation
 
@@ -3843,6 +3919,8 @@ input ItemType {
   codigoUnidad: String
 
   tipoIgvCodigo: String
+
+  description: String
 }
 
 input SucursalType {
@@ -3979,6 +4057,8 @@ input TariffInput {
   productTariffId: Int
 
   typeAffectationId: Int
+
+  stock: Float
 }
 
 type SntMutation {

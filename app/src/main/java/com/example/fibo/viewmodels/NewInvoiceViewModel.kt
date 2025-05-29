@@ -99,12 +99,12 @@ class NewInvoiceViewModel @Inject constructor(
         }
     }
 
-    fun getTariff(productId: Int, subsidiaryId: Int) {
+    fun getTariff(productId: Int) {
         viewModelScope.launch {
             _isLoading.value = true
             try {
                 // Consulta completa que devuelve todos los datos del producto
-                val tariff = operationRepository.getTariffByProductID(productId=productId, subsidiaryId = subsidiaryId)
+                val tariff = operationRepository.getTariffByProductID(productId=productId)
                 _selectedProduct.value = tariff
             } catch (e: Exception) {
                 _error.value = "Error al obtener tarifas del producto: ${e.message}"
