@@ -105,7 +105,19 @@ fun NewQuotationScreen(
     val error by viewModel.error.collectAsState()
 
     var clientData by remember { mutableStateOf<IPerson?>(null) }
-    var documentNumber by remember { mutableStateOf("") }
+    var documentNumber by remember { mutableStateOf("00000000") }
+    // Efecto para buscar cliente por defecto al iniciar
+    LaunchedEffect(Unit) {
+            viewModel.fetchClientData("00000000") { person ->
+                val modifiedPerson = person?.copy(
+                    names = person.names?.uppercase(),
+                    documentType = "1",
+                    documentNumber = person.documentNumber,
+                    address = person.address?.trim(),
+                )
+                clientData = modifiedPerson
+            }
+    }
 
     var showAddItemDialog by remember { mutableStateOf(false) }
     var operationDetails by remember { mutableStateOf<List<IOperationDetail>>(emptyList()) }
