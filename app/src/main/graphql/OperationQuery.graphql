@@ -237,3 +237,14 @@ query GetOperationsByPersonAndUser($personId: Int!, $userId: Int!, $types:  [Str
     }
 
 }
+query GetAllProductsBySubsidiaryId($subsidiaryId: Int, $available: Boolean){
+        allProducts(subsidiaryId:$subsidiaryId, available: $available){
+            id
+            code
+            name
+            priceWithIgv3
+            priceWithoutIgv3
+            stock
+            minimumUnitName
+        }
+}

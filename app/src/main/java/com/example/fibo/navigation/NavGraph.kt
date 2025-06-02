@@ -15,6 +15,7 @@ import com.example.fibo.ui.screens.QuotationScreen
 import com.example.fibo.viewmodels.AuthViewModel
 import com.example.fibo.ui.screens.invoice.NewInvoiceScreen
 import com.example.fibo.ui.screens.noteofsale.NewNoteOfSaleScreen
+import com.example.fibo.ui.screens.product.ProductScreen
 import com.example.fibo.ui.screens.profile.ProfileScreen
 import com.example.fibo.ui.screens.quotation.NewQuotationScreen
 import com.example.fibo.ui.screens.receipt.NewReceiptScreen
@@ -85,6 +86,16 @@ fun NavGraph(
             ProfileScreen(
                 onBack = { navController.popBackStack() },
                 preferencesManager = PreferencesManager(LocalContext.current)
+            )
+        }
+        // Productos
+        composable(Screen.Product.route) {
+            ProductScreen(
+                onBack  = { navController.popBackStack() },
+                onAddProduct = {
+                    // TODO: Navegar a pantalla de agregar producto
+                    // navController.navigate(Screen.AddProduct.route)
+                }
             )
         }
 

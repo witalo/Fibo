@@ -24,6 +24,7 @@ import com.example.fibo.type.TariffInput
 import javax.inject.Inject
 import javax.inject.Singleton
 import com.example.fibo.CancelInvoiceMutation
+import com.example.fibo.GetAllProductsBySubsidiaryIdQuery
 import com.example.fibo.GetOperationsByDateAndUserIdQuery
 import com.example.fibo.GetOperationsByPersonAndUserQuery
 import com.example.fibo.SearchPersonsQuery
@@ -552,6 +553,35 @@ class OperationRepository @Inject constructor(
             } ?: emptyList()
         } catch (e: Exception) {
             println("Error en getOperationsByPersonAndUser: ${e.message}")
+            emptyList()
+        }
+    }
+    suspend fun getAllProductsBySubsidiaryId(subsidiaryId: Int, available: Boolean): List<IProduct> {
+        return try {
+            val response = apolloClient.query(
+                GetAllProductsBySubsidiaryIdQuery(subsidiaryId=Optional.Present(subsidiaryId), available = Optional.Present(available))
+            ).execute()
+
+            if (response.hasErrors()) {
+                val errorMessage =
+                    response.errors?.joinToString { it.message } ?: "Error desconocido"
+                throw Exception("Error al mostrar listado de productos: $errorMessage")
+            }
+
+            response.data?.allProducts?.filterNotNull()?.map { product ->
+                IProduct(
+                    id = product.id!!,
+                    code = product.code.orEmpty(),
+                    name = product.name.orEmpty(),
+                    priceWithIgv3 = product.priceWithIgv3.toSafeDouble(),
+                    priceWithoutIgv3 = product.priceWithoutIgv3.toSafeDouble(),
+                    stock = product.stock.toSafeDouble(),
+                    minimumUnitName = product.minimumUnitName.orEmpty()
+                )
+            } ?: emptyList()
+        } catch (e: Exception) {
+            // Log del error si es necesario
+            println("Error en mostrar la lista de productos: ${e.message}")
             emptyList()
         }
     }
