@@ -32,6 +32,7 @@ class PreferencesManager(context: Context) {
         val COMPANY_LOGO = stringPreferencesKey("company_logo")
         val COMPANY_IGV = doublePreferencesKey("percentage_igv")
         val COMPANY_STOCK = booleanPreferencesKey("company_stock")
+        val COMPANY_APP = booleanPreferencesKey("company_app")
         val COMPANY_ENABLED = booleanPreferencesKey("company_enabled")
         val SUBSIDIARY_ID = intPreferencesKey("subsidiary_id")
         val SUBSIDIARY_SERIAL = stringPreferencesKey("subsidiary_serial")
@@ -61,7 +62,8 @@ class PreferencesManager(context: Context) {
                     logo = preferences[COMPANY_LOGO] ?: "",
                     percentageIgv = preferences[COMPANY_IGV] ?: 18.0,
                     withStock = preferences[COMPANY_STOCK] ?: false,
-                    isEnabled = preferences[COMPANY_ENABLED] ?: false
+                    isEnabled = preferences[COMPANY_ENABLED] ?: false,
+                    appMobil = preferences[COMPANY_APP] ?: false
                 )
             } else {
                 null
@@ -120,6 +122,7 @@ class PreferencesManager(context: Context) {
                 preferences[COMPANY_IGV] = company.percentageIgv
                 preferences[COMPANY_STOCK] = company.withStock
                 preferences[COMPANY_ENABLED] = company.isEnabled
+                preferences[COMPANY_APP] = company.appMobil
             }
             userData.subsidiary?.let { subsidiary ->
                 preferences[SUBSIDIARY_ID] = subsidiary.id
@@ -158,7 +161,8 @@ class PreferencesManager(context: Context) {
                             logo = preferences[COMPANY_LOGO] ?: "",
                             percentageIgv = preferences[COMPANY_IGV] ?: 18.0,
                             withStock = preferences[COMPANY_STOCK] ?: false,
-                            isEnabled = preferences[COMPANY_ENABLED] ?: false
+                            isEnabled = preferences[COMPANY_ENABLED] ?: false,
+                            appMobil = preferences[COMPANY_APP] ?: false
                         )
                     },
                     subsidiary = preferences[SUBSIDIARY_ID]?.let {

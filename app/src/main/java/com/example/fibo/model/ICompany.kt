@@ -7,5 +7,6 @@ data class ICompany(
     val logo: String = "",
     val percentageIgv: Double = 0.18,
     val isEnabled: Boolean = false,
-    val withStock: Boolean = false
+    val withStock: Boolean = false,
+    val appMobil: Boolean = false,
 )
