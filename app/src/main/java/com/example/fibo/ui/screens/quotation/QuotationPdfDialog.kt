@@ -191,7 +191,6 @@ fun QuotationPdfDialog(
             }
         }
     }
-
     // Función para descargar PDF y guardarlo localmente
     fun downloadPdfToFile(context: Context, url: String, callback: (File?) -> Unit) {
         CoroutineScope(Dispatchers.IO).launch {
@@ -253,14 +252,20 @@ fun QuotationPdfDialog(
                 type = "application/pdf"
                 putExtra(Intent.EXTRA_STREAM, uri)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                // Opcional: Especificar WhatsApp directamente
-                setPackage("com.whatsapp")
             }
 
+            // Primero intentar con WhatsApp Business
             try {
-                context.startActivity(Intent.createChooser(shareIntent, "Compartir PDF via"))
+                shareIntent.setPackage("com.whatsapp.w4b")
+                context.startActivity(shareIntent)
             } catch (e: ActivityNotFoundException) {
-                Toast.makeText(context, "WhatsApp no está instalado", Toast.LENGTH_SHORT).show()
+                // Si falla WhatsApp Business, intentar con WhatsApp normal
+                try {
+                    shareIntent.setPackage("com.whatsapp")
+                    context.startActivity(shareIntent)
+                } catch (e2: ActivityNotFoundException) {
+                    Toast.makeText(context, "WhatsApp no está instalado", Toast.LENGTH_SHORT).show()
+                }
             }
         } catch (e: Exception) {
             Toast.makeText(
@@ -271,6 +276,85 @@ fun QuotationPdfDialog(
             Log.e("SharePDF", "Error sharing PDF", e)
         }
     }
+//    // Función para descargar PDF y guardarlo localmente
+//    fun downloadPdfToFile(context: Context, url: String, callback: (File?) -> Unit) {
+//        CoroutineScope(Dispatchers.IO).launch {
+//            try {
+//                val urlConnection = URL(url).openConnection() as HttpURLConnection
+//                urlConnection.connect()
+//
+//                if (urlConnection.responseCode != HttpURLConnection.HTTP_OK) {
+//                    withContext(Dispatchers.Main) {
+//                        callback(null)
+//                    }
+//                    return@launch
+//                }
+//
+//                val inputStream = urlConnection.inputStream
+//                // Crear un archivo temporal en el directorio de caché
+//                val tempFile = File(context.cacheDir, "COTIZACION_${quotation.id}.pdf")
+//
+//                withContext(Dispatchers.IO) {
+//                    // Asegurarse de que el archivo se sobreescribe si ya existe
+//                    if (tempFile.exists()) {
+//                        tempFile.delete()
+//                    }
+//
+//                    val outputStream = FileOutputStream(tempFile)
+//                    val buffer = ByteArray(4 * 1024) // Buffer de 4KB
+//                    var bytesRead: Int
+//
+//                    while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+//                        outputStream.write(buffer, 0, bytesRead)
+//                    }
+//
+//                    outputStream.close()
+//                    inputStream.close()
+//                }
+//
+//                withContext(Dispatchers.Main) {
+//                    callback(tempFile)
+//                }
+//            } catch (e: Exception) {
+//                Log.e("PDF_DOWNLOAD", "Error downloading PDF: ${e.message}", e)
+//                withContext(Dispatchers.Main) {
+//                    callback(null)
+//                }
+//            }
+//        }
+//    }
+//
+//    // Función para compartir PDF
+//    fun sharePdfViaWhatsApp(context: Context, pdfFile: File) {
+//        try {
+//            val uri = FileProvider.getUriForFile(
+//                context,
+//                "${context.packageName}.provider",
+//                pdfFile
+//            )
+//
+//            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+//                type = "application/pdf"
+//                putExtra(Intent.EXTRA_STREAM, uri)
+//                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+//                // Opcional: Especificar WhatsApp directamente
+//                setPackage("com.whatsapp")
+//            }
+//
+//            try {
+//                context.startActivity(Intent.createChooser(shareIntent, "Compartir PDF via"))
+//            } catch (e: ActivityNotFoundException) {
+//                Toast.makeText(context, "WhatsApp no está instalado", Toast.LENGTH_SHORT).show()
+//            }
+//        } catch (e: Exception) {
+//            Toast.makeText(
+//                context,
+//                "Error al compartir el PDF: ${e.message}",
+//                Toast.LENGTH_LONG
+//            ).show()
+//            Log.e("SharePDF", "Error sharing PDF", e)
+//        }
+//    }
 
     // Diálogo principal
     Dialog(
