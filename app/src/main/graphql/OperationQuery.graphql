@@ -45,6 +45,7 @@ query SearchProducts($query: String!, $subsidiaryId: Int!) {
                 id
                 code
                 name
+                stock
     }
 }
 query GetTariffByProductId($productId: Int!) {

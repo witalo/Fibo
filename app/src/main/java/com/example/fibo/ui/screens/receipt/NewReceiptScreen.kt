@@ -1,5 +1,6 @@
 package com.example.fibo.ui.screens.receipt
 
+import android.content.Context
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -69,6 +70,7 @@ import com.example.fibo.model.IPerson
 import com.example.fibo.model.IProduct
 import com.example.fibo.model.ITariff
 import com.example.fibo.ui.components.DateSelector
+import com.example.fibo.ui.components.DateSelectorLimit
 import com.example.fibo.utils.ColorGradients
 import com.example.fibo.utils.ProductSearchState
 import com.example.fibo.utils.getAffectationColor
@@ -241,6 +243,11 @@ fun NewReceiptScreen(
 
     // 2. Función para actualizar cantidades (también en el ámbito superior)
     fun updateQuantity(detail: IOperationDetail, newQuantity: Double) {
+        // Validar stock si withStock está activo
+        if (companyData?.withStock == true && newQuantity > detail.tariff.stock) {
+            Toast.makeText(context, "No hay suficiente stock disponible", Toast.LENGTH_SHORT).show()
+            return
+        }
         operationDetails = operationDetails.map {
             if (it.id == detail.id) {
                 it.copy(
@@ -348,9 +355,11 @@ fun NewReceiptScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
 
-                            DateSelector(
+                            DateSelectorLimit(
                                 currentDate = receiptDate,
-                                onDateSelected = { receiptDate = it }
+                                onDateSelected = { receiptDate = it },
+                                daysBefore = 6,
+                                daysAfter = 0
                             )
                         }
                     }
@@ -1296,7 +1305,8 @@ fun NewReceiptScreen(
                 },
                 viewModel = viewModel,
                 subsidiaryId = subsidiaryData?.id ?: 0,
-                igvPercentage = igvPercentage
+                igvPercentage = igvPercentage,
+                context = context
             )
         }
         // Indicador de carga
@@ -1360,8 +1370,11 @@ fun AddReceiptProductDialog(
     onProductAdded: (IOperationDetail) -> Unit,
     viewModel: NewReceiptViewModel,
     subsidiaryId: Int = 0,
-    igvPercentage: Double = 18.0
+    igvPercentage: Double = 18.0,
+    context: Context
 ) {
+    // Obtener el estado de withStock del ViewModel
+    val withStock by viewModel.withStock.collectAsState()
     val valueIgv = igvPercentage / 100
     val decimalRegex = Regex("^\\d*(\\.\\d{0,4})?$")
 
@@ -1602,7 +1615,8 @@ fun AddReceiptProductDialog(
                                                 product = product,
                                                 onClick = {
                                                     viewModel.getTariff(product.id)
-                                                }
+                                                },
+                                                withStock = withStock
                                             )
 
                                             if (index < products.size - 1) {
@@ -1647,7 +1661,8 @@ fun AddReceiptProductDialog(
                             // Card con datos del producto seleccionado
                             SelectedReceiptProductCard(
                                 product = product,
-                                onClear = { viewModel.clearProductSelection() }
+                                onClear = { viewModel.clearProductSelection() },
+                                withStock = withStock
                             )
 
                             Spacer(modifier = Modifier.height(24.dp))
@@ -1868,6 +1883,19 @@ fun AddReceiptProductDialog(
                                         shape = RoundedCornerShape(16.dp)
                                     )
                                     .clickable {
+                                        // Validar que los precios no sean cero o vacíos
+                                        if (priceWithoutIgv.toDoubleOrNull() == 0.0 || priceWithIgv.toDoubleOrNull() == 0.0) {
+                                            Toast.makeText(context, "Los precios no pueden ser cero", Toast.LENGTH_SHORT).show()
+                                            return@clickable
+                                        }
+
+                                        // Validar stock solo si withStock es true
+                                        if (withStock && qtyValue > (selectedProduct?.stock ?: 0.0)) {
+                                            Toast.makeText(context,
+                                                "No hay suficiente stock disponible",
+                                                Toast.LENGTH_SHORT).show()
+                                            return@clickable
+                                        }
                                         val tariff = ITariff(
                                             productId = product.productId,
                                             productCode = product.productCode,
@@ -1947,78 +1975,153 @@ fun AddReceiptProductDialog(
 @Composable
 private fun ReceiptProductListItem(
     product: IProduct,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    withStock: Boolean
 ) {
-    Surface(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        color = Color.Transparent
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
+    // En el ProductListItem dentro de AddProductDialog
+    if (withStock && product.stock <= 0) {
+        // Mostrar el producto pero deshabilitado
+        Surface(
+            onClick = {},
+            modifier = Modifier.fillMaxWidth(),
+            color = Color.Transparent.copy(alpha = 0.1f)
         ) {
-            // Icono o imagen del producto
-            Box(
+            Row(
                 modifier = Modifier
-                    .size(35.dp)
-                    .background(
-                        brush = Brush.radialGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                            )
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Icono o imagen del producto
+                Box(
+                    modifier = Modifier
+                        .size(35.dp)
+                        .background(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                                )
+                            ),
+                            shape = CircleShape
                         ),
-                        shape = CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Inventory,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.surface,
+                        modifier = Modifier.size(15.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(14.dp))
+
+                // Información del producto
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = product.name,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "Código: ${product.code}" +
+                                if (withStock) " | Stock: ${product.stock}" else "",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Ícono de selección
                 Icon(
-                    imageVector = Icons.Default.Inventory,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.surface,
-                    modifier = Modifier.size(15.dp)
+                    imageVector = Icons.Default.KeyboardArrowRight,
+                    contentDescription = "Seleccionar",
+                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                    modifier = Modifier.size(20.dp)
                 )
             }
-
-            Spacer(modifier = Modifier.width(14.dp))
-
-            // Información del producto
-            Column(
-                modifier = Modifier.weight(1f)
+        }
+    } else {
+        // Mostrar normal con onClick habilitado
+        Surface(
+            onClick = onClick,
+            modifier = Modifier.fillMaxWidth(),
+            color = Color.Transparent
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = product.name,
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = "Código: ${product.code}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                // Icono o imagen del producto
+                Box(
+                    modifier = Modifier
+                        .size(35.dp)
+                        .background(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                                )
+                            ),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Inventory,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.surface,
+                        modifier = Modifier.size(15.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(14.dp))
+
+                // Información del producto
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = product.name,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "Código: ${product.code}" +
+                                if (withStock) " | Stock: ${product.stock}" else "",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Ícono de selección
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowRight,
+                    contentDescription = "Seleccionar",
+                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                    modifier = Modifier.size(20.dp)
                 )
             }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            // Ícono de selección
-            Icon(
-                imageVector = Icons.Default.KeyboardArrowRight,
-                contentDescription = "Seleccionar",
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                modifier = Modifier.size(20.dp)
-            )
         }
     }
 }
 @Composable
 private fun SelectedReceiptProductCard(
     product: ITariff,
-    onClear: () -> Unit
+    onClear: () -> Unit,
+    withStock: Boolean
 ) {
     Card(
         modifier = Modifier
@@ -2107,7 +2210,8 @@ private fun SelectedReceiptProductCard(
                         InfoReceiptRow(
                             label = "Stock:",
                             value = "${product.stock} ${product.unitName}",
-                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            labelColor = if (withStock && product.stock <= 0) Color.Red
+                            else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 

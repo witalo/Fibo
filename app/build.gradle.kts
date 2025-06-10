@@ -132,6 +132,9 @@ dependencies {
     implementation("com.google.zxing:core:3.5.1")
 
     implementation("com.github.mhiew:android-pdf-viewer:3.2.0-beta.3")
+
+    implementation("androidx.compose.material3:material3:1.2.0")
+    implementation("androidx.compose.material3:material3-window-size-class:1.2.0")
 }
 
 kapt {

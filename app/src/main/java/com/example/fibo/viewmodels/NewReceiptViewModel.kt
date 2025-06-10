@@ -16,8 +16,11 @@ import com.example.fibo.repository.OperationRepository
 import com.example.fibo.utils.ProductSearchState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -51,6 +54,13 @@ class NewReceiptViewModel @Inject constructor(
     // Estado para la serie seleccionada
     private val _selectedSerial = MutableStateFlow<ISerialAssigned?>(null)
     val selectedSerial: StateFlow<ISerialAssigned?> = _selectedSerial.asStateFlow()
+    val withStock: StateFlow<Boolean> = preferencesManager.companyData
+        .map { it?.withStock ?: false }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false
+        )
 
     fun fetchClientData(document: String, onSuccess: (IPerson) -> Unit) {
         if (document.isBlank()) {

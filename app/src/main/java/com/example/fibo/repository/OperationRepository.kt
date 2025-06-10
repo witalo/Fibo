@@ -149,6 +149,7 @@ class OperationRepository @Inject constructor(
                     id = product.id!!,
                     code = product.code.orEmpty(),
                     name = product.name.orEmpty(),
+                    stock = product.stock?:0.0
                 )
             } ?: emptyList()
         } catch (e: Exception) {
