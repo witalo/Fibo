@@ -58,6 +58,10 @@ import androidx.compose.material.icons.filled.Close
 import com.example.fibo.model.IPerson
 import com.example.fibo.ui.components.ClientFilterChip
 import com.example.fibo.ui.components.ClientSearchDialog
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.concurrent.TimeUnit
 
 
 @Composable
@@ -428,14 +432,25 @@ fun InvoiceItem(
                     }
                 } else {
                     IconButton(
-                        onClick = { homeViewModel.showCancelDialog(invoice.id) },
+                        onClick = {
+                            if (!isAnulado) {
+                                homeViewModel.showCancelDialog(invoice.id)
+                            }
+                        },
                         modifier = Modifier.size(40.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Cancel,
                             contentDescription = "Anular",
-                            // Un rojo más oscuro  tint = Color(0xFF8E0000),
-                            tint = MaterialTheme.colorScheme.error,
+                            tint = if (isWithinDays(invoice.emitDate, when (invoice.documentType.cleanDocumentType()) {
+                                    "01" -> 3
+                                    "03" -> 5
+                                    else -> 0
+                                })) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                MaterialTheme.colorScheme.error.copy(alpha = 0.3f)
+                            },
                             modifier = Modifier.size(25.dp)
                         )
                     }
@@ -482,6 +497,12 @@ fun InvoiceItem(
                         color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Emitido el: ${invoice.emitDate}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
                 }
             },
             text = {
@@ -490,7 +511,11 @@ fun InvoiceItem(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "¿Está seguro que desea anular este comprobante?",
+                        text = when (invoice.documentType.cleanDocumentType()) {
+                            "01" -> "Facturas solo pueden anularse dentro de los 3 días de emisión"
+                            "03" -> "Boletas solo pueden anularse dentro de los 5 días de emisión"
+                            else -> "Este comprobante no puede ser anulado"
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                         textAlign = TextAlign.Center
@@ -500,7 +525,11 @@ fun InvoiceItem(
             confirmButton = {
                 Button(
                     onClick = {
-                        homeViewModel.cancelOperation(invoice.id)
+                        homeViewModel.cancelOperation(
+                            operationId = invoice.id,
+                            operationType = invoice.documentType.cleanDocumentType(),
+                            emitDate = invoice.emitDate
+                        )
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error,
@@ -509,7 +538,12 @@ fun InvoiceItem(
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
+                        .padding(horizontal = 16.dp),
+                    enabled = when (invoice.documentType.cleanDocumentType()) {
+                        "01" -> isWithinDays(invoice.emitDate, 3)
+                        "03" -> isWithinDays(invoice.emitDate, 5)
+                        else -> false
+                    }
                 ) {
                     Text(
                         text = "Anular",
@@ -561,7 +595,24 @@ fun InvoiceItem(
         )
     }
 }
+// Función de extensión para verificar días
+fun isWithinDays(emitDate: String, maxDays: Int): Boolean {
+    return try {
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val emitDateObj = dateFormat.parse(emitDate) ?: return false
+        val currentDate = Date()
 
+        val diffInMillis = currentDate.time - emitDateObj.time
+        val diffInDays = TimeUnit.MILLISECONDS.toDays(diffInMillis)
+
+        diffInDays <= maxDays
+    } catch (e: Exception) {
+        false
+    }
+}
+fun String.cleanDocumentType(): String {
+    return this.replace("A_", "")
+}
 @Composable
 fun ActionButtons(
     onNewInvoice: () -> Unit,

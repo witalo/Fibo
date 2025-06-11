@@ -22,6 +22,8 @@ import android.widget.Toast
 import android.content.Context
 import com.example.fibo.model.IPerson
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.util.concurrent.TimeUnit
+
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val operationRepository: OperationRepository,
@@ -180,29 +182,99 @@ class HomeViewModel @Inject constructor(
     fun closeCancelDialog() {
         _showCancelDialog.value = false
     }
-
-    fun cancelOperation(operationId: Int) {
+    fun cancelOperation(operationId: Int, operationType: String, emitDate: String) {
         viewModelScope.launch {
             try {
-                val currentDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-                val result = operationRepository.cancelInvoice(operationId, currentDate)
+                // Parsear la fecha de emisión
+                val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                val emitDateObj = dateFormat.parse(emitDate) ?: throw Exception("Fecha inválida")
+                val currentDate = Date()
+
+                // Calcular días de diferencia
+                val diffInMillis = currentDate.time - emitDateObj.time
+                val diffInDays = TimeUnit.MILLISECONDS.toDays(diffInMillis)
+
+                // Validar según tipo de comprobante
+                when (operationType) {
+                    "01" -> { // Factura
+                        if (diffInDays > 3) {
+                            Toast.makeText(
+                                context,
+                                "No se puede anular facturas con más de 3 días de emisión",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            return@launch
+                        }
+                    }
+                    "03" -> { // Boleta
+                        if (diffInDays > 5) {
+                            Toast.makeText(
+                                context,
+                                "No se puede anular boletas con más de 5 días de emisión",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            return@launch
+                        }
+                    }
+                    else -> {
+                        Toast.makeText(
+                            context,
+                            "Tipo de comprobante no soportado para anulación",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        return@launch
+                    }
+                }
+
+                // Si pasa las validaciones, proceder con la anulación
+                val currentDateStr = dateFormat.format(currentDate)
+                val result = operationRepository.cancelInvoice(operationId, currentDateStr)
                 result.fold(
                     onSuccess = { message ->
-                        // Mostrar mensaje de éxito
                         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                         closeCancelDialog()
                         loadInvoices(selectedDate.value)
                     },
                     onFailure = { error ->
-                        // Mostrar mensaje de error
-                        Toast.makeText(context, error.message ?: "Error al anular el comprobante", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            context,
+                            error.message ?: "Error al anular el comprobante",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 )
             } catch (e: Exception) {
-                Toast.makeText(context, e.message ?: "Error al anular el comprobante", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    "Error: ${e.message ?: "No se pudo validar la fecha"}",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }
+//    fun cancelOperation(operationId: Int) {
+//        viewModelScope.launch {
+//            try {
+//
+//                val currentDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+//                val result = operationRepository.cancelInvoice(operationId, currentDate)
+//                result.fold(
+//                    onSuccess = { message ->
+//                        // Mostrar mensaje de éxito
+//                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+//                        closeCancelDialog()
+//                        loadInvoices(selectedDate.value)
+//                    },
+//                    onFailure = { error ->
+//                        // Mostrar mensaje de error
+//                        Toast.makeText(context, error.message ?: "Error al anular el comprobante", Toast.LENGTH_SHORT).show()
+//                    }
+//                )
+//            } catch (e: Exception) {
+//                Toast.makeText(context, e.message ?: "Error al anular el comprobante", Toast.LENGTH_SHORT).show()
+//            }
+//        }
+//    }
 
     // Función para buscar clientes
     fun searchClients(query: String) {
