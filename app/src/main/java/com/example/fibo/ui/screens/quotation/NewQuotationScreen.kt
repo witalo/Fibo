@@ -1905,6 +1905,7 @@ fun AddProductQuotationDialog(
                                         )
 
                                         onProductAdded(operationDetail)
+                                        viewModel.clearProductSelection()
                                     }
                                     .border(
                                         width = 1.dp,
