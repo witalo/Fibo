@@ -1928,8 +1928,8 @@ fun AddReceiptProductDialog(
                                             perceptionPercentage = 0.0,
                                             totalPerception = 0.0
                                         )
-
                                         onProductAdded(operationDetail)
+                                        viewModel.clearProductSelection()
                                     }
                                     .border(
                                         width = 1.dp,

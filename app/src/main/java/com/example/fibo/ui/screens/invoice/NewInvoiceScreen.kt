@@ -1463,7 +1463,11 @@ fun AddProductDialog(
     }
 
     Dialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = {
+            // Limpieza consolidada aquí
+//            viewModel.resetAddProductState()
+            onDismiss()
+        },
         properties = DialogProperties(
             dismissOnClickOutside = false, // <- esto evita el cierre al hacer click fuera
             usePlatformDefaultWidth = false
@@ -1929,8 +1933,8 @@ fun AddProductDialog(
                                             perceptionPercentage = 0.0,
                                             totalPerception = 0.0
                                         )
-
                                         onProductAdded(operationDetail)
+                                        viewModel.clearProductSelection()
                                     }
                                     .border(
                                         width = 1.dp,
