@@ -7,6 +7,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -25,6 +27,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -47,6 +50,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.fibo.viewmodels.NewInvoiceViewModel
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -75,8 +79,11 @@ import com.example.fibo.model.IProductTariff
 import com.example.fibo.model.ISerialAssigned
 import com.example.fibo.model.ITariff
 import com.example.fibo.navigation.Screen
+import com.example.fibo.ui.components.BarcodeIcon
+import com.example.fibo.ui.components.BarcodeScannerDialog
 import com.example.fibo.ui.components.DateSelector
 import com.example.fibo.ui.components.DateSelectorLimit
+import com.example.fibo.ui.components.QRCodeIcon
 import com.example.fibo.utils.ColorGradients
 import com.example.fibo.utils.ProductSearchState
 import com.example.fibo.utils.getAffectationColor
@@ -1420,6 +1427,8 @@ fun AddProductDialog(
     } else {
         0.0
     }
+    // Agregar estado para el escáner
+    var showBarcodeScanner by remember { mutableStateOf(false) }
     //--------------------------------------------------
     // Lista de tipos de afectación
     val affectationTypes = listOf(
@@ -1536,13 +1545,76 @@ fun AddProductDialog(
                         )
                     },
                     trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { searchQuery = "" }) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Limpiar",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                        Box(
+                            modifier = Modifier.padding(end = 8.dp) // Padding para separar del borde
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.End,
+                                modifier = Modifier.padding(horizontal = 4.dp) // Padding interno adicional
+                            ) {
+                                // Botón de limpiar
+                                AnimatedVisibility(
+                                    visible = searchQuery.isNotEmpty(),
+                                    enter = fadeIn() + scaleIn(),
+                                    exit = fadeOut() + scaleOut()
+                                ) {
+                                    IconButton(
+                                        onClick = { searchQuery = "" },
+                                        modifier = Modifier.size(36.dp) // Tamaño ligeramente reducido
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "Limpiar",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+
+                                // Separador vertical sutil
+                                if (searchQuery.isNotEmpty()) {
+                                    Box(
+                                        modifier = Modifier
+                                            .padding(horizontal = 4.dp) // Espacio alrededor del separador
+                                            .width(1.dp)
+                                            .height(20.dp)
+                                            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                                    )
+                                }
+
+                                // Botón de escáner mejorado con mejor espaciado
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp) // Tamaño consistente con el botón de limpiar
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(
+                                            brush = Brush.verticalGradient(
+                                                colors = listOf(
+                                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f)
+                                                )
+                                            )
+                                        )
+                                        .border(
+                                            width = 1.dp,
+                                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+                                            shape = RoundedCornerShape(8.dp)
+                                        )
+                                        .clickable { showBarcodeScanner = true },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    // Usar el ícono personalizado de código de barras
+//                                    BarcodeIcon(
+//                                        modifier = Modifier.size(20.dp), // Tamaño del ícono ajustado
+//                                        color = Color.White
+//                                    )
+                                    // O si prefieres el ícono QR:
+                                     QRCodeIcon(
+                                         modifier = Modifier.size(20.dp),
+                                         color = Color.White
+                                     )
+                                }
                             }
                         }
                     },
@@ -1974,6 +2046,18 @@ fun AddProductDialog(
                 }
             }
         }
+    }
+    // Diálogo del escáner de código de barras
+    if (showBarcodeScanner) {
+        BarcodeScannerDialog(
+            onDismiss = { showBarcodeScanner = false },
+            onBarcodeDetected = { barcode ->
+                searchQuery = barcode
+                showBarcodeScanner = false
+                // Buscar automáticamente por código de producto
+                viewModel.searchProductsByQuery(barcode, subsidiaryId)
+            }
+        )
     }
 }
 
