@@ -359,7 +359,7 @@ private fun AnimatedScannerLine() {
         animationSpec = infiniteRepeatable(
             animation = tween(2000, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
-        )
+        ), label = ""
     )
 
     Canvas(modifier = Modifier.fillMaxSize()) {

@@ -1463,13 +1463,21 @@ fun AddProductDialog(
     }
 
     //--------------------------------------------------
-    // Debounce para la búsqueda
+    // MODIFICAR: LaunchedEffect existente para búsqueda manual (SIN isFromScan)
     LaunchedEffect(searchQuery) {
         if (searchQuery.length >= 3) {
             delay(350) // Tiempo de debounce
             viewModel.searchProductsByQuery(searchQuery, subsidiaryId)
+            // Nota: NO se pasa isFromScan = true aquí, mantiene el comportamiento manual
         }
     }
+    // Debounce para la búsqueda
+//    LaunchedEffect(searchQuery) {
+//        if (searchQuery.length >= 3) {
+//            delay(350) // Tiempo de debounce
+//            viewModel.searchProductsByQuery(searchQuery, subsidiaryId)
+//        }
+//    }
 
     Dialog(
         onDismissRequest = {
@@ -2047,18 +2055,30 @@ fun AddProductDialog(
             }
         }
     }
-    // Diálogo del escáner de código de barras
+    // MODIFICAR: Solo el diálogo del escáner para usar el nuevo parámetro
     if (showBarcodeScanner) {
         BarcodeScannerDialog(
             onDismiss = { showBarcodeScanner = false },
             onBarcodeDetected = { barcode ->
                 searchQuery = barcode
                 showBarcodeScanner = false
-                // Buscar automáticamente por código de producto
-                viewModel.searchProductsByQuery(barcode, subsidiaryId)
+                // CAMBIO CLAVE: Pasar isFromScan = true para el escáner
+                viewModel.searchProductsByQuery(barcode, subsidiaryId, isFromScan = true)
             }
         )
     }
+//    // Diálogo del escáner de código de barras
+//    if (showBarcodeScanner) {
+//        BarcodeScannerDialog(
+//            onDismiss = { showBarcodeScanner = false },
+//            onBarcodeDetected = { barcode ->
+//                searchQuery = barcode
+//                showBarcodeScanner = false
+//                // Buscar automáticamente por código de producto
+//                viewModel.searchProductsByQuery(barcode, subsidiaryId)
+//            }
+//        )
+//    }
 }
 
 @Composable

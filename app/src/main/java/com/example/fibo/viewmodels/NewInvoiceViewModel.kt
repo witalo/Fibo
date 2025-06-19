@@ -64,6 +64,11 @@ class NewInvoiceViewModel @Inject constructor(
             initialValue = false
         )
 
+
+    // NUEVO: Estado para rastrear si la búsqueda viene del escáner
+    private val _isFromBarcodeScan = MutableStateFlow(false)
+    val isFromBarcodeScan: StateFlow<Boolean> = _isFromBarcodeScan.asStateFlow()
+
     fun fetchClientData(document: String, onSuccess: (IPerson) -> Unit) {
         if (document.isBlank()) {
             _error.value = "Ingrese un número de documento válido"
@@ -83,11 +88,15 @@ class NewInvoiceViewModel @Inject constructor(
         }
     }
     // Agregar métodos para búsqueda y detalles de producto
-    fun searchProductsByQuery(query: String, subsidiaryId: Int) {
+    // MODIFICAR: Método existente para agregar parámetro isFromScan
+    fun searchProductsByQuery(query: String, subsidiaryId: Int, isFromScan: Boolean = false) {
         if (query.length < 3) {
             _searchState.value = ProductSearchState.Idle
             return
         }
+
+        // NUEVO: Establecer el origen de la búsqueda
+        _isFromBarcodeScan.value = isFromScan
 
         _searchState.value = ProductSearchState.Loading(query)
         viewModelScope.launch {
@@ -96,19 +105,53 @@ class NewInvoiceViewModel @Inject constructor(
                 val products = operationRepository.searchProducts(query, subsidiaryId)
                 _searchResults.value = products
 
-                _searchState.value = if (products.isEmpty()) {
-                    ProductSearchState.Empty(query)
+                if (products.isEmpty()) {
+                    _searchState.value = ProductSearchState.Empty(query)
                 } else {
-                    ProductSearchState.Success(products, query)
+                    _searchState.value = ProductSearchState.Success(products, query)
+
+                    // NUEVO: Si es del escáner y solo hay un producto, seleccionarlo automáticamente
+                    if (isFromScan && products.size == 1) {
+                        getTariff(products.first().id)
+                    }
                 }
             } catch (e: Exception) {
                 _searchState.value = ProductSearchState.Error(
                     message = e.message ?: "Error al buscar productos",
                     query = query
                 )
+            } finally {
+                // NUEVO: Resetear el flag después de procesar
+                _isFromBarcodeScan.value = false
             }
         }
     }
+//    fun searchProductsByQuery(query: String, subsidiaryId: Int) {
+//        if (query.length < 3) {
+//            _searchState.value = ProductSearchState.Idle
+//            return
+//        }
+//
+//        _searchState.value = ProductSearchState.Loading(query)
+//        viewModelScope.launch {
+//            try {
+//                // Consulta básica que devuelve sólo id, code, name
+//                val products = operationRepository.searchProducts(query, subsidiaryId)
+//                _searchResults.value = products
+//
+//                _searchState.value = if (products.isEmpty()) {
+//                    ProductSearchState.Empty(query)
+//                } else {
+//                    ProductSearchState.Success(products, query)
+//                }
+//            } catch (e: Exception) {
+//                _searchState.value = ProductSearchState.Error(
+//                    message = e.message ?: "Error al buscar productos",
+//                    query = query
+//                )
+//            }
+//        }
+//    }
 
     fun getTariff(productId: Int) {
         viewModelScope.launch {
