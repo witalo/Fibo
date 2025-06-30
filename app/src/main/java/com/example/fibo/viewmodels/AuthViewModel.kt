@@ -80,7 +80,8 @@ class AuthViewModel @Inject constructor(
                                 percentageIgv = it.percentageIgv?.toDouble()!!,
                                 isEnabled = it.isEnabled,
                                 withStock = it.withStock,
-                                appMobil = it.app
+                                appMobil = it.app,
+                                disableContinuePay = it.disableContinuePay
                             )
                         },
                         subsidiary = response.data?.qrScan?.subsidiary?.let {

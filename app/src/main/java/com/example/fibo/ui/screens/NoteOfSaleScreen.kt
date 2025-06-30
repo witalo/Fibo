@@ -102,7 +102,7 @@ fun NoteOfSaleScreen(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                viewModel.loadInvoices(viewModel.selectedDate.value)
+                viewModel.loadNoteOfSale(viewModel.selectedDate.value)
             }
         }
 
@@ -194,7 +194,7 @@ fun NoteOfSaleScreen(
                             is NoteOfSaleViewModel.InvoiceState.Error -> {
                                 NoteOfSaleErrorMessage(
                                     message = (invoiceState as NoteOfSaleViewModel.InvoiceState.Error).message,
-                                    onRetry = {viewModel.loadInvoices(selectedDate) }
+                                    onRetry = {viewModel.loadNoteOfSale(selectedDate) }
                                 )
                             }
                         }

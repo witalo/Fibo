@@ -88,6 +88,7 @@ class NoteOfSaleViewModel @Inject constructor(
             _refreshTrigger.emit(Unit)
         }
     }
+
     init {
         // 1. Collector para datos de usuario
         viewModelScope.launch {
@@ -98,7 +99,7 @@ class NoteOfSaleViewModel @Inject constructor(
                 // Si el ID cambió y ahora tenemos un usuario válido, cargamos facturas
                 if (previousUserId != user?.id && user?.id != null) {
                     Log.d("italo", "Usuario autenticado con ID: ${user.id}")
-                    loadInvoices(_selectedDate.value)
+                    loadNoteOfSale(_selectedDate.value)
                 } else if (user?.id == null) {
                     // Si no hay usuario, actualizamos el estado
                     _invoiceState.value = InvoiceState.WaitingForUser
@@ -111,7 +112,7 @@ class NoteOfSaleViewModel @Inject constructor(
         viewModelScope.launch {
             _refreshTrigger.collect {
                 _currentUserId.value?.let {
-                    loadInvoices(_selectedDate.value)
+                    loadNoteOfSale(_selectedDate.value)
                 }
             }
         }
@@ -121,7 +122,7 @@ class NoteOfSaleViewModel @Inject constructor(
             _selectedDate.collect { date ->
                 // Solo cargamos si tenemos un usuario
                 _currentUserId.value?.let {
-                    loadInvoices(date)
+                    loadNoteOfSale(date)
                 }
             }
         }
@@ -132,7 +133,8 @@ class NoteOfSaleViewModel @Inject constructor(
         _selectedDate.value = date
         // No llamamos a loadInvoices aquí, ya que el collector de _selectedDate se encargará
     }
-    fun loadInvoices(date: String) {
+
+    fun loadNoteOfSale(date: String) {
         viewModelScope.launch {
             _invoiceState.value = InvoiceState.Loading
             val types = listOf("NS")
@@ -194,6 +196,7 @@ class NoteOfSaleViewModel @Inject constructor(
     fun closeCancelDialog() {
         _showCancelDialog.value = false
     }
+
     fun cancelOperation(operationId: Int, operationType: String, emitDate: String) {
         viewModelScope.launch {
             try {
@@ -218,6 +221,7 @@ class NoteOfSaleViewModel @Inject constructor(
                             return@launch
                         }
                     }
+
                     "03" -> { // Boleta
                         if (diffInDays > 5) {
                             Toast.makeText(
@@ -228,6 +232,7 @@ class NoteOfSaleViewModel @Inject constructor(
                             return@launch
                         }
                     }
+
                     else -> {
                         Toast.makeText(
                             context,
@@ -245,7 +250,7 @@ class NoteOfSaleViewModel @Inject constructor(
                     onSuccess = { message ->
                         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                         closeCancelDialog()
-                        loadInvoices(selectedDate.value)
+                        loadNoteOfSale(selectedDate.value)
                     },
                     onFailure = { error ->
                         Toast.makeText(
@@ -264,6 +269,7 @@ class NoteOfSaleViewModel @Inject constructor(
             }
         }
     }
+
     // Función para buscar clientes
     fun searchClients(query: String) {
         _searchQuery.value = query
@@ -323,7 +329,7 @@ class NoteOfSaleViewModel @Inject constructor(
         val userId = _currentUserId.value
         val date = selectedDate.value
         if (userId != null) {
-            loadInvoices(date)
+            loadNoteOfSale(date)
         }
     }
 }

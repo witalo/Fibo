@@ -11,6 +11,7 @@ mutation QrScan($token: String!, $username: String!, $description: String!) {
             withStock
             isEnabled
             app
+            disableContinuePay
         }
         subsidiary {
             id
