@@ -6,12 +6,14 @@ import androidx.lifecycle.viewModelScope
 import com.example.fibo.datastore.PreferencesManager
 import com.example.fibo.model.ICompany
 import com.example.fibo.model.IOperation
+import com.example.fibo.model.IPayment
 import com.example.fibo.model.IPerson
 import com.example.fibo.model.IProduct
 import com.example.fibo.model.ISerialAssigned
 import com.example.fibo.model.ISubsidiary
 import com.example.fibo.model.ITariff
 import com.example.fibo.model.IUser
+import com.example.fibo.model.PaymentSummary
 import com.example.fibo.repository.OperationRepository
 import com.example.fibo.utils.ProductSearchState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -23,6 +25,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.random.Random
 
 @HiltViewModel
 class NewReceiptViewModel @Inject constructor(
@@ -61,6 +64,28 @@ class NewReceiptViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = false
         )
+    // NUEVOS ESTADOS PARA PAGOS
+    private val _payments = MutableStateFlow<List<IPayment>>(emptyList())
+    val payments: StateFlow<List<IPayment>> = _payments.asStateFlow()
+
+    private val _showPaymentDialog = MutableStateFlow(false)
+    val showPaymentDialog: StateFlow<Boolean> = _showPaymentDialog.asStateFlow()
+
+    private val _paymentSummary = MutableStateFlow(PaymentSummary(0.0, 0.0, 0.0))
+    val paymentSummary: StateFlow<PaymentSummary> = _paymentSummary.asStateFlow()
+
+    // Estado combinado para saber si los pagos están habilitados
+    val paymentsEnabled: StateFlow<Boolean> = preferencesManager.companyData
+        .map { company ->
+            // Si disableContinuePay es false, los pagos SÍ están habilitados
+            !(company?.disableContinuePay ?: false)
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = true // Por defecto habilitado
+        )
+
     // NUEVO: Estado para rastrear si la búsqueda viene del escáner
     private val _isFromBarcodeScan = MutableStateFlow(false)
     val isFromBarcodeScan: StateFlow<Boolean> = _isFromBarcodeScan.asStateFlow()
@@ -162,7 +187,7 @@ class NewReceiptViewModel @Inject constructor(
         }
     }
 
-    fun createInvoice(operation: IOperation, onSuccess: (Int, String) -> Unit) {
+    fun createInvoice(operation: IOperation, payments: List<IPayment>, onSuccess: (Int, String) -> Unit) {
         if (operation.client.names.isNullOrBlank()) {
             _error.value = "Ingrese el nombre del cliente"
             return
@@ -174,7 +199,7 @@ class NewReceiptViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                val result = operationRepository.createInvoice(operation)
+                val result = operationRepository.createInvoice(operation, payments)
                 result.fold(
                     onSuccess = { pair ->
                         _isLoading.value = false
@@ -245,5 +270,47 @@ class NewReceiptViewModel @Inject constructor(
                 callback(null)
             }
         }
+    }
+    // NUEVAS FUNCIONES PARA MANEJAR PAGOS
+
+    fun showPaymentDialog(totalAmount: Double) {
+        _paymentSummary.value = PaymentSummary(
+            totalAmount = totalAmount,
+            totalPaid = _payments.value.sumOf { it.amount },
+            remaining = totalAmount - _payments.value.sumOf { it.amount }
+        )
+        _showPaymentDialog.value = true
+    }
+
+    fun hidePaymentDialog() {
+        _showPaymentDialog.value = false
+    }
+
+    fun addPayment(payment: IPayment) {
+        val currentPayments = _payments.value.toMutableList()
+        currentPayments.add(payment.copy(id = Random.nextInt(1, Int.MAX_VALUE)))
+        _payments.value = currentPayments
+
+        // Actualizar resumen
+        updatePaymentSummary()
+    }
+
+    fun removePayment(paymentId: Int) {
+        _payments.value = _payments.value.filter { it.id != paymentId }
+        updatePaymentSummary()
+    }
+
+    private fun updatePaymentSummary() {
+        val currentSummary = _paymentSummary.value
+        val totalPaid = _payments.value.sumOf { it.amount }
+        _paymentSummary.value = currentSummary.copy(
+            totalPaid = totalPaid,
+            remaining = currentSummary.totalAmount - totalPaid
+        )
+    }
+
+    fun clearPayments() {
+        _payments.value = emptyList()
+        _paymentSummary.value = PaymentSummary(0.0, 0.0, 0.0)
     }
 }

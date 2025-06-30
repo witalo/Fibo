@@ -158,7 +158,7 @@ fun NavGraph(
         composable(Screen.NewNoteOfSale.route) {
             NewNoteOfSaleScreen(
                 onBack = { navController.popBackStack() },
-                onQuotationCreated = { noteId ->
+                onNoteOfSaleCreated = { noteId ->
                     navController.navigate(Screen.NoteOfSaleDetail.createRoute(noteId.toInt()))
                 }
             )

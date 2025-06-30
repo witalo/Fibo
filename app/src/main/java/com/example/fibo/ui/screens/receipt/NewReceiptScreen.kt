@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material.icons.filled.ShoppingCart
@@ -75,6 +76,7 @@ import com.example.fibo.model.ITariff
 import com.example.fibo.ui.components.BarcodeScannerDialog
 import com.example.fibo.ui.components.DateSelector
 import com.example.fibo.ui.components.DateSelectorLimit
+import com.example.fibo.ui.components.PaymentDialog
 import com.example.fibo.ui.components.QRCodeIcon
 import com.example.fibo.utils.ColorGradients
 import com.example.fibo.utils.ProductSearchState
@@ -82,6 +84,7 @@ import com.example.fibo.utils.getAffectationColor
 import com.example.fibo.utils.getAffectationTypeShort
 import com.example.fibo.utils.getCurrentFormattedDate
 import com.example.fibo.utils.getCurrentFormattedTime
+import com.example.fibo.viewmodels.HomeViewModel
 import com.example.fibo.viewmodels.NewReceiptViewModel
 import kotlinx.coroutines.delay
 import kotlin.math.max
@@ -94,7 +97,8 @@ fun NewReceiptScreen(
     onBack: () -> Unit,
     onReceiptCreated: (String) -> Unit,
     quotationId: Int? = null, // Nuevo parámetro opcional
-    viewModel: NewReceiptViewModel = hiltViewModel()
+    viewModel: NewReceiptViewModel = hiltViewModel(),
+    homeViewModel: HomeViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     val companyData by viewModel.companyData.collectAsState()
@@ -271,6 +275,11 @@ fun NewReceiptScreen(
         }
     }
     //Editar cantidad********
+    // NUEVOS ESTADOS PARA PAGOS
+    val paymentsEnabled by viewModel.paymentsEnabled.collectAsState()
+    val showPaymentDialog by viewModel.showPaymentDialog.collectAsState()
+    val payments by viewModel.payments.collectAsState()
+    val paymentSummary by viewModel.paymentSummary.collectAsState()
     // Agrega este estado al inicio de tu composable
     var showBoletaConfirmationDialog by remember { mutableStateOf(false) }
 
@@ -1126,7 +1135,15 @@ fun NewReceiptScreen(
                             Text("Cancelar", style = MaterialTheme.typography.labelLarge)
                         }
                         Button(
-                            onClick = { showBoletaConfirmationDialog = true },
+                            onClick = {
+                                if (paymentsEnabled) {
+                                    // Si los pagos están habilitados, mostrar el diálogo de pagos
+                                    viewModel.showPaymentDialog(totalToPay)
+                                } else {
+                                    // Si los pagos están deshabilitados, mostrar confirmación directa
+                                    showBoletaConfirmationDialog = true
+                                }
+                            },
                             modifier = Modifier
                                 .weight(1f)
                                 .height(48.dp),
@@ -1147,26 +1164,79 @@ fun NewReceiptScreen(
                                 horizontalArrangement = Arrangement.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.CheckCircle,
-                                    contentDescription = "Confirmar",
+                                    imageVector = if (paymentsEnabled) Icons.Default.Payment else Icons.Default.CheckCircle,
+                                    contentDescription = "Boleta",
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    "Boleta",
+                                    if (paymentsEnabled) "Pagar" else "Boleta",
                                     style = MaterialTheme.typography.labelMedium.copy(
                                         fontWeight = FontWeight.SemiBold
                                     )
                                 )
                             }
                         }
-
+                        // Diálogo de pagos
+                        PaymentDialog(
+                            isVisible = showPaymentDialog,
+                            totalAmount = totalToPay,
+                            payments = payments,
+                            paymentSummary = paymentSummary,
+                            currentOperationDate = receiptDate,
+                            onDismiss = {
+                                // SOLO permitir cerrar si está completo
+//                                if (paymentSummary.isComplete && payments.isNotEmpty()) {
+                                    viewModel.hidePaymentDialog()
+//                                } else {
+//                                    Toast.makeText(context, "Debe completar los pagos antes de continuar", Toast.LENGTH_SHORT).show()
+//                                }
+                            },
+                            onAddPayment = { payment -> viewModel.addPayment(payment) },
+                            onRemovePayment = { paymentId -> viewModel.removePayment(paymentId) },
+                            onFinalizeSale = {
+                                // VALIDAR antes de proceder
+                                if (paymentSummary.isComplete && payments.isNotEmpty()) {
+                                    viewModel.hidePaymentDialog()
+                                    showBoletaConfirmationDialog = true
+                                } else {
+                                    Toast.makeText(context, "Complete todos los pagos para finalizar la venta", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        )
                         // Diálogo de confirmación para boleta
                         if (showBoletaConfirmationDialog) {
                             AlertDialog(
                                 onDismissRequest = { showBoletaConfirmationDialog = false },
                                 title = { Text(text = "Confirmar emisión", style = MaterialTheme.typography.titleMedium) },
-                                text = { Text("¿Está seguro que desea emitir esta boleta de venta?") },
+                                text = { Column {
+                                    Text("¿Está seguro que desea emitir esta boleta?")
+
+                                    if (paymentsEnabled && payments.isNotEmpty()) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            "✓ Pagos registrados: ${payments.size}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                        Text(
+                                            "✓ Total pagado: S/ ${
+                                                String.format(
+                                                    "%.2f", payments.sumOf { it.amount })
+                                            }",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                    else {
+                                        // Mostrar que será pago automático
+                                        Text(
+                                            "🔸 Pago automático: Efectivo al contado",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                } },
                                 confirmButton = {
                                     Button(
                                         onClick = {
@@ -1239,17 +1309,21 @@ fun NewReceiptScreen(
                                                 totalToPay = max(0.0, totalToPay),
                                                 totalPayed = max(0.0, totalToPay) // Asumimos que se paga completo
                                             )
-                                            viewModel.createInvoice(operation) { operationId, message ->
-                                                Toast.makeText(
-                                                    context,
-                                                    if (operationId > 0) "Boleta $message creada" else operationId.toString(),
-                                                    Toast.LENGTH_LONG
-                                                ).show()
-
-//                                                if (operationId > 0) {
-//                                                    onReceiptCreated(operationId.toString()) // Notificar éxito
-//                                                }
-                                                onBack()
+                                            // ENVIAR PAGOS SEGÚN CONFIGURACIÓN:
+                                            if (paymentsEnabled) {
+                                                // disableContinuePay = false → Enviar pagos registrados
+                                                viewModel.createInvoice(operation, payments) { operationId, message ->
+                                                    Toast.makeText(context, "Boleta $message creada", Toast.LENGTH_SHORT).show()
+                                                    homeViewModel.triggerRefresh()
+                                                    onBack()
+                                                }
+                                            } else {
+                                                // disableContinuePay = true → Backend maneja pago automático
+                                                viewModel.createInvoice(operation, emptyList()) { operationId, message ->
+                                                    Toast.makeText(context, "Boleta $message creada", Toast.LENGTH_SHORT).show()
+                                                    homeViewModel.triggerRefresh()
+                                                    onBack()
+                                                }
                                             }
                                         },
                                         colors = ButtonDefaults.buttonColors(

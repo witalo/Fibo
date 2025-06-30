@@ -9,4 +9,5 @@ data class ICompany(
     val isEnabled: Boolean = false,
     val withStock: Boolean = false,
     val appMobil: Boolean = false,
+    val disableContinuePay: Boolean = false,
 )

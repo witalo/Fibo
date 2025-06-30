@@ -28,6 +28,8 @@ import com.example.fibo.GetAllProductsBySubsidiaryIdQuery
 import com.example.fibo.GetOperationsByDateAndUserIdQuery
 import com.example.fibo.GetOperationsByPersonAndUserQuery
 import com.example.fibo.SearchPersonsQuery
+import com.example.fibo.model.IPayment
+import com.example.fibo.type.PaymentInput
 
 
 @Singleton
@@ -97,6 +99,7 @@ class OperationRepository @Inject constructor(
                 val cleaned = this.replace(",", ".")
                 cleaned.toDoubleOrNull() ?: 0.0
             }
+
             is Number -> this.toDouble()
             else -> 0.0
         }
@@ -149,7 +152,7 @@ class OperationRepository @Inject constructor(
                     id = product.id!!,
                     code = product.code.orEmpty(),
                     name = product.name.orEmpty(),
-                    stock = product.stock?:0.0
+                    stock = product.stock ?: 0.0
                 )
             } ?: emptyList()
         } catch (e: Exception) {
@@ -194,9 +197,9 @@ class OperationRepository @Inject constructor(
         }
     }
 
-    suspend fun createInvoice(operation: IOperation): Result<Pair<Int, String>>{
+    suspend fun createInvoice(operation: IOperation, payments: List<IPayment> = emptyList()): Result<Pair<Int, String>>{
         return try {
-            // Convert operation details to input type
+            // Convert operation details to input type (código existente)
             val operationDetailInputs = operation.operationDetailSet.map { detail ->
                 val tariffInput = TariffInput(
                     productId = Optional.present(detail.tariff.productId),
@@ -230,7 +233,7 @@ class OperationRepository @Inject constructor(
                 )
             }
 
-            // Create person input
+            // Create person input (código existente)
             val clientInput = PersonInput(
                 id = Optional.present(operation.client.id as Int?),
                 names = Optional.present(operation.client.names),
@@ -241,7 +244,17 @@ class OperationRepository @Inject constructor(
                 address = Optional.present(operation.client.address)
             )
 
-            // Execute the mutation
+            // NUEVO: Convert payments to input type
+            val paymentInputs = payments.map { payment ->
+                PaymentInput(
+                    wayPay = payment.wayPay,
+                    amount = payment.amount,
+                    note = Optional.present(payment.note),
+                    paymentDate = payment.paymentDate // NUEVO: Incluir fecha
+                )
+            }
+
+            // Execute the mutation con pagos
             val response = apolloClient.mutation(
                 CreateOperationMutation(
                     id = Optional.present(operation.id),
@@ -270,7 +283,8 @@ class OperationRepository @Inject constructor(
                     totalAmount = Optional.present(operation.totalAmount),
                     totalToPay = Optional.present(operation.totalToPay),
                     totalPayed = Optional.present(operation.totalPayed),
-                    operationDetailSet = operationDetailInputs
+                    operationDetailSet = operationDetailInputs,
+                    payments = Optional.present(paymentInputs) // NUEVO: Agregar pagos
                 )
             ).execute()
 
@@ -280,7 +294,7 @@ class OperationRepository @Inject constructor(
                 val operationIdInt = operationIdStr?.toIntOrNull() ?: -1
                 val serial = data.createOperation.operation?.serial ?: ""
                 val correlative = data.createOperation.operation?.correlative ?: 0
-                // Format the success message with serial-correlative
+
                 val successMessage = if (serial.isNotEmpty()) {
                     "${data.createOperation.message ?: "Comprobante creada exitosamente"} (${serial}-${correlative})"
                 } else {
@@ -288,15 +302,11 @@ class OperationRepository @Inject constructor(
                 }
                 Result.success(Pair(operationIdInt, successMessage))
             } else {
-                // Better error handling
                 val errorMessage = data?.createOperation?.message
                     ?: response.errors?.firstOrNull()?.message
                     ?: "Error desconocido al crear el comprobante"
 
                 Log.e("CreateOperation", "Error: $errorMessage")
-                Log.e("CreateOperation", "Response: $response")
-                Log.e("CreateOperation", "Operation: $operation")
-
                 Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
@@ -304,6 +314,119 @@ class OperationRepository @Inject constructor(
             Result.failure(e)
         }
     }
+
+
+
+//    suspend fun createInvoice(operation: IOperation): Result<Pair<Int, String>>{
+//        return try {
+//            // Convert operation details to input type
+//            val operationDetailInputs = operation.operationDetailSet.map { detail ->
+//                val tariffInput = TariffInput(
+//                    productId = Optional.present(detail.tariff.productId),
+//                    productCode = Optional.present(detail.tariff.productCode),
+//                    productName = Optional.present(detail.tariff.productName),
+//                    unitId = Optional.present(detail.tariff.unitId),
+//                    unitName = Optional.present(detail.tariff.unitName),
+//                    stock = Optional.present(detail.tariff.stock),
+//                    priceWithIgv = Optional.present(detail.tariff.priceWithIgv),
+//                    priceWithoutIgv = Optional.present(detail.tariff.priceWithoutIgv),
+//                    productTariffId = Optional.present(detail.tariff.productTariffId),
+//                    typeAffectationId = Optional.present(detail.tariff.typeAffectationId)
+//                )
+//                OperationDetailInput(
+//                    id = Optional.present(detail.id),
+//                    tariff = Optional.present(tariffInput),
+//                    description = Optional.present(detail.description),
+//                    typeAffectationId = Optional.present(detail.typeAffectationId),
+//                    quantity = Optional.present(detail.quantity),
+//                    unitValue = Optional.present(detail.unitValue),
+//                    unitPrice = Optional.present(detail.unitPrice),
+//                    discountPercentage = Optional.present(detail.discountPercentage),
+//                    totalDiscount = Optional.present(detail.totalDiscount),
+//                    perceptionPercentage = Optional.present(detail.perceptionPercentage),
+//                    totalPerception = Optional.present(detail.totalPerception),
+//                    igvPercentage = Optional.present(detail.igvPercentage),
+//                    totalValue = Optional.present(detail.totalValue),
+//                    totalIgv = Optional.present(detail.totalIgv),
+//                    totalAmount = Optional.present(detail.totalAmount),
+//                    totalToPay = Optional.present(detail.totalToPay)
+//                )
+//            }
+//
+//            // Create person input
+//            val clientInput = PersonInput(
+//                id = Optional.present(operation.client.id as Int?),
+//                names = Optional.present(operation.client.names),
+//                documentType = Optional.present(operation.client.documentType),
+//                documentNumber = Optional.present(operation.client.documentNumber),
+//                email = Optional.present(operation.client.email),
+//                phone = Optional.present(operation.client.phone),
+//                address = Optional.present(operation.client.address)
+//            )
+//
+//            // Execute the mutation
+//            val response = apolloClient.mutation(
+//                CreateOperationMutation(
+//                    id = Optional.present(operation.id),
+//                    serial = Optional.present(operation.serial),
+//                    correlative = Optional.present(operation.correlative),
+//                    documentType = operation.documentType,
+//                    operationType = operation.operationType,
+//                    operationStatus = operation.operationStatus,
+//                    operationAction = operation.operationAction,
+//                    currencyType = operation.currencyType,
+//                    operationDate = operation.operationDate,
+//                    emitDate = operation.emitDate,
+//                    emitTime = operation.emitTime,
+//                    userId = operation.userId,
+//                    subsidiaryId = operation.subsidiaryId,
+//                    client = clientInput,
+//                    discountGlobal = Optional.present(operation.discountGlobal),
+//                    discountPercentageGlobal = Optional.present(operation.discountPercentageGlobal),
+//                    discountForItem = Optional.present(operation.discountForItem),
+//                    totalDiscount = Optional.present(operation.totalDiscount),
+//                    totalTaxed = Optional.present(operation.totalTaxed),
+//                    totalUnaffected = Optional.present(operation.totalUnaffected),
+//                    totalExonerated = Optional.present(operation.totalExonerated),
+//                    totalIgv = Optional.present(operation.totalIgv),
+//                    totalFree = Optional.present(operation.totalFree),
+//                    totalAmount = Optional.present(operation.totalAmount),
+//                    totalToPay = Optional.present(operation.totalToPay),
+//                    totalPayed = Optional.present(operation.totalPayed),
+//                    operationDetailSet = operationDetailInputs
+//                )
+//            ).execute()
+//
+//            val data = response.data
+//            if (data != null && data.createOperation?.success == true) {
+//                val operationIdStr = data.createOperation.operation?.id
+//                val operationIdInt = operationIdStr?.toIntOrNull() ?: -1
+//                val serial = data.createOperation.operation?.serial ?: ""
+//                val correlative = data.createOperation.operation?.correlative ?: 0
+//                // Format the success message with serial-correlative
+//                val successMessage = if (serial.isNotEmpty()) {
+//                    "${data.createOperation.message ?: "Comprobante creada exitosamente"} (${serial}-${correlative})"
+//                } else {
+//                    data.createOperation.message ?: "Comprobante creada exitosamente"
+//                }
+//                Result.success(Pair(operationIdInt, successMessage))
+//            } else {
+//                // Better error handling
+//                val errorMessage = data?.createOperation?.message
+//                    ?: response.errors?.firstOrNull()?.message
+//                    ?: "Error desconocido al crear el comprobante"
+//
+//                Log.e("CreateOperation", "Error: $errorMessage")
+//                Log.e("CreateOperation", "Response: $response")
+//                Log.e("CreateOperation", "Operation: $operation")
+//
+//                Result.failure(Exception(errorMessage))
+//            }
+//        } catch (e: Exception) {
+//            Log.e("CreateOperation", "Exception: ${e.message}", e)
+//            Result.failure(e)
+//        }
+//    }
 
     suspend fun getOperationById(operationId: Int): IOperation {
         val query = GetOperationByIdQuery(OperationId = operationId)
@@ -366,8 +489,8 @@ class OperationRepository @Inject constructor(
 
         val operation = IOperation(
             id = operationData.id.toInt(),
-            serial = operationData.serial?:"",
-            correlative = operationData.correlative?:0,
+            serial = operationData.serial ?: "",
+            correlative = operationData.correlative ?: 0,
             operationType = operationData.operationType.toString(),
             documentTypeReadable = operationData.documentTypeReadable.toString(),
             operationStatus = operationData.operationStatus.toString(),
@@ -397,7 +520,10 @@ class OperationRepository @Inject constructor(
         return operation
     }
 
-    suspend fun getAllSerialsByIdSubsidiary(subsidiaryId: Int, documentType: String): List<ISerialAssigned> {
+    suspend fun getAllSerialsByIdSubsidiary(
+        subsidiaryId: Int,
+        documentType: String
+    ): List<ISerialAssigned> {
         return try {
             val response = apolloClient.query(
                 GetAllSerialsByIdQuery(subsidiaryId = subsidiaryId, documentType = documentType)
@@ -420,6 +546,7 @@ class OperationRepository @Inject constructor(
             emptyList()
         }
     }
+
     suspend fun cancelInvoice(operationId: Int, date: String): Result<String> {
         return try {
             // Execute the mutation
@@ -428,18 +555,31 @@ class OperationRepository @Inject constructor(
 
             val data = response.data
             if (data != null && data.cancelInvoice?.success == true) {
-                val successMessage = data.cancelInvoice.message ?: "Comprobante anulado exitosamente"
+                val successMessage =
+                    data.cancelInvoice.message ?: "Comprobante anulado exitosamente"
                 Result.success(successMessage)
             } else {
-                Result.failure(Exception(data?.cancelInvoice?.message ?: "Error desconocido al anular el comprobante"))
+                Result.failure(
+                    Exception(
+                        data?.cancelInvoice?.message ?: "Error desconocido al anular el comprobante"
+                    )
+                )
             }
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    suspend fun getOperationsByDateAndUserId(date: String, userId: Int, types:List<String>): List<IOperation> {
-        val query = GetOperationsByDateAndUserIdQuery(date = date, userId = userId, types=Optional.Present(types))
+    suspend fun getOperationsByDateAndUserId(
+        date: String,
+        userId: Int,
+        types: List<String>
+    ): List<IOperation> {
+        val query = GetOperationsByDateAndUserIdQuery(
+            date = date,
+            userId = userId,
+            types = Optional.Present(types)
+        )
         val response = apolloClient.query(query).execute()
 
         return response.data?.operationsByDateAndUserId?.filterNotNull()?.map { o ->
@@ -482,7 +622,8 @@ class OperationRepository @Inject constructor(
             ).execute()
 
             if (response.hasErrors()) {
-                val errorMessage = response.errors?.joinToString { it.message } ?: "Error desconocido"
+                val errorMessage =
+                    response.errors?.joinToString { it.message } ?: "Error desconocido"
                 throw Exception("Error al buscar clientes: $errorMessage")
             }
 
@@ -518,7 +659,8 @@ class OperationRepository @Inject constructor(
             ).execute()
 
             if (response.hasErrors()) {
-                val errorMessage = response.errors?.joinToString { it.message } ?: "Error desconocido"
+                val errorMessage =
+                    response.errors?.joinToString { it.message } ?: "Error desconocido"
                 throw Exception("Error al buscar operaciones: $errorMessage")
             }
 
@@ -557,10 +699,17 @@ class OperationRepository @Inject constructor(
             emptyList()
         }
     }
-    suspend fun getAllProductsBySubsidiaryId(subsidiaryId: Int, available: Boolean): List<IProduct> {
+
+    suspend fun getAllProductsBySubsidiaryId(
+        subsidiaryId: Int,
+        available: Boolean
+    ): List<IProduct> {
         return try {
             val response = apolloClient.query(
-                GetAllProductsBySubsidiaryIdQuery(subsidiaryId=Optional.Present(subsidiaryId), available = Optional.Present(available))
+                GetAllProductsBySubsidiaryIdQuery(
+                    subsidiaryId = Optional.Present(subsidiaryId),
+                    available = Optional.Present(available)
+                )
             ).execute()
 
             if (response.hasErrors()) {

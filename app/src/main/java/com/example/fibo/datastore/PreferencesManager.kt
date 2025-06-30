@@ -34,6 +34,7 @@ class PreferencesManager(context: Context) {
         val COMPANY_STOCK = booleanPreferencesKey("company_stock")
         val COMPANY_APP = booleanPreferencesKey("company_app")
         val COMPANY_ENABLED = booleanPreferencesKey("company_enabled")
+        val COMPANY_PAYMENTS_ENABLED = booleanPreferencesKey("company_disable_continue_pay")
         val SUBSIDIARY_ID = intPreferencesKey("subsidiary_id")
         val SUBSIDIARY_SERIAL = stringPreferencesKey("subsidiary_serial")
         val SUBSIDIARY_NAME = stringPreferencesKey("subsidiary_name")
@@ -63,7 +64,8 @@ class PreferencesManager(context: Context) {
                     percentageIgv = preferences[COMPANY_IGV] ?: 18.0,
                     withStock = preferences[COMPANY_STOCK] ?: false,
                     isEnabled = preferences[COMPANY_ENABLED] ?: false,
-                    appMobil = preferences[COMPANY_APP] ?: false
+                    appMobil = preferences[COMPANY_APP] ?: false,
+                    disableContinuePay = preferences[COMPANY_PAYMENTS_ENABLED] ?: false
                 )
             } else {
                 null
@@ -123,6 +125,7 @@ class PreferencesManager(context: Context) {
                 preferences[COMPANY_STOCK] = company.withStock
                 preferences[COMPANY_ENABLED] = company.isEnabled
                 preferences[COMPANY_APP] = company.appMobil
+                preferences[COMPANY_PAYMENTS_ENABLED] = company.disableContinuePay
             }
             userData.subsidiary?.let { subsidiary ->
                 preferences[SUBSIDIARY_ID] = subsidiary.id
@@ -162,7 +165,8 @@ class PreferencesManager(context: Context) {
                             percentageIgv = preferences[COMPANY_IGV] ?: 18.0,
                             withStock = preferences[COMPANY_STOCK] ?: false,
                             isEnabled = preferences[COMPANY_ENABLED] ?: false,
-                            appMobil = preferences[COMPANY_APP] ?: false
+                            appMobil = preferences[COMPANY_APP] ?: false,
+                            disableContinuePay = preferences[COMPANY_PAYMENTS_ENABLED] ?: false
                         )
                     },
                     subsidiary = preferences[SUBSIDIARY_ID]?.let {

@@ -29,7 +29,7 @@ import kotlin.random.Random
 
 // Extensiones para el ViewModel
 @HiltViewModel
-class NewInvoiceViewModel @Inject constructor(
+class NewNoteOfSaleViewModel @Inject constructor(
     private val operationRepository: OperationRepository,
     private val preferencesManager: PreferencesManager
 ) : ViewModel() {
