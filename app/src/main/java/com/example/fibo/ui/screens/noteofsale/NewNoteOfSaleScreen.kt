@@ -1,4 +1,5 @@
 package com.example.fibo.ui.screens.noteofsale
+
 import android.content.Context
 import android.util.Log
 import android.widget.Toast
@@ -85,10 +86,7 @@ import com.example.fibo.utils.getAffectationTypeShort
 import com.example.fibo.utils.getCurrentFormattedDate
 import com.example.fibo.utils.getCurrentFormattedTime
 import com.example.fibo.viewmodels.HomeViewModel
-import com.example.fibo.viewmodels.NewInvoiceViewModel
 import com.example.fibo.viewmodels.NewNoteOfSaleViewModel
-import com.example.fibo.viewmodels.NewQuotationViewModel
-import com.example.fibo.viewmodels.NoteOfSaleViewModel
 import kotlinx.coroutines.delay
 import kotlin.math.max
 import kotlin.math.min
@@ -101,7 +99,7 @@ fun NewNoteOfSaleScreen(
     onNoteOfSaleCreated: (String) -> Unit,
     quotationId: Int? = null, // Nuevo parámetro opcional
     viewModel: NewNoteOfSaleViewModel = hiltViewModel(),
-    homeViewModel: NoteOfSaleViewModel = hiltViewModel()
+    homeViewModel: HomeViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     val companyData by viewModel.companyData.collectAsState()
@@ -275,7 +273,7 @@ fun NewNoteOfSaleScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Nueva Factura", style = MaterialTheme.typography.titleSmall) },
+                title = { Text("Nueva Venta", style = MaterialTheme.typography.titleSmall) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
@@ -311,7 +309,7 @@ fun NewNoteOfSaleScreen(
                         .fillMaxWidth()
                 ) {
                     Text(
-                        "Configuración de Factura",
+                        "Configuración de Venta",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(bottom = 8.dp)
@@ -396,7 +394,7 @@ fun NewNoteOfSaleScreen(
                         OutlinedTextField(
                             value = documentNumber,
                             onValueChange = { documentNumber = it },
-                            label = { Text("RUC", style = MaterialTheme.typography.labelSmall) },
+                            label = { Text("DNI/RUC", style = MaterialTheme.typography.labelSmall) },
                             textStyle = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.weight(0.8f),
                             singleLine = true,
@@ -414,25 +412,25 @@ fun NewNoteOfSaleScreen(
                                     shape = RoundedCornerShape(8.dp)
                                 )
                                 .clickable {
-                                    if (documentNumber.length == 11 && documentNumber.all { it.isDigit() }) {
+                                    if ((documentNumber.length == 8 || documentNumber.length == 11) && documentNumber.all { it.isDigit() }) {
                                         viewModel.fetchClientData(documentNumber) { person ->
                                             val modifiedPerson = person.copy(
                                                 names = person.names?.uppercase(),
-                                                documentType = "6",
+                                                documentType = if (documentNumber.length == 8) "1" else "6", // 1=DNI, 6=RUC
                                                 documentNumber = person.documentNumber,
                                                 address = person.address?.trim(),
                                             )
                                             clientData = modifiedPerson
                                         }
                                     } else {
-                                        // Puedes mostrar un mensaje de error si no es válido
-                                        Toast
-                                            .makeText(
-                                                context,
-                                                "El RUC debe tener 11 dígitos",
-                                                Toast.LENGTH_SHORT
-                                            )
-                                            .show()
+                                        Toast.makeText(
+                                            context,
+                                            if (documentNumber.length < 8) "El DNI debe tener 8 dígitos"
+                                            else if (documentNumber.length > 8 && documentNumber.length < 11) "Longitud inválida"
+                                            else if (documentNumber.length > 11) "El RUC debe tener 11 dígitos"
+                                            else "Solo se permiten números",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
                                     }
                                 },
                             contentAlignment = Alignment.Center
@@ -1159,12 +1157,12 @@ fun NewNoteOfSaleScreen(
                             ) {
                                 Icon(
                                     imageVector = if (paymentsEnabled) Icons.Default.Payment else Icons.Default.CheckCircle,
-                                    contentDescription = "Facturar",
+                                    contentDescription = "Venta",
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    if (paymentsEnabled) "Pagar" else "Factura",
+                                    if (paymentsEnabled) "Pagar" else "Venta",
                                     style = MaterialTheme.typography.labelMedium.copy(
                                         fontWeight = FontWeight.SemiBold
                                     )
@@ -1197,7 +1195,11 @@ fun NewNoteOfSaleScreen(
                                     viewModel.hidePaymentDialog()
                                     showConfirmationDialog = true
                                 } else {
-                                    Toast.makeText(context, "Complete todos los pagos para finalizar la venta", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(
+                                        context,
+                                        "Complete todos los pagos para finalizar la venta",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
                                 }
                             }
                         )
@@ -1242,10 +1244,15 @@ fun NewNoteOfSaleScreen(
                         if (showConfirmationDialog) {
                             AlertDialog(
                                 onDismissRequest = { showConfirmationDialog = false },
-                                title = {Text("Confirmar emisión", style = MaterialTheme.typography.titleMedium)},
+                                title = {
+                                    Text(
+                                        "Confirmar emisión",
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+                                },
                                 text = {
                                     Column {
-                                        Text("¿Está seguro que desea emitir esta factura?")
+                                        Text("¿Está seguro que desea emitir esta venta?")
 
                                         if (paymentsEnabled && payments.isNotEmpty()) {
                                             Spacer(modifier = Modifier.height(8.dp))
@@ -1262,8 +1269,7 @@ fun NewNoteOfSaleScreen(
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = MaterialTheme.colorScheme.primary
                                             )
-                                        }
-                                        else {
+                                        } else {
                                             // Mostrar que será pago automático
                                             Text(
                                                 "🔸 Pago automático: Efectivo al contado",
@@ -1279,16 +1285,16 @@ fun NewNoteOfSaleScreen(
                                             showConfirmationDialog = false
                                             //Validaciones adicionales antes de crear la operación
                                             if (clientData?.documentNumber.isNullOrBlank()) {
-                                                Toast.makeText(context, "Ingrese el RUC del cliente", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(context, "Ingrese el DNI/RUC del cliente", Toast.LENGTH_SHORT).show()
                                                 return@Button
                                             }
 
                                             if (operationDetails.isEmpty()) {
-                                                Toast.makeText(context, "Agregue al menos un producto", Toast.LENGTH_SHORT).show()
-                                                return@Button
-                                            }
-                                            if ((clientData?.documentNumber)?.length != 11) {
-                                                Toast.makeText(context, "La factura requiere un numero de RUC", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(
+                                                    context,
+                                                    "Agregue al menos un producto",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
                                                 return@Button
                                             }
 
@@ -1297,10 +1303,10 @@ fun NewNoteOfSaleScreen(
                                                 serial = selectedSerial?.serial
                                                     ?: "", // Serie seleccionada
                                                 correlative = 0, // Se asignará automáticamente
-                                                documentType = "01", // Factura electrónica
-                                                operationType = "0101", // Factura a cliente
-                                                operationStatus = "01", // Pendiente de envío a SUNAT
-                                                operationAction = "E", // Emitir
+                                                documentType = "NS", // Venta electrónica
+                                                operationType = "0101", // Venta a cliente
+                                                operationStatus = "02", // Emitido
+                                                operationAction = "NA", // Emitir
                                                 currencyType = "PEN", // Soles peruanos
                                                 operationDate = getCurrentFormattedDate(), // Fecha actual
                                                 emitDate = invoiceDate, // Fecha de emisión
@@ -1309,7 +1315,7 @@ fun NewNoteOfSaleScreen(
                                                     ?: 0, // ID del usuario logueado
                                                 subsidiaryId = subsidiaryData?.id ?: 0, // Sucursal
                                                 client = clientData?.copy(
-                                                    documentType = "6", // Forzar RUC (6)
+                                                    documentType = clientData!!.documentType,
                                                     documentNumber = clientData!!.documentNumber?.trim(),
                                                     names = clientData!!.names?.trim()?.uppercase(),
                                                     address = clientData!!.address?.trim(),
@@ -1380,20 +1386,37 @@ fun NewNoteOfSaleScreen(
                                                 totalFree = max(0.0, totalFree),
                                                 totalAmount = max(0.0, totalAmount),
                                                 totalToPay = max(0.0, totalToPay),
-                                                totalPayed = max(0.0, totalToPay) // Asumimos que se paga completo
+                                                totalPayed = max(
+                                                    0.0,
+                                                    totalToPay
+                                                ) // Asumimos que se paga completo
                                             )
                                             // ENVIAR PAGOS SEGÚN CONFIGURACIÓN:
                                             if (paymentsEnabled) {
                                                 // disableContinuePay = false → Enviar pagos registrados
-                                                viewModel.createInvoice(operation, payments) { operationId, message ->
-                                                    Toast.makeText(context, "Factura $message creada", Toast.LENGTH_SHORT).show()
+                                                viewModel.createInvoice(
+                                                    operation,
+                                                    payments
+                                                ) { operationId, message ->
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Venta $message creada",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
                                                     homeViewModel.triggerRefresh()
                                                     onBack()
                                                 }
                                             } else {
                                                 // disableContinuePay = true → Backend maneja pago automático
-                                                viewModel.createInvoice(operation, emptyList()) { operationId, message ->
-                                                    Toast.makeText(context, "Factura $message creada", Toast.LENGTH_SHORT).show()
+                                                viewModel.createInvoice(
+                                                    operation,
+                                                    emptyList()
+                                                ) { operationId, message ->
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Venta $message creada",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
                                                     homeViewModel.triggerRefresh()
                                                     onBack()
                                                 }
@@ -1443,138 +1466,6 @@ fun NewNoteOfSaleScreen(
                                 }
                             )
                         }
-//                        if (showConfirmationDialog) {
-//                            AlertDialog(
-//                                onDismissRequest = { showConfirmationDialog = false },
-//                                title = { Text("Confirmar emisión", style = MaterialTheme.typography.titleMedium) },
-//                                text = { Text("¿Está seguro que desea emitir esta factura?") },
-//                                confirmButton = {
-//                                    Button(
-//                                        onClick = {
-//                                            showConfirmationDialog = false
-//                                            // Validaciones adicionales antes de crear la operación
-//                                            if (clientData?.documentNumber.isNullOrBlank()) {
-//                                                Toast.makeText(context, "Ingrese el RUC del cliente", Toast.LENGTH_SHORT).show()
-//                                                return@Button
-//                                            }
-//
-//                                            if (operationDetails.isEmpty()) {
-//                                                Toast.makeText(context, "Agregue al menos un producto", Toast.LENGTH_SHORT).show()
-//                                                return@Button
-//                                            }
-//                                            if ((clientData?.documentNumber)?.length != 11) {
-//                                                Toast.makeText(context, "La factura requiere un numero de RUC", Toast.LENGTH_SHORT).show()
-//                                                return@Button
-//                                            }
-//                                            val operation = IOperation(
-//                                                id = 0, // ID se generará en el backend
-//                                                serial = selectedSerial?.serial ?: "", // Serie seleccionada
-//                                                correlative = 0, // Se asignará automáticamente
-//                                                documentType = "01", // Factura electrónica
-//                                                operationType = "0101", // Factura a cliente
-//                                                operationStatus = "01", // Pendiente de envío a SUNAT
-//                                                operationAction = "E", // Emitir
-//                                                currencyType = "PEN", // Soles peruanos
-//                                                operationDate = getCurrentFormattedDate(), // Fecha actual
-//                                                emitDate = invoiceDate, // Fecha de emisión
-//                                                emitTime = getCurrentFormattedTime(), // Hora actual
-//                                                userId = userData?.id ?: 0, // ID del usuario logueado
-//                                                subsidiaryId = subsidiaryData?.id ?: 0, // Sucursal
-//                                                client = clientData?.copy(
-//                                                    documentType = "6", // Forzar RUC (6)
-//                                                    documentNumber = clientData!!.documentNumber?.trim(),
-//                                                    names = clientData!!.names?.trim()?.uppercase(),
-//                                                    address = clientData!!.address?.trim(),
-//                                                    email = clientData!!.email,
-//                                                    phone = clientData!!.phone
-//                                                ) ?: run {
-//                                                    Toast.makeText(context, "Complete datos del cliente", Toast.LENGTH_SHORT).show()
-//                                                    return@Button
-//                                                },
-//                                                operationDetailSet = operationDetails.map { detail ->
-//                                                    detail.copy(
-//                                                        // Asegurar valores positivos
-//                                                        id = 0,
-//                                                        typeAffectationId = max(1, detail.typeAffectationId),
-//                                                        description = detail.description.trim().uppercase(),
-//                                                        tariff = detail.tariff,
-//                                                        quantity = max(0.0, detail.quantity),
-//                                                        unitValue = max(0.0, detail.unitValue),
-//                                                        unitPrice = max(0.0, detail.unitPrice),
-//                                                        discountPercentage = max(0.0, detail.discountPercentage),
-//                                                        totalDiscount = max(0.0, detail.totalDiscount),
-//                                                        perceptionPercentage = max(0.0, detail.perceptionPercentage),
-//                                                        totalPerception = max(0.0, detail.totalPerception),
-//                                                        igvPercentage = max(0.0, detail.igvPercentage),
-//                                                        totalValue = max(0.0, detail.totalValue),
-//                                                        totalIgv = max(0.0, detail.totalIgv),
-//                                                        totalAmount = max(0.0, detail.totalAmount),
-//                                                        totalToPay = max(0.0, detail.totalToPay)
-//                                                    )
-//                                                },
-//                                                discountGlobal = max(0.0, discountGlobalValue),
-//                                                discountPercentageGlobal = max(0.0, min(discountGlobalPercentage, 100.0)),
-//                                                discountForItem = max(0.0, discountForItem),
-//                                                totalDiscount = max(0.0, totalDiscount),
-//                                                totalTaxed = max(0.0, totalTaxedAfterDiscount), // Usar valor después de descuento
-//                                                totalUnaffected = max(0.0, totalUnaffected),
-//                                                totalExonerated = max(0.0, totalExonerated),
-//                                                totalIgv = max(0.0, totalIgv),
-//                                                totalFree = max(0.0, totalFree),
-//                                                totalAmount = max(0.0, totalAmount),
-//                                                totalToPay = max(0.0, totalToPay),
-//                                                totalPayed = max(0.0, totalToPay) // Asumimos que se paga completo
-//                                            )
-//                                            viewModel.createInvoice(operation) { operationId, message ->
-//                                                Toast.makeText(context, "Factura $message creada", Toast.LENGTH_SHORT).show()
-//                                                homeViewModel.triggerRefresh() // <-- Dispara el refresco
-//                                                onBack() // <-- Navega hacia atrás
-//                                            }
-//                                        },
-//                                        colors = ButtonDefaults.buttonColors(
-//                                            containerColor = Color(0xFF0D47A1), // Azul oscuro
-//                                            contentColor = Color.White
-//                                        ),
-//                                        modifier = Modifier.weight(1f)
-//                                    ) {
-//                                        Row(
-//                                            verticalAlignment = Alignment.CenterVertically,
-//                                            horizontalArrangement = Arrangement.Center
-//                                        ) {
-//                                            Icon(
-//                                                imageVector = Icons.Default.CheckCircle,
-//                                                contentDescription = "Confirmar",
-//                                                modifier = Modifier.size(20.dp)
-//                                            )
-//                                            Spacer(modifier = Modifier.width(8.dp))
-//                                            Text(
-//                                                "Confirmar",
-//                                                style = MaterialTheme.typography.labelMedium.copy(
-//                                                    fontWeight = FontWeight.SemiBold
-//                                                )
-//                                            )
-//                                        }
-//                                    }
-//                                },
-//                                dismissButton = {
-//                                    Button(
-//                                        onClick = { showConfirmationDialog = false },
-//                                        colors = ButtonDefaults.buttonColors(
-//                                            containerColor = Color(0xFFB71C1C), // Rojo oscuro
-//                                            contentColor = Color.White
-//                                        ),
-//                                        modifier = Modifier.weight(1f)
-//                                    ) {
-//                                        Text(
-//                                            "Cancelar",
-//                                            style = MaterialTheme.typography.labelMedium.copy(
-//                                                fontWeight = FontWeight.SemiBold
-//                                            )
-//                                        )
-//                                    }
-//                                }
-//                            )
-//                        }
                     }
                 }
             }

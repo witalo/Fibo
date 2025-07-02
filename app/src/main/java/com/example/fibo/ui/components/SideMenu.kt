@@ -37,10 +37,11 @@ import com.example.fibo.utils.ColorGradients
 import com.example.fibo.utils.applyTextGradient
 import kotlinx.coroutines.launch
 
+
 @Composable
 fun SideMenu(
     isOpen: Boolean,
-    onClose: () -> Unit, // Nuevo parámetro
+    onClose: () -> Unit,
     subsidiaryData: ISubsidiary?,
     onMenuItemSelected: (String) -> Unit,
     onLogout: () -> Unit,
@@ -51,6 +52,7 @@ fun SideMenu(
     LaunchedEffect(isOpen) {
         if (isOpen) drawerState.open() else drawerState.close()
     }
+
     // Manejar el cierre por gestos o clic fuera
     LaunchedEffect(drawerState.currentValue) {
         if (drawerState.currentValue == DrawerValue.Closed) {
@@ -60,26 +62,21 @@ fun SideMenu(
 
     ModalNavigationDrawer(
         drawerState = drawerState,
-        gesturesEnabled = true, // Permite cerrar arrastrando
+        gesturesEnabled = true,
         drawerContent = {
             ModalDrawerSheet(
                 modifier = Modifier.width(300.dp),
                 drawerContainerColor = MaterialTheme.colorScheme.surface
             ) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .verticalScroll(rememberScrollState())
+                    modifier = Modifier.fillMaxHeight()
                 ) {
-                    // Header Section
+                    // Header Section - Fijo en la parte superior
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(220.dp)
-                            .background(
-                                brush = ColorGradients.blueVibrant,
-//                                shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)
-                            ),
+                            .height(200.dp) // Reducido un poco para dar más espacio al contenido
+                            .background(brush = ColorGradients.blueVibrant),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(
@@ -90,75 +87,102 @@ fun SideMenu(
                                 painter = painterResource(id = R.drawable.fibo),
                                 contentDescription = "Logo",
                                 modifier = Modifier
-                                    .size(100.dp)
+                                    .size(80.dp) // Reducido para ahorrar espacio
                                     .background(Color.White, CircleShape),
                                 contentScale = ContentScale.Fit
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
                                 text = "Fibo",
-                                style = MaterialTheme.typography.titleLarge,
+                                style = MaterialTheme.typography.titleMedium, // Reducido
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
                                 text = subsidiaryData?.name ?: "Facturación Electrónica",
-                                style = MaterialTheme.typography.titleMedium,
+                                style = MaterialTheme.typography.bodyMedium, // Reducido
                                 color = Color.White.copy(alpha = 0.8f),
-                                modifier = Modifier.fillMaxWidth(), // Ocupa todo el ancho disponible
-                                textAlign = TextAlign.Center, // Centra el texto horizontalmente
-                                maxLines = 2, // Limita a 2 líneas si es necesario
-                                overflow = TextOverflow.Ellipsis // Añade puntos suspensivos si el texto es muy largo
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Center,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
 
-                    // Menu Items
+                    // Contenido scrollable - Ocupa el espacio restante
                     Column(
                         modifier = Modifier
-                            .weight(1f)
+                            .weight(1f) // Toma todo el espacio disponible
+                            .verticalScroll(rememberScrollState())
                             .padding(horizontal = 16.dp)
                     ) {
                         Spacer(modifier = Modifier.height(16.dp))
 
                         // PRINCIPAL Section
-                        Text(
-                            text = "PRINCIPAL",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                brush = ColorGradients.blueVibrant
-                            ),
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp)
+                        SectionHeader(text = "PRINCIPAL")
+                        MenuItem(
+                            icon = Icons.Default.Home,
+                            text = "Inicio",
+                            onClick = { onMenuItemSelected("Inicio") }
                         )
-                        MenuItem(icon = Icons.Default.Home, text = "Inicio", onClick = { onMenuItemSelected("Inicio") })
-                        MenuItem(icon = Icons.Default.Person, text = "Perfil", onClick = { onMenuItemSelected("Perfil") })
+                        MenuItem(
+                            icon = Icons.Default.Person,
+                            text = "Perfil",
+                            onClick = { onMenuItemSelected("Perfil") }
+                        )
 
                         Spacer(modifier = Modifier.height(16.dp))
 
                         // DOCUMENTOS Section
-                        Text(
-                            text = "DOCUMENTOS",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                brush = ColorGradients.blueVibrant
-                            ),
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp)
+                        SectionHeader(text = "DOCUMENTOS")
+                        MenuItem(
+                            icon = Icons.Default.Description,
+                            text = "Nueva Factura",
+                            onClick = { onMenuItemSelected("Nueva Factura") }
                         )
-                        MenuItem(icon = Icons.Default.Description, text = "Nueva Factura", onClick = { onMenuItemSelected("Nueva Factura") })
-                        MenuItem(icon = Icons.Default.Receipt, text = "Nueva Boleta", onClick = { onMenuItemSelected("Nueva Boleta") })
-                        MenuItem(icon = Icons.Default.AddCircleOutline, text = "Cotizaciones", onClick = { onMenuItemSelected("Cotizaciones") })
-                        MenuItem(icon = Icons.Default.AddCircleOutline, text = "Productos", onClick = { onMenuItemSelected("Productos") })
-//                        MenuItem(icon = Icons.Default.AddCircle, text = "Nota de salida", onClick = { onMenuItemSelected("Nota de salida") })
+                        MenuItem(
+                            icon = Icons.Default.Receipt,
+                            text = "Nueva Boleta",
+                            onClick = { onMenuItemSelected("Nueva Boleta") }
+                        )
+                        MenuItem(
+                            icon = Icons.Default.AddCircleOutline,
+                            text = "Cotizaciones",
+                            onClick = { onMenuItemSelected("Cotizaciones") }
+                        )
+                        MenuItem(
+                            icon = Icons.Default.AddCircleOutline,
+                            text = "Productos",
+                            onClick = { onMenuItemSelected("Productos") }
+                        )
+                        MenuItem(
+                            icon = Icons.Default.AddCircle,
+                            text = "Nota de salida",
+                            onClick = { onMenuItemSelected("Nota de salida") }
+                        )
 
-                        // Flexible spacer before footer
-                        Spacer(modifier = Modifier.weight(0.5f))
+                        // Puedes agregar más items aquí sin problemas
+                        // MenuItem(icon = Icons.Default.Inventory, text = "Inventario", onClick = { onMenuItemSelected("Inventario") })
+                        // MenuItem(icon = Icons.Default.Analytics, text = "Reportes", onClick = { onMenuItemSelected("Reportes") })
+                        // MenuItem(icon = Icons.Default.Settings, text = "Configuración", onClick = { onMenuItemSelected("Configuración") })
 
-                        Divider(
+                        // Espacio adicional para asegurar que el último item sea visible
+                        Spacer(modifier = Modifier.height(80.dp))
+                    }
+
+                    // Footer - Fijo en la parte inferior
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surface)
+                            .padding(horizontal = 16.dp)
+                    ) {
+                        HorizontalDivider(
                             modifier = Modifier.padding(vertical = 8.dp),
                             color = MaterialTheme.colorScheme.outlineVariant
                         )
 
-                        // Footer
                         MenuItem(
                             icon = Icons.Default.ExitToApp,
                             text = "Cerrar sesión",
@@ -167,12 +191,24 @@ fun SideMenu(
                             textGradient = ColorGradients.redPassion
                         )
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
                     }
                 }
             }
         },
         content = { content() }
+    )
+}
+
+@Composable
+private fun SectionHeader(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall.copy(
+            brush = ColorGradients.blueVibrant
+        ),
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp)
     )
 }
 
@@ -191,14 +227,15 @@ fun MenuItem(
         onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        color = Color.Transparent
+            .padding(vertical = 2.dp), // Reducido para optimizar espacio
+        color = Color.Transparent,
+        shape = RoundedCornerShape(8.dp) // Añadido para mejor UX
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 12.dp, horizontal = 16.dp)
+                .padding(vertical = 10.dp, horizontal = 16.dp) // Reducido ligeramente
         ) {
             if (iconGradient != null) {
                 Box(
@@ -239,14 +276,14 @@ fun MenuItem(
                 ) {
                     Text(
                         text = text,
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = MaterialTheme.typography.bodyMedium, // Ajustado para consistencia
                         color = Color.White
                     )
                 }
             } else {
                 Text(
                     text = text,
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = textColor
                 )
             }
@@ -256,6 +293,7 @@ fun MenuItem(
 //@Composable
 //fun SideMenu(
 //    isOpen: Boolean,
+//    onClose: () -> Unit, // Nuevo parámetro
 //    subsidiaryData: ISubsidiary?,
 //    onMenuItemSelected: (String) -> Unit,
 //    onLogout: () -> Unit,
@@ -264,178 +302,133 @@ fun MenuItem(
 //    val drawerState = rememberDrawerState(initialValue = if (isOpen) DrawerValue.Open else DrawerValue.Closed)
 //
 //    LaunchedEffect(isOpen) {
-//        if (isOpen) {
-//            drawerState.open()
-//        } else {
-//            drawerState.close()
+//        if (isOpen) drawerState.open() else drawerState.close()
+//    }
+//    // Manejar el cierre por gestos o clic fuera
+//    LaunchedEffect(drawerState.currentValue) {
+//        if (drawerState.currentValue == DrawerValue.Closed) {
+//            onClose()
 //        }
 //    }
 //
 //    ModalNavigationDrawer(
 //        drawerState = drawerState,
-//        gesturesEnabled = isOpen,
+//        gesturesEnabled = true, // Permite cerrar arrastrando
 //        drawerContent = {
 //            ModalDrawerSheet(
 //                modifier = Modifier.width(300.dp),
-//                drawerContainerColor = MaterialTheme.colorScheme.surface,
-//                drawerContentColor = MaterialTheme.colorScheme.onSurface
+//                drawerContainerColor = MaterialTheme.colorScheme.surface
 //            ) {
 //                Column(
 //                    modifier = Modifier
 //                        .fillMaxHeight()
 //                        .verticalScroll(rememberScrollState())
-//                        .padding(horizontal = 16.dp)
 //                ) {
-//                    // Logo y cabecera
+//                    // Header Section
 //                    Box(
 //                        modifier = Modifier
 //                            .fillMaxWidth()
-//                            .height(200.dp)
+//                            .height(220.dp)
 //                            .background(
-//                                brush = ColorGradients.blueVibrant, // Usando tu gradiente azul vibrante
-//                                shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)
-//                            )
-////                            .background(
-////                                brush = Brush.verticalGradient(
-////                                    colors = listOf(
-////                                        MaterialTheme.colorScheme.primary,
-////                                        MaterialTheme.colorScheme.primaryContainer
-////                                    )
-////                                ),
+//                                brush = ColorGradients.blueVibrant,
 ////                                shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)
-////                            )
-//                            .padding(16.dp),
+//                            ),
 //                        contentAlignment = Alignment.Center
 //                    ) {
 //                        Column(
 //                            horizontalAlignment = Alignment.CenterHorizontally,
-//                            modifier = Modifier.wrapContentHeight()
+//                            modifier = Modifier.padding(16.dp)
 //                        ) {
-//                            // Logo placeholder (sustituir por tu logo real)
-//                            Box(
+//                            Image(
+//                                painter = painterResource(id = R.drawable.fibo),
+//                                contentDescription = "Logo",
 //                                modifier = Modifier
-//                                    .size(80.dp)
-//                                    .background(Color.White, CircleShape)
-//                                    .padding(12.dp),
-//                                contentAlignment = Alignment.Center
-//                            ) {
-//                                // Reemplaza esto con tu logo real
-////                                Text(
-////                                    text = "FIBO",
-////                                    style = MaterialTheme.typography.headlineMedium,
-////                                    color = MaterialTheme.colorScheme.primary,
-////                                    fontWeight = FontWeight.Bold
-////                                )
-//
-////                                 Alternativa: usar un logo con Image
-//                                 Image(
-//                                     painter = painterResource(id = R.drawable.fibo),
-//                                     contentDescription = "Logo",
-//                                     modifier = Modifier
-//                                         .size(80.dp) // Tamaño fijo para el logo
-//                                         .background(Color.White, CircleShape)
-//                                         .padding(12.dp),
-//                                     contentScale = ContentScale.Fit // Ajusta la imagen al contenedor
-//                                 )
-//                            }
-//
-//                            Spacer(modifier = Modifier.height(16.dp))
-//
+//                                    .size(100.dp)
+//                                    .background(Color.White, CircleShape),
+//                                contentScale = ContentScale.Fit
+//                            )
+//                            Spacer(modifier = Modifier.height(8.dp))
 //                            Text(
 //                                text = "Fibo",
 //                                style = MaterialTheme.typography.titleLarge,
 //                                color = Color.White,
 //                                fontWeight = FontWeight.Bold
 //                            )
-//
 //                            Text(
 //                                text = subsidiaryData?.name ?: "Facturación Electrónica",
-//                                style = MaterialTheme.typography.bodyMedium,
-//                                color = Color.White.copy(alpha = 0.8f)
+//                                style = MaterialTheme.typography.titleMedium,
+//                                color = Color.White.copy(alpha = 0.8f),
+//                                modifier = Modifier.fillMaxWidth(), // Ocupa todo el ancho disponible
+//                                textAlign = TextAlign.Center, // Centra el texto horizontalmente
+//                                maxLines = 2, // Limita a 2 líneas si es necesario
+//                                overflow = TextOverflow.Ellipsis // Añade puntos suspensivos si el texto es muy largo
 //                            )
 //                        }
 //                    }
 //
-//                    Spacer(modifier = Modifier.height(16.dp))
+//                    // Menu Items
+//                    Column(
+//                        modifier = Modifier
+//                            .weight(1f)
+//                            .padding(horizontal = 16.dp)
+//                    ) {
+//                        Spacer(modifier = Modifier.height(16.dp))
 //
-//                    // Sección principal
-//                    Text(
-//                        text = "PRINCIPAL",
-//                        style = MaterialTheme.typography.labelSmall.copy(
-//                            brush = ColorGradients.blueVibrant // Usa el gradiente que prefieras
-//                        ),
-////                        color = MaterialTheme.colorScheme.primary,
-//                        fontWeight = FontWeight.Bold,
-//                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp)
-//                    )
+//                        // PRINCIPAL Section
+//                        Text(
+//                            text = "PRINCIPAL",
+//                            style = MaterialTheme.typography.labelSmall.copy(
+//                                brush = ColorGradients.blueVibrant
+//                            ),
+//                            fontWeight = FontWeight.Bold,
+//                            modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp)
+//                        )
+//                        MenuItem(icon = Icons.Default.Home, text = "Inicio", onClick = { onMenuItemSelected("Inicio") })
+//                        MenuItem(icon = Icons.Default.Person, text = "Perfil", onClick = { onMenuItemSelected("Perfil") })
 //
-//                    MenuItem(
-//                        icon = Icons.Default.Home,
-//                        text = "Inicio",
-//                        onClick = { onMenuItemSelected("Inicio") }
-//                    )
+//                        Spacer(modifier = Modifier.height(16.dp))
 //
-//                    MenuItem(
-//                        icon = Icons.Default.Person,
-//                        text = "Perfil",
-//                        onClick = { onMenuItemSelected("Perfil") }
-//                    )
+//                        // DOCUMENTOS Section
+//                        Text(
+//                            text = "DOCUMENTOS",
+//                            style = MaterialTheme.typography.labelSmall.copy(
+//                                brush = ColorGradients.blueVibrant
+//                            ),
+//                            fontWeight = FontWeight.Bold,
+//                            modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp)
+//                        )
+//                        MenuItem(icon = Icons.Default.Description, text = "Nueva Factura", onClick = { onMenuItemSelected("Nueva Factura") })
+//                        MenuItem(icon = Icons.Default.Receipt, text = "Nueva Boleta", onClick = { onMenuItemSelected("Nueva Boleta") })
+//                        MenuItem(icon = Icons.Default.AddCircleOutline, text = "Cotizaciones", onClick = { onMenuItemSelected("Cotizaciones") })
+//                        MenuItem(icon = Icons.Default.AddCircleOutline, text = "Productos", onClick = { onMenuItemSelected("Productos") })
+//                        MenuItem(icon = Icons.Default.AddCircle, text = "Nota de salida", onClick = { onMenuItemSelected("Nota de salida") })
 //
-//                    Spacer(modifier = Modifier.height(16.dp))
+//                        // Flexible spacer before footer
+//                        Spacer(modifier = Modifier.weight(0.5f))
 //
-//                    // Sección de documentos
-//                    Text(
-//                        text = "DOCUMENTOS",
-//                        style = MaterialTheme.typography.labelSmall.copy(
-//                            brush = ColorGradients.blueVibrant // Usa el gradiente que prefieras
-//                        ),
-////                        color = MaterialTheme.colorScheme.primary,
-//                        fontWeight = FontWeight.Bold,
-//                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp)
-//                    )
+//                        Divider(
+//                            modifier = Modifier.padding(vertical = 8.dp),
+//                            color = MaterialTheme.colorScheme.outlineVariant
+//                        )
 //
-//                    MenuItem(
-//                        icon = Icons.Default.Description,
-//                        text = "Nueva Factura",
-//                        onClick = { onMenuItemSelected("Nueva Factura") }
-//                    )
+//                        // Footer
+//                        MenuItem(
+//                            icon = Icons.Default.ExitToApp,
+//                            text = "Cerrar sesión",
+//                            onClick = onLogout,
+//                            iconGradient = ColorGradients.redPassion,
+//                            textGradient = ColorGradients.redPassion
+//                        )
 //
-//                    MenuItem(
-//                        icon = Icons.Default.Receipt,
-//                        text = "Nueva Boleta",
-//                        onClick = { onMenuItemSelected("Nueva Boleta") }
-//                    )
-//
-//                    MenuItem(
-//                        icon = Icons.Default.History,
-//                        text = "Historial",
-//                        onClick = { onMenuItemSelected("Historial") }
-//                    )
-//
-//                    Spacer(modifier = Modifier.weight(1f))
-//
-//                    Divider(
-//                        modifier = Modifier.padding(vertical = 4.dp),
-//                        color = MaterialTheme.colorScheme.outlineVariant
-//                    )
-//
-//                    // Logout
-//                    MenuItem(
-//                        icon = Icons.Default.ExitToApp,
-//                        text = "Cerrar sesión",
-//                        onClick = onLogout,
-//                        iconGradient = ColorGradients.redPassion, // Gradiente para el icono
-//                        textGradient = ColorGradients.redPassion  // Gradiente para el texto
-////                        contentColor = MaterialTheme.colorScheme.error
-//                    )
-//
-//                    Spacer(modifier = Modifier.height(8.dp))
+//                        Spacer(modifier = Modifier.height(16.dp))
+//                    }
 //                }
 //            }
 //        },
 //        content = { content() }
 //    )
 //}
+//
 //@Composable
 //fun MenuItem(
 //    icon: ImageVector,
@@ -460,7 +453,6 @@ fun MenuItem(
 //                .fillMaxWidth()
 //                .padding(vertical = 12.dp, horizontal = 16.dp)
 //        ) {
-//            // Icono con soporte para gradiente
 //            if (iconGradient != null) {
 //                Box(
 //                    modifier = Modifier
@@ -475,7 +467,7 @@ fun MenuItem(
 //                        imageVector = icon,
 //                        contentDescription = text,
 //                        modifier = Modifier.size(24.dp),
-//                        tint = Color.White // Importante para que el gradiente se vea bien
+//                        tint = Color.White
 //                    )
 //                }
 //            } else {
@@ -489,7 +481,6 @@ fun MenuItem(
 //
 //            Spacer(modifier = Modifier.width(16.dp))
 //
-//            // Texto con soporte para gradiente
 //            if (textGradient != null) {
 //                Box(
 //                    modifier = Modifier
@@ -502,7 +493,7 @@ fun MenuItem(
 //                    Text(
 //                        text = text,
 //                        style = MaterialTheme.typography.bodyLarge,
-//                        color = Color.White // Base blanca para mejor contraste
+//                        color = Color.White
 //                    )
 //                }
 //            } else {

@@ -27,7 +27,6 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlin.random.Random
 
-// Extensiones para el ViewModel
 @HiltViewModel
 class NewNoteOfSaleViewModel @Inject constructor(
     private val operationRepository: OperationRepository,
@@ -238,7 +237,7 @@ class NewNoteOfSaleViewModel @Inject constructor(
             try {
                 val serials = operationRepository.getAllSerialsByIdSubsidiary(
                     subsidiaryId = subsidiaryId,
-                    documentType = "01" // "01" para facturas
+                    documentType = "NS" // "NS" para venta
                 )
                 _serials.value = serials
                 _selectedSerial.value = serials.firstOrNull()

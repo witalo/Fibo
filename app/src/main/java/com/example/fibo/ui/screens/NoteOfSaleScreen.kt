@@ -183,10 +183,10 @@ fun NoteOfSaleScreen(
                                 NoteOfSaleContent(
                                     invoices = invoices,
                                     onInvoiceClick = { invoice ->
-                                        navController.navigate("invoice_detail/${invoice.id}")
+                                        navController.navigate("note_of_sale_detail/${invoice.id}")
                                     },
-                                    onNewInvoice = { navController.navigate(Screen.NewInvoice.route) },
-                                    onNewReceipt = { navController.navigate(Screen.NewReceipt.route) },
+                                    onNewInvoice = { navController.navigate(Screen.NewNoteOfSale.route) },
+                                    onNewReceipt = { navController.navigate(Screen.NewNoteOfSale.route) },
                                     selectedClient = selectedClient,
                                     onClearClientFilter = { viewModel.clearClientSearch() }
                                 )
@@ -250,16 +250,11 @@ fun NoteOfSaleContent(
     onClearClientFilter: () -> Unit
 ) {
     // Calculate cantidad de facturas y boletas
-    val invoiceCount = invoices.count { it.documentTypeReadable == "FACTURA" }
-    val receiptCount = invoices.count { it.documentTypeReadable == "BOLETA" }
+    val invoiceCount = invoices.count { it.documentTypeReadable == "NOTA DE SALIDA" }
 
     // Calculate monetary totals
     val invoiceAmountTotal = invoices
-        .filter { it.documentTypeReadable == "FACTURA" }
-        .sumOf { it.totalToPay }
-
-    val receiptAmountTotal = invoices
-        .filter { it.documentTypeReadable == "BOLETA" }
+        .filter { it.documentTypeReadable == "NOTA DE SALIDA" }
         .sumOf { it.totalToPay }
 
     Column(
@@ -278,11 +273,11 @@ fun NoteOfSaleContent(
         // Sección de Listado (82% del espacio)
         Box(
             modifier = Modifier
-                .weight(0.82f)
+                .weight(0.90f)
                 .fillMaxWidth()
         ) {
             if (invoices.isEmpty()) {
-                NoteOfSaleEmptyState(message = "No hay comprobantes")
+                NoteOfSaleEmptyState(message = "No hay ventas")
             } else {
                 // Wrap the InvoiceList in a Box to ensure scrolling works
                 NoteOfSaleList(
@@ -297,17 +292,14 @@ fun NoteOfSaleContent(
         // Sección de Botones (18% del espacio)
         Column(
             modifier = Modifier
-                .weight(0.18f)
+                .weight(0.10f)
                 .fillMaxWidth(),
 //            verticalArrangement = Arrangement.Bottom
         ) {
             NoteOfSaleActionButtons(
                 onNewInvoice = onNewInvoice,
-                onNewReceipt = onNewReceipt,
                 invoiceCount = invoiceCount,
-                receiptCount = receiptCount,
-                invoiceAmountTotal = invoiceAmountTotal,
-                receiptAmountTotal = receiptAmountTotal
+                invoiceAmountTotal = invoiceAmountTotal
             )
         }
     }
@@ -413,6 +405,7 @@ fun NoteOfSaleItem(
                     gradient = when (invoice.documentTypeReadable) {
                         "FACTURA" -> ColorGradients.blueOcean
                         "BOLETA" -> ColorGradients.greenNature
+                        "NOTA DE SALIDA" -> ColorGradients.greenNature
                         else -> ColorGradients.greenNature
                     }
                 )
@@ -460,6 +453,7 @@ fun NoteOfSaleItem(
                             tint = if (isNoteOfSaleWithinDays(invoice.emitDate, when (invoice.documentType.cleanNoteOfSaleDocumentType()) {
                                     "01" -> 3
                                     "03" -> 5
+                                    "NS" -> 90
                                     else -> 0
                                 })) {
                                 MaterialTheme.colorScheme.error
@@ -529,6 +523,7 @@ fun NoteOfSaleItem(
                         text = when (invoice.documentType.cleanNoteOfSaleDocumentType()) {
                             "01" -> "Facturas solo pueden anularse dentro de los 3 días de emisión"
                             "03" -> "Boletas solo pueden anularse dentro de los 5 días de emisión"
+                            "NS" -> "Notas de venta solo pueden anularse dentro de los 90 días de emisión"
                             else -> "Este comprobante no puede ser anulado"
                         },
                         style = MaterialTheme.typography.bodyMedium,
@@ -557,6 +552,7 @@ fun NoteOfSaleItem(
                     enabled = when (invoice.documentType.cleanNoteOfSaleDocumentType()) {
                         "01" -> isNoteOfSaleWithinDays(invoice.emitDate, 3)
                         "03" -> isNoteOfSaleWithinDays(invoice.emitDate, 5)
+                        "NS" -> isNoteOfSaleWithinDays(invoice.emitDate, 90)
                         else -> false
                     }
                 ) {
@@ -631,11 +627,8 @@ fun String.cleanNoteOfSaleDocumentType(): String {
 @Composable
 fun NoteOfSaleActionButtons(
     onNewInvoice: () -> Unit,
-    onNewReceipt: () -> Unit,
     invoiceCount: Int,
-    receiptCount: Int,
-    invoiceAmountTotal: Double,
-    receiptAmountTotal: Double
+    invoiceAmountTotal: Double
 ) {
     Column(
         modifier = Modifier
@@ -699,88 +692,12 @@ fun NoteOfSaleActionButtons(
 
                 Icon(
                     imageVector = Icons.Default.ReceiptLong,
-                    contentDescription = "Nueva Factura",
+                    contentDescription = "Nueva Venta",
                     modifier = Modifier.size(18.dp),
                     tint = Color.White
                 )
                 Text(
-                    text = "Nueva Factura",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1 // Forzar una sola línea
-                )
-                Spacer(modifier = Modifier.weight(1f)) // Espacio flexible
-//                Spacer(modifier = Modifier.weight(1f))
-//                Icon(
-//                    imageVector = Icons.Filled.ArrowForward,
-//                    contentDescription = null,
-//                    modifier = Modifier.size(18.dp),
-//                    tint = Color.White.copy(alpha = 0.6f)
-//                )
-            }
-        }
-
-        // Botón Nueva Boleta - Versión mejorada
-        ElevatedButton(
-            onClick = onNewReceipt,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp),
-            colors = ButtonDefaults.elevatedButtonColors(
-                containerColor = Color(0xFF6A8C72),  // Verde profesional
-                contentColor = Color.White
-            ),
-            elevation = ButtonDefaults.elevatedButtonElevation(
-                defaultElevation = 6.dp,
-                pressedElevation = 2.dp
-            ),
-            shape = RoundedCornerShape(12.dp),
-            border = BorderStroke(
-                width = 1.dp,
-                color = Color(0xFFFFFFFF).copy(alpha = 0.3f)
-            )
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier.fillMaxWidth(0.95f)
-            ) {
-                // Counter Chip
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color.White.copy(alpha = 0.15f))
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                ) {
-                    Text(
-                        text = "Total: $receiptCount",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White
-                    )
-                }
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color.White.copy(alpha = 0.15f))
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                ) {
-                    Text(
-                        text = "S/. ${String.format("%.2f", receiptAmountTotal)}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White
-                    )
-                }
-
-                Spacer(modifier = Modifier.weight(1f)) // Espacio flexible
-
-                Icon(
-                    imageVector = Icons.Default.Receipt,
-                    contentDescription = "Nueva Boleta",
-                    modifier = Modifier.size(18.dp),
-                    tint = Color.White
-                )
-                Text(
-                    text = "Nueva Boleta",
+                    text = "Nueva Venta",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1 // Forzar una sola línea

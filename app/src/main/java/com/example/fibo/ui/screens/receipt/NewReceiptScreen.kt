@@ -1258,7 +1258,7 @@ fun NewReceiptScreen(
                                                 documentType = "03",
                                                 operationType = "0101",
                                                 operationStatus = "01",
-                                                operationAction = "E",
+                                                operationAction = "NA",
                                                 currencyType = "PEN",
                                                 operationDate = getCurrentFormattedDate(),
                                                 emitDate = receiptDate,

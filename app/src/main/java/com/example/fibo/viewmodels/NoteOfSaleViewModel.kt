@@ -304,7 +304,7 @@ class NoteOfSaleViewModel @Inject constructor(
     fun loadInvoicesByPersonAndUser(personId: Int, userId: Int) {
         viewModelScope.launch {
             _invoiceState.value = InvoiceState.Loading
-            val types = listOf("01", "03") // Tipo para cotizaciones
+            val types = listOf("NS") // Tipo para cotizaciones
             try {
                 val invoices = operationRepository.getOperationsByPersonAndUser(
                     personId = personId,

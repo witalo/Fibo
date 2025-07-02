@@ -1306,7 +1306,7 @@ fun NewInvoiceScreen(
                                                 documentType = "01", // Factura electrónica
                                                 operationType = "0101", // Factura a cliente
                                                 operationStatus = "01", // Pendiente de envío a SUNAT
-                                                operationAction = "E", // Emitir
+                                                operationAction = "NA", // Emitir
                                                 currencyType = "PEN", // Soles peruanos
                                                 operationDate = getCurrentFormattedDate(), // Fecha actual
                                                 emitDate = invoiceDate, // Fecha de emisión

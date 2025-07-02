@@ -19,7 +19,7 @@ sealed class Screen(
 //    object NewInvoice : Screen("new_invoice")
 //    object NewReceipt : Screen("new_receipt")
     object NewQuotation : Screen("new_quotation")
-    object NewNoteOfSale : Screen("new_note_of_sale")
+//    object NewNoteOfSale : Screen("new_note_of_sale")
     object Product : Screen("product")
     object NewInvoice : Screen(
         route = "new_invoice",
@@ -43,6 +43,19 @@ sealed class Screen(
         ) // <-- Este paréntesis estaba faltando
     ) { // <-- Ahora sí se cierra correctamente
         fun createRoute(quotationId: Int) = "new_receipt/$quotationId"
+        const val quotationIdArg = "quotationId"
+    }
+
+    object NewNoteOfSale : Screen(
+        route = "new_note_of_sale",
+        routeWithArgs = "new_note_of_sale/{quotationId}",
+        arguments = listOf(
+            navArgument("quotationId") {
+                type = NavType.StringType
+            }
+        ) // <-- Este paréntesis estaba faltando
+    ) { // <-- Ahora sí se cierra correctamente
+        fun createRoute(quotationId: Int) = "new_note_of_sale/$quotationId"
         const val quotationIdArg = "quotationId"
     }
 

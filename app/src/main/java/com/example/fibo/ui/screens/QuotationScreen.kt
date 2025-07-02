@@ -148,6 +148,7 @@ fun QuotationScreen(
                                     }
                                 }
                             }
+
                             is QuotationState.Success -> {
                                 val quotation =
                                     (quotationState as QuotationState.Success).data
@@ -162,14 +163,17 @@ fun QuotationScreen(
                                     onClearClientFilter = { viewModel.clearClientSearch() }
                                 )
                             }
+
                             is QuotationState.Error -> {
                                 ErrorMessage(
                                     message = (quotationState as QuotationState.Error).message,
-                                    onRetry = { userData?.id?.let { userId ->
-                                        viewModel.loadQuotation(selectedDate, userId)
-                                    } ?: run {
-                                        QuotationState.WaitingForUser
-                                    } }
+                                    onRetry = {
+                                        userData?.id?.let { userId ->
+                                            viewModel.loadQuotation(selectedDate, userId)
+                                        } ?: run {
+                                            QuotationState.WaitingForUser
+                                        }
+                                    }
                                 )
                             }
                         }
@@ -192,6 +196,7 @@ fun QuotationScreen(
         }
     )
 }
+
 @Composable
 fun QuotationContent(
     quotation: List<IOperation>,
@@ -290,7 +295,10 @@ fun QuotationItem(
     var selectedDocumentType by remember { mutableStateOf("FACTURA") } // Default to Factura
 
 
-    val isAnulado = quotation.operationStatus.replace("A_", "") == "06" || quotation.operationStatus.replace("A_", "") == "04"
+    val isAnulado = quotation.operationStatus.replace(
+        "A_",
+        ""
+    ) == "06" || quotation.operationStatus.replace("A_", "") == "04"
     var showPdfDialog by remember { mutableStateOf(false) }
     // Show PDF Dialog if needed
     if (showPdfDialog) {
@@ -345,6 +353,12 @@ fun QuotationItem(
                             onClick = { selectedDocumentType = "BOLETA" },
                             modifier = Modifier.weight(1f)
                         )
+                        DocumentTypeChip(
+                            label = "VENTA",
+                            isSelected = selectedDocumentType == "NOTA DE SALIDA",
+                            onClick = { selectedDocumentType = "NOTA DE SALIDA" },
+                            modifier = Modifier.weight(1f)
+                        )
                     }
                 }
             },
@@ -357,8 +371,12 @@ fun QuotationItem(
                             navController.navigate(Screen.NewInvoice.createRoute(quotation.id)) {
                                 popUpTo(Screen.Quotation.route)
                             }
-                        } else {
+                        } else if (selectedDocumentType == "BOLETA") {
                             navController.navigate(Screen.NewReceipt.createRoute(quotation.id)) {
+                                popUpTo(Screen.Quotation.route)
+                            }
+                        } else if (selectedDocumentType == "NOTA DE SALIDA") {
+                            navController.navigate(Screen.NewNoteOfSale.createRoute(quotation.id)) {
                                 popUpTo(Screen.Quotation.route)
                             }
                         }
