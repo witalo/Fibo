@@ -75,7 +75,13 @@ sealed class BluetoothState {
     object Connected : BluetoothState()
     data class Error(val message: String) : BluetoothState()
 }
-
+sealed class ReportState {
+    object Initial : ReportState()
+    object Loading : ReportState()
+    data class Success(val operations: List<IOperation>) : ReportState()
+    data class Error(val message: String) : ReportState()
+    object Empty : ReportState()
+}
 // Define PDF states
 sealed class PdfState {
     object Loading : PdfState()

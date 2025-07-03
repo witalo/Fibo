@@ -3,6 +3,8 @@ type Query {
 
   allWayPays: [ChoiceWithNumericCodeType]
 
+  allSalesPayments(startDate: Date, endDate: Date, subsidiaryId: Int): SalesWithPaymentSummaryType
+
   operations(date: Date): [OperationType]
 
   searchGeographicLocationCode(search: String): [LocationType]
@@ -61,6 +63,8 @@ type Query {
 
   allExitNotes(subsidiaryId: Int, startDate: Date, endDate: Date, clientId: Int, page: Int, pageSize: Int, serial: String, correlative: Int): NotesSummaryType
 
+  monthlySalesAndPurchases(subsidiaryId: Int): MonthlySalesAndPurchasesType
+
   allSerials(subsidiaryId: Int): [SerialAssignedType]
 
   allSerialsByType(subsidiaryId: Int, documentType: String): [SerialAssignedType]
@@ -76,6 +80,8 @@ type Query {
   clientById(clientId: ID): PersonType
 
   operationById(id: Int): OperationType
+
+  operationsByDateRange(startDate: String!, endDate: String!, userId: Int!, types: [String]!): [OperationType]
 
   allWarehouses(subsidiaryId: Int, category: String): [WarehouseType]
 
@@ -96,6 +102,8 @@ type Query {
   productTariffById(pk: ID): ProductTariffType
 
   productDetailByProductId(productId: Int): ProductDetailType
+
+  productStockMovement(subsidiaryId: Int, startDate: Date, endDate: Date): [ProductStockMovementType]
 
   allPurchases(subsidiaryId: Int, supplierId: Int, startDate: Date, endDate: Date, documentType: String, page: Int, pageSize: Int, serial: String, correlative: Int): PurchasesSummaryType
 
@@ -1855,6 +1863,26 @@ type OperationType {
   subsidiaryId: Int
 
   userId: Int
+
+  totalCash: Float
+
+  totalDebitCard: Float
+
+  totalCreditCard: Float
+
+  totalTransfer: Float
+
+  totalMonue: Float
+
+  totalCheck: Float
+
+  totalCoupon: Float
+
+  totalYape: Float
+
+  totalDue: Float
+
+  totalOther: Float
 }
 
 """
@@ -3234,6 +3262,8 @@ type ProductType {
 
   code: String
 
+  barcode: String
+
   codeSnt: String
 
   name: String
@@ -3629,6 +3659,30 @@ type ChoiceWithNumericCodeType {
   name: String
 }
 
+type SalesWithPaymentSummaryType {
+  salesWithPayments: [OperationType]
+
+  totalCash: Float
+
+  totalDebitCard: Float
+
+  totalCreditCard: Float
+
+  totalTransfer: Float
+
+  totalMonue: Float
+
+  totalCheck: Float
+
+  totalCoupon: Float
+
+  totalYape: Float
+
+  totalDue: Float
+
+  totalOther: Float
+}
+
 type LocationType {
   districtId: String
 
@@ -3713,6 +3767,40 @@ type NotesSummaryType {
   totalNumberOfNotes: Int
 }
 
+type MonthlySalesAndPurchasesType {
+  currentMonthSales: PaymentReceiptType
+
+  lastMonthSales: PaymentReceiptType
+
+  currentMonthPurchases: PaymentReceiptType
+
+  currentMonthProductsSold: [ProductSoldType]
+}
+
+type PaymentReceiptType {
+  invoices: PaymentReceiptDetailType
+
+  tickets: PaymentReceiptDetailType
+
+  exitNotes: PaymentReceiptDetailType
+}
+
+type PaymentReceiptDetailType {
+  quantity: Float
+
+  total: Float
+}
+
+type ProductSoldType {
+  productId: Int
+
+  productName: String
+
+  quantitySold: Float
+
+  totalSold: Float
+}
+
 type ProductDetailType {
   stock: Float
 
@@ -3731,6 +3819,24 @@ type ProductDetailType {
   productTariffId3: Int
 
   typeAffectationId: Int
+}
+
+type ProductStockMovementType {
+  productId: Int
+
+  productCode: String
+
+  productName: String
+
+  bought: Float
+
+  sold: Float
+
+  stock: Float
+
+  totalBought: Float
+
+  totalSold: Float
 }
 
 type PurchasesSummaryType {
@@ -3820,11 +3926,11 @@ type Mutation {
 
   updateWarehouse(category: String, id: ID!, name: String, subsidiaryId: Int): UpdateWarehouseMutation
 
-  createProduct(activeType: String, available: Boolean, code: String, ean: String, maximumFactor: Int, maximumUnitId: Int, minimumFactor: Int, minimumUnitId: Int, name: String, observation: String, priceWithIgv1: Float, priceWithIgv2: Float, priceWithIgv3: Float, priceWithIgv4: Float, priceWithoutIgv1: Float, priceWithoutIgv2: Float, priceWithoutIgv3: Float, priceWithoutIgv4: Float, stock: Float, subjectPerception: Boolean, typeAffectationId: Int, weightInKilograms: Float): CreateProductMutation
+  createProduct(activeType: String, available: Boolean, barcode: String, code: String, ean: String, maximumFactor: Int, maximumUnitId: Int, minimumFactor: Int, minimumUnitId: Int, name: String, observation: String, priceWithIgv1: Float, priceWithIgv2: Float, priceWithIgv3: Float, priceWithIgv4: Float, priceWithoutIgv1: Float, priceWithoutIgv2: Float, priceWithoutIgv3: Float, priceWithoutIgv4: Float, stock: Float, subjectPerception: Boolean, typeAffectationId: Int, weightInKilograms: Float): CreateProductMutation
 
   deleteProduct(id: ID!): DeleteProductMutation
 
-  updateProduct(activeType: String, available: Boolean, code: String, ean: String, id: ID!, maximumFactor: Int, maximumUnitId: Int, minimumFactor: Int, minimumUnitId: Int, name: String, observation: String, priceWithIgv1: Float, priceWithIgv2: Float, priceWithIgv3: Float, priceWithIgv4: Float, priceWithoutIgv1: Float, priceWithoutIgv2: Float, priceWithoutIgv3: Float, priceWithoutIgv4: Float, stock: Float, subjectPerception: Boolean, typeAffectationId: Int, weightInKilograms: Float): UpdateProductMutation
+  updateProduct(activeType: String, available: Boolean, barcode: String, code: String, ean: String, id: ID!, maximumFactor: Int, maximumUnitId: Int, minimumFactor: Int, minimumUnitId: Int, name: String, observation: String, priceWithIgv1: Float, priceWithIgv2: Float, priceWithIgv3: Float, priceWithIgv4: Float, priceWithoutIgv1: Float, priceWithoutIgv2: Float, priceWithoutIgv3: Float, priceWithoutIgv4: Float, stock: Float, subjectPerception: Boolean, typeAffectationId: Int, weightInKilograms: Float): UpdateProductMutation
 
   createUnit(code: String, description: String, shortName: String): CreateUnitMutation
 

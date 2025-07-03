@@ -249,3 +249,55 @@ query GetAllProductsBySubsidiaryId($subsidiaryId: Int, $available: Boolean){
             minimumUnitName
         }
 }
+
+
+# GetOperationsByDateRange.graphql
+query GetOperationsByDateRange(
+    $startDate: String!,
+    $endDate: String!,
+    $userId: Int!,
+    $types: [String]!
+) {
+    operationsByDateRange(
+        startDate: $startDate,
+        endDate: $endDate,
+        userId: $userId,
+        types: $types
+    ) {
+        id
+        serial
+        correlative
+        documentType
+        documentTypeReadable
+        operationType
+        operationStatus
+        operationAction
+        currencyType
+        operationDate
+        emitDate
+        emitTime
+        userId
+        subsidiaryId
+        discountGlobal
+        discountPercentageGlobal
+        discountForItem
+        totalDiscount
+        totalTaxed
+        totalUnaffected
+        totalExonerated
+        totalIgv
+        totalFree
+        totalAmount
+        totalToPay
+        totalPayed
+        client {
+            id
+            names
+            documentType
+            documentNumber
+            email
+            phone
+            address
+        }
+    }
+}

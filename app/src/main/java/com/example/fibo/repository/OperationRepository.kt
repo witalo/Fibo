@@ -26,6 +26,7 @@ import javax.inject.Singleton
 import com.example.fibo.CancelInvoiceMutation
 import com.example.fibo.GetAllProductsBySubsidiaryIdQuery
 import com.example.fibo.GetOperationsByDateAndUserIdQuery
+import com.example.fibo.GetOperationsByDateRangeQuery
 import com.example.fibo.GetOperationsByPersonAndUserQuery
 import com.example.fibo.SearchPersonsQuery
 import com.example.fibo.model.IPayment
@@ -72,21 +73,6 @@ class OperationRepository @Inject constructor(
         } ?: emptyList()
 
     }
-
-    // Funciones de extensión para conversión segura
-//    @SuppressLint("DefaultLocale")
-//    private fun Any?.toSafeDouble(): Double {
-//        val value = when (this) {
-//            is Double -> this
-//            is Float -> this.toDouble()
-//            is Int -> this.toDouble()
-//            is Long -> this.toDouble()
-//            is String -> this.toDoubleOrNull() ?: 0.0
-//            is Number -> this.toDouble()
-//            else -> 0.0
-//        }
-//        return String.format("%.2f", value).toDouble()
-//    }
     @SuppressLint("DefaultLocale")
     private fun Any?.toSafeDouble(): Double {
         val value = when (this) {
@@ -314,119 +300,6 @@ class OperationRepository @Inject constructor(
             Result.failure(e)
         }
     }
-
-
-
-//    suspend fun createInvoice(operation: IOperation): Result<Pair<Int, String>>{
-//        return try {
-//            // Convert operation details to input type
-//            val operationDetailInputs = operation.operationDetailSet.map { detail ->
-//                val tariffInput = TariffInput(
-//                    productId = Optional.present(detail.tariff.productId),
-//                    productCode = Optional.present(detail.tariff.productCode),
-//                    productName = Optional.present(detail.tariff.productName),
-//                    unitId = Optional.present(detail.tariff.unitId),
-//                    unitName = Optional.present(detail.tariff.unitName),
-//                    stock = Optional.present(detail.tariff.stock),
-//                    priceWithIgv = Optional.present(detail.tariff.priceWithIgv),
-//                    priceWithoutIgv = Optional.present(detail.tariff.priceWithoutIgv),
-//                    productTariffId = Optional.present(detail.tariff.productTariffId),
-//                    typeAffectationId = Optional.present(detail.tariff.typeAffectationId)
-//                )
-//                OperationDetailInput(
-//                    id = Optional.present(detail.id),
-//                    tariff = Optional.present(tariffInput),
-//                    description = Optional.present(detail.description),
-//                    typeAffectationId = Optional.present(detail.typeAffectationId),
-//                    quantity = Optional.present(detail.quantity),
-//                    unitValue = Optional.present(detail.unitValue),
-//                    unitPrice = Optional.present(detail.unitPrice),
-//                    discountPercentage = Optional.present(detail.discountPercentage),
-//                    totalDiscount = Optional.present(detail.totalDiscount),
-//                    perceptionPercentage = Optional.present(detail.perceptionPercentage),
-//                    totalPerception = Optional.present(detail.totalPerception),
-//                    igvPercentage = Optional.present(detail.igvPercentage),
-//                    totalValue = Optional.present(detail.totalValue),
-//                    totalIgv = Optional.present(detail.totalIgv),
-//                    totalAmount = Optional.present(detail.totalAmount),
-//                    totalToPay = Optional.present(detail.totalToPay)
-//                )
-//            }
-//
-//            // Create person input
-//            val clientInput = PersonInput(
-//                id = Optional.present(operation.client.id as Int?),
-//                names = Optional.present(operation.client.names),
-//                documentType = Optional.present(operation.client.documentType),
-//                documentNumber = Optional.present(operation.client.documentNumber),
-//                email = Optional.present(operation.client.email),
-//                phone = Optional.present(operation.client.phone),
-//                address = Optional.present(operation.client.address)
-//            )
-//
-//            // Execute the mutation
-//            val response = apolloClient.mutation(
-//                CreateOperationMutation(
-//                    id = Optional.present(operation.id),
-//                    serial = Optional.present(operation.serial),
-//                    correlative = Optional.present(operation.correlative),
-//                    documentType = operation.documentType,
-//                    operationType = operation.operationType,
-//                    operationStatus = operation.operationStatus,
-//                    operationAction = operation.operationAction,
-//                    currencyType = operation.currencyType,
-//                    operationDate = operation.operationDate,
-//                    emitDate = operation.emitDate,
-//                    emitTime = operation.emitTime,
-//                    userId = operation.userId,
-//                    subsidiaryId = operation.subsidiaryId,
-//                    client = clientInput,
-//                    discountGlobal = Optional.present(operation.discountGlobal),
-//                    discountPercentageGlobal = Optional.present(operation.discountPercentageGlobal),
-//                    discountForItem = Optional.present(operation.discountForItem),
-//                    totalDiscount = Optional.present(operation.totalDiscount),
-//                    totalTaxed = Optional.present(operation.totalTaxed),
-//                    totalUnaffected = Optional.present(operation.totalUnaffected),
-//                    totalExonerated = Optional.present(operation.totalExonerated),
-//                    totalIgv = Optional.present(operation.totalIgv),
-//                    totalFree = Optional.present(operation.totalFree),
-//                    totalAmount = Optional.present(operation.totalAmount),
-//                    totalToPay = Optional.present(operation.totalToPay),
-//                    totalPayed = Optional.present(operation.totalPayed),
-//                    operationDetailSet = operationDetailInputs
-//                )
-//            ).execute()
-//
-//            val data = response.data
-//            if (data != null && data.createOperation?.success == true) {
-//                val operationIdStr = data.createOperation.operation?.id
-//                val operationIdInt = operationIdStr?.toIntOrNull() ?: -1
-//                val serial = data.createOperation.operation?.serial ?: ""
-//                val correlative = data.createOperation.operation?.correlative ?: 0
-//                // Format the success message with serial-correlative
-//                val successMessage = if (serial.isNotEmpty()) {
-//                    "${data.createOperation.message ?: "Comprobante creada exitosamente"} (${serial}-${correlative})"
-//                } else {
-//                    data.createOperation.message ?: "Comprobante creada exitosamente"
-//                }
-//                Result.success(Pair(operationIdInt, successMessage))
-//            } else {
-//                // Better error handling
-//                val errorMessage = data?.createOperation?.message
-//                    ?: response.errors?.firstOrNull()?.message
-//                    ?: "Error desconocido al crear el comprobante"
-//
-//                Log.e("CreateOperation", "Error: $errorMessage")
-//                Log.e("CreateOperation", "Response: $response")
-//                Log.e("CreateOperation", "Operation: $operation")
-//
-//                Result.failure(Exception(errorMessage))
-//            }
-//        } catch (e: Exception) {
-//            Log.e("CreateOperation", "Exception: ${e.message}", e)
-//            Result.failure(e)
-//        }
-//    }
 
     suspend fun getOperationById(operationId: Int): IOperation {
         val query = GetOperationByIdQuery(OperationId = operationId)
@@ -732,6 +605,73 @@ class OperationRepository @Inject constructor(
         } catch (e: Exception) {
             // Log del error si es necesario
             println("Error en mostrar la lista de productos: ${e.message}")
+            emptyList()
+        }
+    }
+
+    suspend fun getOperationsByDateRange(
+        startDate: String,
+        endDate: String,
+        userId: Int,
+        types: List<String>
+    ): List<IOperation> {
+        return try {
+            val query = GetOperationsByDateRangeQuery(
+                startDate = startDate,
+                endDate = endDate,
+                userId = userId,
+                types = types
+            )
+            val response = apolloClient.query(query).execute()
+
+            if (response.hasErrors()) {
+                val errorMessage = response.errors?.joinToString { it.message } ?: "Error desconocido"
+                throw Exception("Error al obtener operaciones: $errorMessage")
+            }
+
+            response.data?.operationsByDateRange?.filterNotNull()?.map { o ->
+                IOperation(
+                    id = o.id.toInt(),
+                    documentType = o.documentType.toString(),
+                    documentTypeReadable = o.documentTypeReadable.toString(),
+                    emitDate = o.emitDate!!.toString(),
+                    serial = o.serial ?: "",
+                    correlative = o.correlative ?: 0,
+                    totalAmount = o.totalAmount.toSafeDouble(),
+                    totalTaxed = o.totalTaxed.toSafeDouble(),
+                    totalDiscount = o.totalDiscount.toSafeDouble(),
+                    totalExonerated = o.totalExonerated.toSafeDouble(),
+                    totalUnaffected = o.totalUnaffected.toSafeDouble(),
+                    totalFree = o.totalFree.toSafeDouble(),
+                    totalIgv = o.totalIgv.toSafeDouble(),
+                    totalToPay = o.totalToPay.toSafeDouble(),
+                    totalPayed = o.totalPayed.toSafeDouble(),
+                    operationStatus = o.operationStatus.toString(),
+                    subsidiaryId = o.subsidiaryId!!,
+                    operationType = o.operationType.toString(),
+                    operationAction = o.operationAction.toString(),
+                    currencyType = o.currencyType.toString(),
+                    operationDate = o.operationDate.toString(),
+                    emitTime = o.emitTime.toString(),
+                    userId = o.userId!!,
+                    discountGlobal = o.discountGlobal.toSafeDouble(),
+                    discountPercentageGlobal = o.discountPercentageGlobal.toSafeDouble(),
+                    discountForItem = o.discountForItem.toSafeDouble(),
+                    client = o.client?.let {
+                        IPerson(
+                            id = it.id.toInt(),
+                            names = it.names.orEmpty(),
+                            documentNumber = it.documentNumber.orEmpty(),
+                            phone = it.phone.orEmpty(),
+                            email = it.email.orEmpty(),
+                            documentType = it.documentType?.toString(),
+                            address = it.address.orEmpty()
+                        )
+                    } ?: IPerson(id = 0, names = "", documentNumber = "", phone = "", email = "")
+                )
+            } ?: emptyList()
+        } catch (e: Exception) {
+            println("Error en getOperationsByDateRange: ${e.message}")
             emptyList()
         }
     }

@@ -114,7 +114,7 @@ fun HomeScreen(
                 "Nueva Cotización" -> navController.navigate(Screen.NewQuotation.route)
                 "Productos" -> navController.navigate(Screen.Product.route)
                 "Nueva Nota de salida" -> navController.navigate(Screen.NewNoteOfSale.route)
-
+                "Reporte" -> navController.navigate(Screen.Reports.route)
             }
             isMenuOpen = false
         },
