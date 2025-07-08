@@ -1,5 +1,6 @@
 package com.example.fibo.ui.screens.reports
 import android.os.Build
+import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -57,6 +58,63 @@ fun ReportScreen(
     val isLoadingDetails by reportViewModel.isLoadingDetails.collectAsStateWithLifecycle()
     val isFilterDialogOpen by reportViewModel.isFilterDialogOpen.collectAsStateWithLifecycle()
 
+
+    // Observar el estado de exportación
+    val exportState by reportViewModel.exportState.collectAsStateWithLifecycle()
+    val showReportTypeDialog by reportViewModel.showReportTypeDialog.collectAsStateWithLifecycle()
+
+
+    if (isFilterDialogOpen) {
+        FilterDialog(
+            viewModel = reportViewModel,
+            onDismiss = { reportViewModel.closeFilterDialog() },
+            onApply = { reportViewModel.applyFilters() }
+        )
+    }
+    // Mostrar diálogo de tipo de reporte
+    if (showReportTypeDialog) {
+        ExportTypeDialog(
+            onDismiss = { reportViewModel.hideExportDialog() },
+            onExportSummary = {
+                reportViewModel.exportToExcel(ReportType.SUMMARY)
+            },
+            onExportDetailed = {
+                reportViewModel.exportToExcel(ReportType.DETAILED)
+            }
+        )
+    }
+    // 🆕 NUEVO: Manejar estados de exportación (mostrar mensajes)
+    when (val state = exportState) {
+        is ExportState.Success -> {
+            LaunchedEffect(state) {
+                Toast.makeText(
+                    context,
+                    state.message,
+                    Toast.LENGTH_LONG
+                ).show()
+                // Resetear estado después de mostrar
+                kotlinx.coroutines.delay(100)
+                reportViewModel.resetExportState()
+            }
+        }
+
+        is ExportState.Error -> {
+            LaunchedEffect(state) {
+                Toast.makeText(
+                    context,
+                    state.message,
+                    Toast.LENGTH_LONG
+                ).show()
+                // Resetear estado después de mostrar
+                kotlinx.coroutines.delay(100)
+                reportViewModel.resetExportState()
+            }
+        }
+
+        ExportState.Idle -> { /* No hacer nada */ }
+    }
+
+// Diálogo de filtros (YA EXISTENTE)
     if (isFilterDialogOpen) {
         FilterDialog(
             viewModel = reportViewModel,
@@ -92,7 +150,8 @@ fun ReportScreen(
                         onMenuClick = { isMenuOpen = !isMenuOpen },
                         onFilterClick = { reportViewModel.openFilterDialog() },
                         onExportClick = {
-                            val exportData = reportViewModel.getExportData()
+                            reportViewModel.showExportDialog()
+//                            val exportData = reportViewModel.getExportData()
                             // Implementar exportación aquí
                         },
                         dateRange = reportViewModel.getFormattedDateRange(),

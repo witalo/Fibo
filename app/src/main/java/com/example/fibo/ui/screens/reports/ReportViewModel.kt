@@ -14,15 +14,23 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
+import android.app.DownloadManager
+import android.content.Context
+import android.net.Uri
+import android.os.Environment
+import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import javax.inject.Inject
 
 @RequiresApi(Build.VERSION_CODES.O)
 @HiltViewModel
 class ReportViewModel @Inject constructor(
     private val operationRepository: OperationRepository,
-    private val preferencesManager: PreferencesManager
+    private val preferencesManager: PreferencesManager,
+    @ApplicationContext private val context: Context  // <-- AGREGAR ESTO
 ) : ViewModel() {
 
 
@@ -63,6 +71,20 @@ class ReportViewModel @Inject constructor(
 
     private val _isLoadingDetails = MutableStateFlow<Set<Int>>(emptySet())
     val isLoadingDetails: StateFlow<Set<Int>> = _isLoadingDetails.asStateFlow()
+    // Estados de exportación
+    private val _exportState = MutableStateFlow<ExportState>(ExportState.Idle)
+    val exportState: StateFlow<ExportState> = _exportState.asStateFlow()
+
+    private val _showReportTypeDialog = MutableStateFlow(false)
+    val showReportTypeDialog: StateFlow<Boolean> = _showReportTypeDialog.asStateFlow()
+
+    fun showExportDialog() {
+        _showReportTypeDialog.value = true
+    }
+
+    fun hideExportDialog() {
+        _showReportTypeDialog.value = false
+    }
 
     init {
         // Esperar a que el usuario esté autenticado antes de cargar
@@ -262,4 +284,87 @@ class ReportViewModel @Inject constructor(
             }
         }
     }
+
+    //EXCEL
+    // Función principal de descarga - SÚPER SIMPLE
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun exportToExcel(reportType: ReportType) {
+        viewModelScope.launch {
+            try {
+                hideExportDialog()
+
+                val userId = getCurrentUserId() ?: run {
+                    _exportState.value = ExportState.Error("Usuario no autenticado")
+                    return@launch
+                }
+
+                // Preparar parámetros
+                val typesToExport = if (_selectedDocumentTypes.value.isEmpty()) {
+                    DOCUMENT_TYPE_CHOICES.map { it.code }
+                } else {
+                    _selectedDocumentTypes.value.toList()
+                }
+
+                val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+                val startDateStr = _startDate.value.format(dateFormatter)
+                val endDateStr = _endDate.value.format(dateFormatter)
+                val typesString = typesToExport.joinToString(",")
+                val typeString = when (reportType) {
+                    ReportType.SUMMARY -> "SUMMARY"
+                    ReportType.DETAILED -> "ITEMS"
+                }
+
+                // Construir URL - AJUSTA ESTA URL A TU SERVIDOR
+                val baseUrl = "https://ng.tuf4ctur4.net.pe/operations" // <-- CAMBIA ESTO
+//                val baseUrl = "http://192.168.1.245:8000/operations" // <-- CAMBIA ESTO
+                val downloadUrl = "$baseUrl/export_sales_multi/$userId/$startDateStr/$endDateStr/$typesString/$typeString/"
+
+                // Nombre del archivo
+                val fileName = "Reporte_${if (reportType == ReportType.DETAILED) "Detallado" else "Resumen"}_${LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))}.xlsx"
+
+                // Usar DownloadManager de Android
+                downloadExcelFile(downloadUrl, fileName)
+
+            } catch (e: Exception) {
+                _exportState.value = ExportState.Error("Error: ${e.message}")
+            }
+        }
+    }
+
+    private fun downloadExcelFile(url: String, fileName: String) {
+        try {
+            val request = DownloadManager.Request(Uri.parse(url)).apply {
+                setTitle("Descargando reporte")
+                setDescription(fileName)
+                setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
+                // Sin token - removido
+            }
+
+            val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            val downloadId = downloadManager.enqueue(request)
+
+            _exportState.value = ExportState.Success(
+                fileName = fileName,
+                message = "Descarga iniciada. Revisa las notificaciones."
+            )
+
+        } catch (e: Exception) {
+            _exportState.value = ExportState.Error("Error al iniciar descarga: ${e.message}")
+        }
+    }
+    fun resetExportState() {
+        _exportState.value = ExportState.Idle
+    }
+}
+// Estados simplificados
+sealed class ExportState {
+    object Idle : ExportState()
+    data class Success(val fileName: String, val message: String) : ExportState()
+    data class Error(val message: String) : ExportState()
+}
+
+enum class ReportType {
+    SUMMARY,
+    DETAILED
 }
