@@ -166,6 +166,11 @@ fun SideMenu(
                             text = "Reporte",
                             onClick = { onMenuItemSelected("Reporte") }
                         )
+                        MenuItem(
+                            icon = Icons.Default.Analytics,
+                            text = "Reporte Pagos",
+                            onClick = { onMenuItemSelected("Reporte Pagos") }
+                        )
 
                         // Puedes agregar más items aquí sin problemas
                         // MenuItem(icon = Icons.Default.Inventory, text = "Inventario", onClick = { onMenuItemSelected("Inventario") })

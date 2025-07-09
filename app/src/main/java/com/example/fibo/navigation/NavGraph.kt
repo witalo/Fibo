@@ -19,6 +19,7 @@ import com.example.fibo.ui.screens.product.ProductScreen
 import com.example.fibo.ui.screens.profile.ProfileScreen
 import com.example.fibo.ui.screens.quotation.NewQuotationScreen
 import com.example.fibo.ui.screens.receipt.NewReceiptScreen
+import com.example.fibo.ui.screens.reportpayment.ReportPaymentScreen
 import com.example.fibo.ui.screens.reports.ReportScreen
 
 @Composable
@@ -182,6 +183,17 @@ fun NavGraph(
             ReportScreen(
                 navController = navController,
                 subsidiaryData = null, // Se obtendrá desde el ViewModel
+                onLogout = {
+                    authViewModel.logout()
+                    navController.navigate(Screen.QrScanner.route) {
+                        popUpTo(navController.graph.id) { inclusive = true }
+                    }
+                }
+            )
+        }
+        composable(Screen.ReportPayment.route) {
+            ReportPaymentScreen(
+                navController = navController,
                 onLogout = {
                     authViewModel.logout()
                     navController.navigate(Screen.QrScanner.route) {

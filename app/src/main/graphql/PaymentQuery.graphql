@@ -1,0 +1,36 @@
+query AllSalesPayments($startDate: Date!, $endDate: Date!, $subsidiaryId: Int!) {
+    allSalesPayments(startDate: $startDate, endDate: $endDate, subsidiaryId: $subsidiaryId) {
+        salesWithPayments {
+            id
+            serial
+            correlative
+            documentType
+            emitDate
+            totalAmount
+            client {
+                names
+                documentNumber
+            }
+            totalCash
+            totalDebitCard
+            totalCreditCard
+            totalTransfer
+            totalMonue
+            totalCheck
+            totalCoupon
+            totalYape
+            totalDue
+            totalOther
+        }
+        totalCash
+        totalDebitCard
+        totalCreditCard
+        totalTransfer
+        totalMonue
+        totalCheck
+        totalCoupon
+        totalYape
+        totalDue
+        totalOther
+    }
+}
