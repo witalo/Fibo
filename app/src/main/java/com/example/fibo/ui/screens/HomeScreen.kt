@@ -60,6 +60,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import android.util.Log
 
 
 @Composable
@@ -102,6 +103,10 @@ fun HomeScreen(
                 "Nueva Cotización" -> navController.navigate(Screen.NewQuotation.route)
                 "Productos" -> navController.navigate(Screen.Product.route)
                 "Nueva Nota de salida" -> navController.navigate(Screen.NewNoteOfSale.route)
+                "Nueva Guía" -> {
+                    Log.d("Navigation", "Intentando navegar a Nueva Guía")
+                    navController.navigate(Screen.NewGuide.route)
+                }
                 "Reporte" -> navController.navigate(Screen.Reports.route)
                 "Reporte Pagos" -> navController.navigate(Screen.ReportPayment.route)
             }
