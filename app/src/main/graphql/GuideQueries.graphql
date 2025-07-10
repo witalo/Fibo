@@ -1,0 +1,47 @@
+query SearchClient(
+    $search: String!
+    $documentType: String
+    $operationDocumentType: String
+    $isClient: Boolean
+    $isDriver: Boolean
+    $isSupplier: Boolean
+    $isReceiver: Boolean
+) {
+    searchClientByParameter(
+        search: $search
+        documentType: $documentType
+        operationDocumentType: $operationDocumentType
+        isClient: $isClient
+        isDriver: $isDriver
+        isSupplier: $isSupplier
+        isReceiver: $isReceiver
+    ) {
+        id
+        names
+        documentNumber
+        documentType
+    }
+}
+
+query GuideReasons {
+    allGuideReasons {
+        code
+        name
+    }
+}
+
+query Serials($subsidiaryId: Int) {
+    allSerials(subsidiaryId: $subsidiaryId) {
+        documentType
+        documentTypeReadable
+        serial
+        isGeneratedViaApi
+    }
+}
+
+query GuideModes {
+    allGuideModes {
+        code
+        name
+    }
+}
