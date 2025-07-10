@@ -41,9 +41,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.fibo.R
 import com.example.fibo.model.IOperation
 import com.example.fibo.navigation.Screen
@@ -55,6 +52,7 @@ import com.example.fibo.ui.components.SideMenu
 import com.example.fibo.utils.ColorGradients
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.icons.filled.Close
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.example.fibo.model.IPerson
 import com.example.fibo.ui.components.ClientFilterChip
 import com.example.fibo.ui.components.ClientSearchDialog
@@ -83,19 +81,9 @@ fun HomeScreen(
     val selectedClient by homeViewModel.selectedClient.collectAsState()
 
     // Maneja el refresco cuando la pantalla obtiene foco
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                homeViewModel.loadInvoices(homeViewModel.selectedDate.value)
-            }
-        }
-
-        lifecycleOwner.lifecycle.addObserver(observer)
-
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
+    LifecycleResumeEffect {
+        homeViewModel.loadInvoices(homeViewModel.selectedDate.value)
+        onPauseOrDispose {}
     }
 
 

@@ -21,6 +21,8 @@ import com.example.fibo.ui.screens.quotation.NewQuotationScreen
 import com.example.fibo.ui.screens.receipt.NewReceiptScreen
 import com.example.fibo.ui.screens.reportpayment.ReportPaymentScreen
 import com.example.fibo.ui.screens.reports.ReportScreen
+import com.example.fibo.utils.DeviceUtils
+import com.example.fibo.ui.screens.guide.NewGuideScreen
 
 @Composable
 @RequiresApi(Build.VERSION_CODES.O)
@@ -35,13 +37,19 @@ fun NavGraph(
     ) {
         // Pantallas de autenticación
         composable(Screen.QrScanner.route) {
+            val context = LocalContext.current
             QrScannerScreen(
-                onScanSuccess = {
+                onQrCodeScanned = { qrCode ->
+                    // Aquí puedes procesar el código QR y luego navegar
+                    authViewModel.scanQr(
+                        qrCode,
+                        DeviceUtils.getDeviceId(context),
+                        DeviceUtils.getDeviceDescription(context)
+                    )
                     navController.navigate(Screen.Home.route) {
                         popUpTo(Screen.QrScanner.route) { inclusive = true }
                     }
-                },
-                authViewModel = authViewModel
+                }
             )
         }
 
@@ -178,6 +186,9 @@ fun NavGraph(
                     navController.navigate(Screen.NoteOfSaleDetail.createRoute(noteId.toInt()))
                 }
             )
+        }
+        composable(Screen.NewGuide.route) {
+            NewGuideScreen(navController = navController)
         }
         composable(Screen.Reports.route) {
             ReportScreen(

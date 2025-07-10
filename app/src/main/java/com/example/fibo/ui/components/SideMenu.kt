@@ -161,6 +161,11 @@ fun SideMenu(
                             text = "Nota de salida",
                             onClick = { onMenuItemSelected("Nota de salida") }
                         )
+                         MenuItem(
+                            icon = Icons.Default.AddCircle,
+                            text = "Nueva Guía",
+                            onClick = { onMenuItemSelected("Nueva Guía") }
+                        )
                         MenuItem(
                             icon = Icons.Default.Analytics,
                             text = "Reporte",

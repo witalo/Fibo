@@ -61,7 +61,7 @@ sealed class Screen(
         const val quotationIdArg = "quotationId"
     }
 
-
+    object NewGuide : Screen("new_guide")
 
 
     // Detalles
