@@ -615,7 +615,7 @@ private fun DatePickerField(
     )
 
     if (showDatePicker) {
-        ModernDatePickerDialog(
+        DatePickerDialog(
             onDateSelected = { selectedDate ->
                 onDateChange(selectedDate)
                 showDatePicker = false
@@ -626,34 +626,175 @@ private fun DatePickerField(
     }
 }
 
-//@Composable
-//private fun DatePickerDialog(
-//    onDateSelected: (LocalDate) -> Unit,
-//    onDismiss: () -> Unit,
-//    initialDate: LocalDate
-//) {
-//    // Implementación simplificada del diálogo de fecha
-//    // En producción, usar DatePicker de Material3
-//    AlertDialog(
-//        onDismissRequest = onDismiss,
-//        title = { Text("Seleccionar fecha") },
-//        text = {
-//            Text("Implementar DatePicker aquí")
-//        },
-//        confirmButton = {
-//            TextButton(onClick = {
-//                onDateSelected(initialDate)
-//            }) {
-//                Text("Aceptar")
-//            }
-//        },
-//        dismissButton = {
-//            TextButton(onClick = onDismiss) {
-//                Text("Cancelar")
-//            }
-//        }
-//    )
-//}
+@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+private fun DatePickerDialog(
+    onDateSelected: (LocalDate) -> Unit,
+    onDismiss: () -> Unit,
+    initialDate: LocalDate
+) {
+    var selectedDate by remember { mutableStateOf(initialDate) }
+    var displayedMonth by remember { mutableStateOf(initialDate.withDayOfMonth(1)) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                "Seleccionar fecha",
+                style = MaterialTheme.typography.titleLarge
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Navegación de mes
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = { displayedMonth = displayedMonth.minusMonths(1) }
+                    ) {
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = "Mes anterior"
+                        )
+                    }
+
+                    Text(
+                        text = displayedMonth.format(
+                            DateTimeFormatter.ofPattern("MMMM yyyy", Locale("es", "ES"))
+                        ).replaceFirstChar { it.uppercase() },
+                        style = MaterialTheme.typography.titleMedium
+                    )
+
+                    IconButton(
+                        onClick = { displayedMonth = displayedMonth.plusMonths(1) }
+                    ) {
+                        Icon(
+                            Icons.Default.ArrowForward,
+                            contentDescription = "Mes siguiente"
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Días de la semana
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    listOf("D", "L", "M", "X", "J", "V", "S").forEach { day ->
+                        Text(
+                            text = day,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.width(40.dp),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Calendario
+                val firstDayOfMonth = displayedMonth.dayOfWeek.value % 7
+                val daysInMonth = displayedMonth.lengthOfMonth()
+                val totalCells = firstDayOfMonth + daysInMonth
+                val weeks = (totalCells + 6) / 7
+
+                Column {
+                    repeat(weeks) { week ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            repeat(7) { dayOfWeek ->
+                                val cellIndex = week * 7 + dayOfWeek
+                                val dayNumber = cellIndex - firstDayOfMonth + 1
+
+                                if (dayNumber in 1..daysInMonth) {
+                                    val cellDate = displayedMonth.withDayOfMonth(dayNumber)
+                                    val isSelected = cellDate == selectedDate
+                                    val isToday = cellDate == LocalDate.now()
+
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(CircleShape)
+                                            .background(
+                                                when {
+                                                    isSelected -> MaterialTheme.colorScheme.primary
+                                                    isToday -> MaterialTheme.colorScheme.primaryContainer
+                                                    else -> Color.Transparent
+                                                }
+                                            )
+                                            .clickable { selectedDate = cellDate },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = dayNumber.toString(),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = when {
+                                                isSelected -> MaterialTheme.colorScheme.onPrimary
+                                                isToday -> MaterialTheme.colorScheme.primary
+                                                else -> MaterialTheme.colorScheme.onSurface
+                                            },
+                                            fontWeight = if (isSelected || isToday) FontWeight.Bold else FontWeight.Normal
+                                        )
+                                    }
+                                } else {
+                                    Spacer(modifier = Modifier.size(40.dp))
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Fecha seleccionada
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
+                ) {
+                    Text(
+                        text = "Fecha seleccionada: ${
+                            selectedDate.format(
+                                DateTimeFormatter.ofPattern("dd 'de' MMMM 'de' yyyy", Locale("es", "ES"))
+                            )
+                        }",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(12.dp),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onDateSelected(selectedDate)
+                    onDismiss()
+                }
+            ) {
+                Text("Aceptar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
+}
 
 // Funciones auxiliares
 private fun getDocumentTypeLabel(type: String): String {

@@ -23,4 +23,15 @@ data class IUser(
         mobileDescription = "",
         jwtToken = ""
     )
+    constructor(id: Int, jwtToken: String) : this(
+        id = id,
+        username = "",
+        email = "",
+        firstName = "",
+        lastName = "",
+        role = "",
+        isActive = true,
+        mobileDescription = "",
+        jwtToken = jwtToken
+    )
 }

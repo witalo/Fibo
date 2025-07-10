@@ -96,7 +96,10 @@ class AuthViewModel @Inject constructor(
                             )
                         },
                         user = response.data?.qrScan?.user?.let {
-                            IUser(id = it.id.toInt())
+                            IUser(
+                                id = it.id.toInt(),
+                                jwtToken = response.data!!.qrScan?.jwtToken ?: "",
+                                )
                         }
                     )
                     preferencesManager.saveUserData(userData)

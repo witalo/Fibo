@@ -8,3 +8,15 @@
 .cxx
 local.properties
 .idea/
+# Excluir archivo build.gradle.kts en app/
+#app/build.gradle.kts
+#
+## Excluir archivo schema.graphqls
+#app/src/main/graphql/schema.graphqls
+#
+## Excluir archivo ApolloClient.kt
+#app/src/main/java/com/example/fibo/apollo/ApolloClient.kt
+#
+## Excluir archivo libs.versions.toml
+#gradle/libs.versions.toml
+

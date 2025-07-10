@@ -61,6 +61,9 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import android.util.Log
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 
 
 @Composable
@@ -81,10 +84,20 @@ fun HomeScreen(
     val isSearching by homeViewModel.isSearching.collectAsState()
     val selectedClient by homeViewModel.selectedClient.collectAsState()
 
-    // Maneja el refresco cuando la pantalla obtiene foco
-    LifecycleResumeEffect {
-        homeViewModel.loadInvoices(homeViewModel.selectedDate.value)
-        onPauseOrDispose {}
+    //home Maneja el refresco cuando la pantalla obtiene foco
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                homeViewModel.loadInvoices(homeViewModel.selectedDate.value)
+            }
+        }
+
+        lifecycleOwner.lifecycle.addObserver(observer)
+
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
 
