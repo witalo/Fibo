@@ -60,7 +60,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.navigation.NavController
 import com.example.fibo.R
 import com.example.fibo.model.IOperation
@@ -98,21 +100,10 @@ fun NoteOfSaleScreen(
     val selectedClient by viewModel.selectedClient.collectAsState()
 
     // Maneja el refresco cuando la pantalla obtiene foco
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                viewModel.loadNoteOfSale(viewModel.selectedDate.value)
-            }
-        }
-
-        lifecycleOwner.lifecycle.addObserver(observer)
-
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
+    LifecycleResumeEffect {
+        viewModel.loadNoteOfSale(viewModel.selectedDate.value)
+        onPauseOrDispose {}
     }
-
 
     SideMenu(
         isOpen = isMenuOpen,

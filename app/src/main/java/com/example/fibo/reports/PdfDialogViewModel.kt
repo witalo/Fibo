@@ -11,7 +11,6 @@ import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.ui.ExperimentalComposeUiApi
-import androidx.compose.ui.contentcapture.ContentCaptureManager.Companion.isEnabled
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
