@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +23,10 @@ import com.example.fibo.ui.components.LoadingDialog
 import com.example.fibo.ui.components.ErrorDialog
 import com.example.fibo.model.IOperationDetail
 import com.example.fibo.model.ITariff
+import com.example.fibo.model.IGuideModeType
+import com.example.fibo.model.IGuideReasonType
+import com.example.fibo.model.ISerialAssigned
+import com.example.fibo.ui.components.ClientSearchDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,10 +78,27 @@ fun NewGuideScreen(
 
             // Sección de Documento
             DocumentSection(
+                documentType = guideState.documentType,
+                guideModeTransfer = guideState.guideModeTransfer,
+                guideReasonTransfer = guideState.guideReasonTransfer,
                 serial = guideState.serial,
                 correlative = guideState.correlative,
+                emitDate = guideState.emitDate,
+                clientId = guideState.clientId,
+                clientName = guideState.clientName,
+                onDocumentTypeChanged = { viewModel.updateField("documentType", it) },
+                onGuideModeChanged = { viewModel.updateField("guideModeTransfer", it) },
+                onGuideReasonChanged = { viewModel.updateField("guideReasonTransfer", it) },
                 onSerialChanged = { viewModel.updateField("serial", it) },
-                onCorrelativeChanged = { viewModel.updateField("correlative", it.toIntOrNull() ?: 0) }
+                onCorrelativeChanged = { viewModel.updateField("correlative", it ?: 0) },
+                onClientSelected = { clientId, clientName ->
+                    viewModel.updateField("clientId", clientId)
+                    viewModel.updateField("clientName", clientName)
+                },
+                guideModes = viewModel.guideModeTypes,
+                guideReasons = viewModel.guideReasonTypes,
+                serials = viewModel.serialAssigneds,
+                isLoadingData = viewModel.isLoadingData
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -185,10 +207,24 @@ private fun ClientSection(
 
 @Composable
 private fun DocumentSection(
+    documentType: String,
+    guideModeTransfer: String,
+    guideReasonTransfer: String,
     serial: String,
     correlative: Int,
+    emitDate: String,
+    clientId: Int,
+    clientName: String,
+    onDocumentTypeChanged: (String) -> Unit,
+    onGuideModeChanged: (String) -> Unit,
+    onGuideReasonChanged: (String) -> Unit,
     onSerialChanged: (String) -> Unit,
-    onCorrelativeChanged: (String) -> Unit
+    onCorrelativeChanged: (Int) -> Unit,
+    onClientSelected: (Int, String) -> Unit,
+    guideModes: List<IGuideModeType> = emptyList(),
+    guideReasons: List<IGuideReasonType> = emptyList(),
+    serials: List<ISerialAssigned> = emptyList(),
+    isLoadingData: Boolean = false
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -204,25 +240,195 @@ private fun DocumentSection(
                 style = MaterialTheme.typography.titleMedium
             )
             
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            OutlinedTextField(
-                value = serial,
-                onValueChange = onSerialChanged,
-                label = { Text("Serie") },
-                modifier = Modifier.fillMaxWidth()
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Tipo de documento
+            ExposedDropdownMenuBox(
+                label = "Tipo documento",
+                value = when(documentType) {
+                    "09" -> "GUIA DE REMISIÓN REMITENTE ELECTRÓNICA"
+                    "31" -> "GUÍA DE REMISIÓN TRANSPORTISTA"
+                    else -> ""
+                },
+                options = listOf(
+                    "09" to "GUIA DE REMISIÓN REMITENTE ELECTRÓNICA",
+                    "31" to "GUÍA DE REMISIÓN TRANSPORTISTA"
+                ),
+                onOptionSelected = { code, _ -> onDocumentTypeChanged(code) }
             )
-            
+
+            if (documentType == "09") {
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Tipo de transporte
+                if (isLoadingData) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                } else {
+                    ExposedDropdownMenuBox(
+                        label = "Tipo de transporte",
+                        value = guideModes.find { it.code == guideModeTransfer }?.name ?: "",
+                        options = guideModes.map { it.code to it.name },
+                        onOptionSelected = { code, _ -> onGuideModeChanged(code) }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Motivo de traslado
+                if (isLoadingData) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                } else {
+                    ExposedDropdownMenuBox(
+                        label = "Motivo de traslado",
+                        value = guideReasons.find { it.code == guideReasonTransfer }?.name ?: "",
+                        options = guideReasons.map { it.code to it.name },
+                        onOptionSelected = { code, _ -> onGuideReasonChanged(code) }
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(8.dp))
-            
+
+            // Cliente
+            ClientSearchField(
+                value = clientName,
+                onClientSelected = onClientSelected,
+                documentType = documentType
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Serie
+            if (isLoadingData) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            } else {
+                val availableSerials = serials.filter { 
+                    it.documentType == "A_$documentType" && !it.isGeneratedViaApi 
+                }
+                
+                ExposedDropdownMenuBox(
+                    label = "Serie",
+                    value = serial,
+                    options = availableSerials.map { it.serial to it.serial },
+                    onOptionSelected = { code, _ -> onSerialChanged(code) },
+                    enabled = availableSerials.isNotEmpty()
+                )
+
+                if (availableSerials.isEmpty()) {
+                    Text(
+                        text = "No hay series asignadas para este tipo de documento",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Número
             OutlinedTextField(
                 value = correlative.toString(),
-                onValueChange = onCorrelativeChanged,
-                label = { Text("Correlativo") },
+                onValueChange = { value ->
+                    value.toIntOrNull()?.let { onCorrelativeChanged(it) }
+                },
+                label = { Text("Número") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Fecha de emisión
+            OutlinedTextField(
+                value = emitDate,
+                onValueChange = { },
+                label = { Text("Fecha de emisión") },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = false
+            )
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ExposedDropdownMenuBox(
+    label: String,
+    value: String,
+    options: List<Pair<String, String>>,
+    onOptionSelected: (String, String) -> Unit,
+    enabled: Boolean = true
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { if (enabled) expanded = !expanded }
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = { },
+            readOnly = true,
+            label = { Text(label) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier.fillMaxWidth().menuAnchor(),
+            enabled = enabled
+        )
+
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            options.forEach { (code, name) ->
+                DropdownMenuItem(
+                    text = { Text(name) },
+                    onClick = {
+                        onOptionSelected(code, name)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ClientSearchField(
+    value: String,
+    onClientSelected: (Int, String) -> Unit,
+    documentType: String
+) {
+    var searchQuery by remember { mutableStateOf("") }
+    var showDialog by remember { mutableStateOf(false) }
+
+    OutlinedTextField(
+        value = value,
+        onValueChange = { },
+        label = { Text("Cliente") },
+        modifier = Modifier.fillMaxWidth(),
+        readOnly = true,
+        trailingIcon = {
+            IconButton(onClick = { showDialog = true }) {
+                Icon(Icons.Default.Search, contentDescription = "Buscar cliente")
+            }
+        }
+    )
+
+    if (showDialog) {
+        ClientSearchDialog(
+            isVisible = true,
+            onDismiss = { showDialog = false },
+            onClientSelected = { client ->
+                client.names?.let { onClientSelected(client.id, it) }
+                showDialog = false
+            },
+            searchQuery = searchQuery,
+            onSearchQueryChange = { searchQuery = it },
+            searchResults = emptyList(),
+            isLoading = false,
+
+        )
     }
 }
 

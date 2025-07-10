@@ -6,6 +6,9 @@ import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fibo.CreateSaleMutation
+import com.example.fibo.GuideModesQuery
+import com.example.fibo.GuideReasonsQuery
+import com.example.fibo.SerialsQuery
 import com.example.fibo.datastore.PreferencesManager
 import com.example.fibo.model.*
 import com.example.fibo.repository.OperationRepository
@@ -37,18 +40,109 @@ class GuideViewModel @Inject constructor(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    // Estados para los datos de configuración
+    private val _guideModeTypes = MutableStateFlow<List<IGuideModeType>>(emptyList())
+    val guideModeTypes: List<IGuideModeType> get() = _guideModeTypes.value
+
+    private val _guideReasonTypes = MutableStateFlow<List<IGuideReasonType>>(emptyList())
+    val guideReasonTypes: List<IGuideReasonType> get() = _guideReasonTypes.value
+
+    private val _serialAssigneds = MutableStateFlow<List<ISerialAssigned>>(emptyList())
+    val serialAssigneds: List<ISerialAssigned> get() = _serialAssigneds.value
+
+    private val _isLoadingData = MutableStateFlow(false)
+    val isLoadingData: Boolean get() = _isLoadingData.value
+
+    init {
+        loadConfigurationData()
+    }
+
+    private fun loadConfigurationData() {
+        viewModelScope.launch {
+            _isLoadingData.value = true
+            try {
+                // Cargar modos de guía
+                operationRepository.getGuideModes().fold(
+                    onSuccess = { response ->
+                        _guideModeTypes.value = response.allGuideModes!!.map {
+                            IGuideModeType(code = it?.code!!, name = it.name!!)
+                        }
+                    },
+                    onFailure = { e ->
+                        _error.value = "Error al cargar modos de guía: ${e.message}"
+                    }
+                )
+
+                // Cargar razones de guía
+                operationRepository.getGuideReasons().fold(
+                    onSuccess = { response ->
+                        _guideReasonTypes.value = response.allGuideReasons!!.map {
+                            IGuideReasonType(code = it?.code!!, name = it.name!!)
+                        }
+                    },
+                    onFailure = { e ->
+                        _error.value = "Error al cargar razones de guía: ${e.message}"
+                    }
+                )
+
+                // Cargar series
+                val subsidiaryId = preferencesManager.subsidiaryData.value?.id // Obtener el ID de la sucursal desde el DataStorei
+                if (subsidiaryId != null) {
+                    operationRepository.getSerials(subsidiaryId).fold(
+                        onSuccess = { response ->
+                            _serialAssigneds.value = response.allSerials!!.map {
+                                ISerialAssigned(
+                                    documentType = it?.documentType.toString(),
+                                    documentTypeReadable = it?.documentTypeReadable!!,
+                                    serial = it.serial!!,
+                                    isGeneratedViaApi = it.isGeneratedViaApi
+                                )
+                            }
+                        },
+                        onFailure = { e ->
+                            _error.value = "Error al cargar series: ${e.message}"
+                        }
+                    )
+                }
+            } finally {
+                _isLoadingData.value = false
+            }
+        }
+    }
+
     // Función para actualizar campos individuales
     fun updateField(field: String, value: Any) {
         _guideState.update { currentState ->
             currentState.copy().apply {
                 when (field) {
                     "clientId" -> clientId = value as Int
+                    "clientName" -> clientName = value as String
                     "documentType" -> documentType = value as String
                     "serial" -> serial = value as String
                     "correlative" -> correlative = value as Int
                     "emitDate" -> emitDate = value as String
-                    // ... agregar más campos según sea necesario
+                    "guideModeTransfer" -> guideModeTransfer = value as String
+                    "guideReasonTransfer" -> guideReasonTransfer = value as String
+                    // ... otros campos según sea necesario
                 }
+            }
+        }
+
+        // Lógica especial para cuando cambia el tipo de documento
+        if (field == "documentType") {
+            handleDocumentTypeChange(value as String)
+        }
+    }
+
+    private fun handleDocumentTypeChange(documentType: String) {
+        if (documentType == "31") {
+            // Para guía de transportista, establecer modo de transporte a "02"
+            _guideState.update { currentState ->
+                currentState.copy(
+                    guideModeTransfer = "02",
+                    clientId = 0,
+                    clientName = ""
+                )
             }
         }
     }
@@ -161,6 +255,7 @@ class GuideViewModel @Inject constructor(
     // Clase para manejar el estado de la guía
     data class GuideState(
         var clientId: Int = 0,
+        var clientName: String = "",
         var documentType: String = "09",
         var serial: String = "",
         var correlative: Int = 0,

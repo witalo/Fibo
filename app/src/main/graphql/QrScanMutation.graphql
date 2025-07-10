@@ -1,7 +1,12 @@
-mutation QrScan($token: String!, $username: String!, $description: String!) {
+mutation QrScanMutation(
+    $token: String!
+    $username: String
+    $description: String!
+) {
     qrScan(token: $token, username: $username, description: $description) {
         success
         message
+        jwtToken
         company {
             id
             doc
@@ -22,6 +27,13 @@ mutation QrScan($token: String!, $username: String!, $description: String!) {
         }
         user {
             id
+            username
+            email
+            firstName
+            lastName
+            role
+            isActive
+            mobileDescription
         }
     }
 }

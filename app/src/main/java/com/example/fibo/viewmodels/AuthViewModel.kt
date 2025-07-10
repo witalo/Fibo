@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.apollographql.apollo3.ApolloClient
 import com.apollographql.apollo3.api.ApolloResponse
+import com.apollographql.apollo3.api.Optional
 import com.example.fibo.QrScanMutation
 import com.example.fibo.model.IUserData
 import com.example.fibo.datastore.PreferencesManager
@@ -59,8 +60,8 @@ class AuthViewModel @Inject constructor(
                 val response = apolloClient.mutation(
                     QrScanMutation(
                         token = token,
-                        username = username,
-                        description = description
+                        username = Optional.present(username),
+                        description = Optional.present(description).toString()
                     )
                 ).execute()
 
@@ -71,6 +72,7 @@ class AuthViewModel @Inject constructor(
                     val userData = IUserData(
                         success = response.data!!.qrScan?.success!!,
                         message = response.data!!.qrScan?.message ?: "",
+                        jwtToken = response.data!!.qrScan?.jwtToken ?: "",
                         company = response.data!!.qrScan?.company?.let {
                             ICompany(
                                 id = it.id!!,

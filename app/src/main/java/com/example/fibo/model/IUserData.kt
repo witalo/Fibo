@@ -3,7 +3,8 @@ package com.example.fibo.model
 data class IUserData(
     val success: Boolean,
     val message: String,
-    val company: ICompany?,
-    val subsidiary: ISubsidiary?,
-    val user: IUser?
+    val jwtToken: String? = null,
+    val company: ICompany? = null,
+    val subsidiary: ISubsidiary? = null,
+    val user: IUser? = null
 )

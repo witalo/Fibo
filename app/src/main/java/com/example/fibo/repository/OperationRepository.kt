@@ -32,11 +32,17 @@ import com.example.fibo.SearchPersonsQuery
 import com.example.fibo.model.IPayment
 import com.example.fibo.type.PaymentInput
 import com.example.fibo.CreateSaleMutation
+import com.example.fibo.GuideModesQuery
+import com.example.fibo.GuideReasonsQuery
+import com.example.fibo.SerialsQuery
+import com.example.fibo.type.Date
+import com.example.fibo.datastore.PreferencesManager
 
 
 @Singleton
 class OperationRepository @Inject constructor(
-    private val apolloClient: ApolloClient
+    private val apolloClient: ApolloClient,
+    private val preferencesManager: PreferencesManager
 ) {
     suspend fun getOperationByDate(date: String, userId: Int): List<IOperation> {
         val query = GetOperationByDateAndUserIdQuery(date = date, userId = userId)
@@ -682,6 +688,53 @@ class OperationRepository @Inject constructor(
             val response = apolloClient.mutation(input).execute()
             if (response.hasErrors()) {
                 Result.failure(Exception(response.errors?.first()?.message ?: "Error desconocido"))
+            } else {
+                Result.success(response.data!!)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getGuideModes(): Result<GuideModesQuery.Data> {
+        return try {
+            val token = preferencesManager.getAuthToken() ?: return Result.failure(Exception("No hay token de autenticación"))
+            val response = apolloClient.query(GuideModesQuery())
+                .addHttpHeader("Authorization", "JWT $token")
+                .execute()
+            if (response.hasErrors()) {
+                Result.failure(Exception(response.errors?.first()?.message))
+            } else {
+                Result.success(response.data!!)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getGuideReasons(): Result<GuideReasonsQuery.Data> {
+        return try {
+            val token = preferencesManager.getAuthToken() ?: return Result.failure(Exception("No hay token de autenticación"))
+            Log.d("fibo app", token)
+            val response = apolloClient.query(GuideReasonsQuery())
+                .addHttpHeader("Authorization", "JWT $token")
+                .execute()
+            if (response.hasErrors()) {
+                Result.failure(Exception(response.errors?.first()?.message))
+            } else {
+                Result.success(response.data!!)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getSerials(subsidiaryId: Int): Result<SerialsQuery.Data> {
+        return try {
+            val response = apolloClient.query(SerialsQuery(Optional.present(subsidiaryId)))
+                .execute()
+            if (response.hasErrors()) {
+                Result.failure(Exception(response.errors?.first()?.message))
             } else {
                 Result.success(response.data!!)
             }

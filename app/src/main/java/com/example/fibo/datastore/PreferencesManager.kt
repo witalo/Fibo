@@ -8,6 +8,7 @@ import com.example.fibo.model.ICompany
 import com.example.fibo.model.ISubsidiary
 import com.example.fibo.model.IUser
 import com.example.fibo.model.IUserData
+import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -23,6 +24,7 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "us
 class PreferencesManager(context: Context) {
     private val dataStore = context.dataStore
     private val coroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val gson = Gson()
 
     companion object {
         val IS_LOGGED_IN = booleanPreferencesKey("is_logged_in")
@@ -39,8 +41,11 @@ class PreferencesManager(context: Context) {
         val SUBSIDIARY_SERIAL = stringPreferencesKey("subsidiary_serial")
         val SUBSIDIARY_NAME = stringPreferencesKey("subsidiary_name")
         val SUBSIDIARY_ADDRESS = stringPreferencesKey("subsidiary_address")
-        val SUBSIDIARY_TOKEN = stringPreferencesKey("subsidiary_tok en")
+        val SUBSIDIARY_TOKEN = stringPreferencesKey("subsidiary_token")
         val USER_ID = intPreferencesKey("user_id")
+        val AUTH_TOKEN = stringPreferencesKey("auth_token")
+        val USER_DATA = stringPreferencesKey("user_data")
+        val SUBSIDIARY_DATA = stringPreferencesKey("subsidiary_data")
     }
 
     // Estado de autenticación como StateFlow para acceso inmediato
@@ -65,7 +70,8 @@ class PreferencesManager(context: Context) {
                     withStock = preferences[COMPANY_STOCK] ?: false,
                     isEnabled = preferences[COMPANY_ENABLED] ?: false,
                     appMobil = preferences[COMPANY_APP] ?: false,
-                    disableContinuePay = preferences[COMPANY_PAYMENTS_ENABLED] ?: false
+                    disableContinuePay = preferences[COMPANY_PAYMENTS_ENABLED] ?: false,
+
                 )
             } else {
                 null
@@ -86,7 +92,8 @@ class PreferencesManager(context: Context) {
                     serial = preferences[SUBSIDIARY_SERIAL] ?: "",
                     name = preferences[SUBSIDIARY_NAME] ?: "",
                     address = preferences[SUBSIDIARY_ADDRESS] ?: "",
-                    token = preferences[SUBSIDIARY_TOKEN] ?: ""
+                    token = preferences[SUBSIDIARY_TOKEN] ?: "",
+
                 )
             } else {
                 null
@@ -136,6 +143,7 @@ class PreferencesManager(context: Context) {
             }
             userData.user?.let { user ->
                 preferences[USER_ID] = user.id
+                preferences[AUTH_TOKEN] = user.jwtToken
             }
         }
     }
@@ -191,4 +199,16 @@ class PreferencesManager(context: Context) {
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = null
         )
+
+    suspend fun saveAuthToken(token: String) {
+        dataStore.edit { preferences ->
+            preferences[AUTH_TOKEN] = token
+        }
+    }
+
+    suspend fun getAuthToken(): String? {
+        return dataStore.data.map { preferences ->
+            preferences[AUTH_TOKEN]
+        }.first()
+    }
 }
