@@ -31,6 +31,7 @@ import com.example.fibo.GetOperationsByPersonAndUserQuery
 import com.example.fibo.SearchPersonsQuery
 import com.example.fibo.model.IPayment
 import com.example.fibo.type.PaymentInput
+import com.example.fibo.CreateSaleMutation
 
 
 @Singleton
@@ -673,6 +674,19 @@ class OperationRepository @Inject constructor(
         } catch (e: Exception) {
             println("Error en getOperationsByDateRange: ${e.message}")
             emptyList()
+        }
+    }
+
+    suspend fun createSale(input: CreateSaleMutation): Result<CreateSaleMutation.Data> {
+        return try {
+            val response = apolloClient.mutation(input).execute()
+            if (response.hasErrors()) {
+                Result.failure(Exception(response.errors?.first()?.message ?: "Error desconocido"))
+            } else {
+                Result.success(response.data!!)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 }
