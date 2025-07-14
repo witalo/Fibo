@@ -62,7 +62,7 @@ sealed class Screen(
     }
 
     object NewGuide : Screen("new_guide")
-
+    object Guides : Screen("guides")
 
     // Detalles
     object InvoiceDetail : Screen(

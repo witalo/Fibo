@@ -44,6 +44,7 @@ class PreferencesManager(context: Context) {
         val SUBSIDIARY_TOKEN = stringPreferencesKey("subsidiary_token")
         val USER_ID = intPreferencesKey("user_id")
         val AUTH_TOKEN = stringPreferencesKey("auth_token")
+        val REFRESH_AUTH_TOKEN = stringPreferencesKey("auth_refresh_token")
         val USER_DATA = stringPreferencesKey("user_data")
         val SUBSIDIARY_DATA = stringPreferencesKey("subsidiary_data")
     }
@@ -144,6 +145,7 @@ class PreferencesManager(context: Context) {
             userData.user?.let { user ->
                 preferences[USER_ID] = user.id
                 preferences[AUTH_TOKEN] = user.jwtToken
+                preferences[REFRESH_AUTH_TOKEN] = user.refreshToken
             }
         }
     }
@@ -209,6 +211,25 @@ class PreferencesManager(context: Context) {
     suspend fun getAuthToken(): String? {
         return dataStore.data.map { preferences ->
             preferences[AUTH_TOKEN]
+        }.first()
+    }
+    
+    suspend fun getRefreshToken(): String? {
+        return dataStore.data.map { preferences ->
+            preferences[REFRESH_AUTH_TOKEN]
+        }.first()
+    }
+    
+    suspend fun updateTokens(newToken: String, newRefreshToken: String) {
+        dataStore.edit { preferences ->
+            preferences[AUTH_TOKEN] = newToken
+            preferences[REFRESH_AUTH_TOKEN] = newRefreshToken
+        }
+    }
+    
+    suspend fun getSubsidiaryId(): Int? {
+        return dataStore.data.map { preferences ->
+            preferences[SUBSIDIARY_ID]
         }.first()
     }
 }

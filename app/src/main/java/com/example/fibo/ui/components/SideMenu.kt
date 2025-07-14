@@ -167,6 +167,11 @@ fun SideMenu(
                             onClick = { onMenuItemSelected("Nueva Guía") }
                         )
                         MenuItem(
+                            icon = Icons.Default.List,
+                            text = "Guías",
+                            onClick = { onMenuItemSelected("Guías") }
+                        )
+                        MenuItem(
                             icon = Icons.Default.Analytics,
                             text = "Reporte",
                             onClick = { onMenuItemSelected("Reporte") }

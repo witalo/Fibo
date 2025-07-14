@@ -23,6 +23,7 @@ import com.example.fibo.ui.screens.reportpayment.ReportPaymentScreen
 import com.example.fibo.ui.screens.reports.ReportScreen
 import com.example.fibo.utils.DeviceUtils
 import com.example.fibo.ui.screens.guide.NewGuideScreen
+import com.example.fibo.ui.screens.GuideListScreen
 
 @Composable
 @RequiresApi(Build.VERSION_CODES.O)
@@ -189,6 +190,9 @@ fun NavGraph(
         }
         composable(Screen.NewGuide.route) {
             NewGuideScreen(navController = navController)
+        }
+        composable(Screen.Guides.route) {
+            GuideListScreen(navController = navController)
         }
         composable(Screen.Reports.route) {
             ReportScreen(

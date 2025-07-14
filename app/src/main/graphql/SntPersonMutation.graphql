@@ -1,0 +1,15 @@
+mutation SntPersonMutation($document: String!) {
+    sntPerson(document: $document) {
+        success
+        message
+        person {
+            sntDocument
+            sntNames
+            sntAddress
+            sntDepartment
+            sntProvince
+            sntDistrict
+            sntDriverLicense
+        }
+    }
+}

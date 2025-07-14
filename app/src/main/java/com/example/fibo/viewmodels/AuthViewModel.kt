@@ -73,7 +73,7 @@ class AuthViewModel @Inject constructor(
                         success = response.data!!.qrScan?.success!!,
                         message = response.data!!.qrScan?.message ?: "",
                         jwtToken = response.data!!.qrScan?.jwtToken ?: "",
-                        company = response.data!!.qrScan?.company?.let {
+                        company = response.data?.qrScan?.company?.let {
                             ICompany(
                                 id = it.id!!,
                                 doc = it.doc!!,
@@ -99,7 +99,8 @@ class AuthViewModel @Inject constructor(
                             IUser(
                                 id = it.id.toInt(),
                                 jwtToken = response.data!!.qrScan?.jwtToken ?: "",
-                                )
+                                refreshToken = response.data!!.qrScan?.refreshToken ?: ""
+                            )
                         }
                     )
                     preferencesManager.saveUserData(userData)

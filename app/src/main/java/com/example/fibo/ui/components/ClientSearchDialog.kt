@@ -63,7 +63,8 @@ fun ClientSearchDialog(
     searchResults: List<IPerson>,
     isLoading: Boolean,
     onClientSelected: (IPerson) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    error: String? = null // Nuevo parámetro
 ) {
     if (isVisible) {
         Dialog(
@@ -154,10 +155,20 @@ fun ClientSearchDialog(
                             )
                         )
 
+                        // Mostrar mensaje de error si existe
+                        error?.let { errorMessage ->
+                            Text(
+                                text = errorMessage,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+
                         Spacer(modifier = Modifier.height(20.dp))
 
                         // Contador de resultados
-                        if (searchQuery.length >= 2 && !isLoading) {
+                        if (searchQuery.length >= 2 && !isLoading && error == null) {
                             Text(
                                 text = "${searchResults.size} resultados encontrados",
                                 style = MaterialTheme.typography.labelMedium,
@@ -189,7 +200,7 @@ fun ClientSearchDialog(
                             }
                         } else {
                             // Lista de resultados mejorada
-                            if (searchResults.isEmpty() && searchQuery.length >= 3) {
+                            if ((searchResults.isEmpty() && searchQuery.length >= 3) || error != null) {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -205,7 +216,7 @@ fun ClientSearchDialog(
                                         )
                                         Spacer(modifier = Modifier.height(16.dp))
                                         Text(
-                                            text = "No se encontraron clientes",
+                                            text = if (error != null) "Error en la búsqueda" else "No se encontraron clientes",
                                             style = MaterialTheme.typography.bodyLarge,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                                         )

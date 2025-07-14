@@ -120,6 +120,7 @@ fun HomeScreen(
                     Log.d("Navigation", "Intentando navegar a Nueva Guía")
                     navController.navigate(Screen.NewGuide.route)
                 }
+                "Guías" -> navController.navigate(Screen.Guides.route)
                 "Reporte" -> navController.navigate(Screen.Reports.route)
                 "Reporte Pagos" -> navController.navigate(Screen.ReportPayment.route)
             }

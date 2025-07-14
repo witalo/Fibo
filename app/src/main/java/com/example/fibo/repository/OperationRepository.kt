@@ -35,8 +35,18 @@ import com.example.fibo.CreateSaleMutation
 import com.example.fibo.GuideModesQuery
 import com.example.fibo.GuideReasonsQuery
 import com.example.fibo.SerialsQuery
-import com.example.fibo.type.Date
+import com.example.fibo.SearchClientQuery
+import com.example.fibo.SearchGeographicLocationQuery
+import com.example.fibo.DocumentTypesQuery
 import com.example.fibo.datastore.PreferencesManager
+import com.example.fibo.model.IGeographicLocation
+import com.example.fibo.model.IDocumentType
+import com.example.fibo.AllGuidesQuery
+import com.example.fibo.CustomRefreshTokenMutation
+import com.example.fibo.model.IGuide
+import com.example.fibo.model.IGuideResponse
+import com.example.fibo.model.ISubsidiary
+import com.example.fibo.model.ICompany
 
 
 @Singleton
@@ -44,6 +54,86 @@ class OperationRepository @Inject constructor(
     private val apolloClient: ApolloClient,
     private val preferencesManager: PreferencesManager
 ) {
+    
+    /**
+     * Método para renovar tokens automáticamente cuando expiren
+     */
+    private suspend fun refreshTokenIfNeeded(): String? {
+        return try {
+            val refreshToken = preferencesManager.getRefreshToken()
+            if (refreshToken.isNullOrEmpty()) {
+                Log.e("OperationRepository", "No hay refresh token disponible")
+                return null
+            }
+            
+            val response = apolloClient.mutation(
+                CustomRefreshTokenMutation(refreshToken = refreshToken)
+            ).execute()
+            
+            if (response.hasErrors()) {
+                Log.e("OperationRepository", "Error al renovar token: ${response.errors?.first()?.message}")
+                // Si hay error, probablemente el refresh token ha expirado
+                preferencesManager.clearUserData()
+                return null
+            }
+            
+            val data = response.data?.refreshToken
+            if (data?.token != null && data.refreshToken != null) {
+                // Actualizar tokens en preferencias
+                preferencesManager.updateTokens(data.token, data.refreshToken)
+                Log.d("OperationRepository", "Tokens renovados exitosamente")
+                return data.token
+            } else {
+                Log.e("OperationRepository", "No se pudieron obtener nuevos tokens")
+                preferencesManager.clearUserData()
+                return null
+            }
+        } catch (e: Exception) {
+            Log.e("OperationRepository", "Excepción al renovar token: ${e.message}")
+            preferencesManager.clearUserData()
+            return null
+        }
+    }
+    
+    /**
+     * Método helper para ejecutar operaciones con manejo automático de tokens
+     */
+    private suspend fun <T> executeWithTokenRefresh(
+        operation: suspend (token: String) -> T
+    ): T? {
+        var token = preferencesManager.getAuthToken()
+        if (token.isNullOrEmpty()) {
+            Log.e("OperationRepository", "No hay token de autenticación")
+            return null
+        }
+        
+        return try {
+            // Intentar la operación con el token actual
+            operation(token)
+        } catch (e: Exception) {
+            // Si el error indica que el token ha expirado, intentar renovarlo
+            val errorMessage = e.message ?: ""
+            if (errorMessage.contains("Signature has expired") || errorMessage.contains("token_expired")) {
+                Log.d("OperationRepository", "Token expirado, intentando renovar...")
+                val newToken = refreshTokenIfNeeded()
+                if (newToken != null) {
+                    // Reintentar la operación con el nuevo token
+                    try {
+                        operation(newToken)
+                    } catch (retryException: Exception) {
+                        Log.e("OperationRepository", "Error después de renovar token: ${retryException.message}")
+                        throw retryException
+                    }
+                } else {
+                    Log.e("OperationRepository", "No se pudo renovar el token")
+                    throw e
+                }
+            } else {
+                throw e
+            }
+        }
+    }
+
     suspend fun getOperationByDate(date: String, userId: Int): List<IOperation> {
         val query = GetOperationByDateAndUserIdQuery(date = date, userId = userId)
         val response = apolloClient.query(query).execute()
@@ -111,19 +201,22 @@ class OperationRepository @Inject constructor(
             }
 
             val personData = response.data?.sntPerson?.person
-            if (personData == null || response.data?.sntPerson?.status != true) {
-                val errorMessage =
-                    response.data?.sntPerson?.message ?: "No se encontraron datos del cliente"
-                throw RuntimeException(errorMessage)
+            val message = response.data?.sntPerson?.message ?: ""
+            
+            // Si no hay datos de persona, lanzar error
+            if (personData == null) {
+                throw RuntimeException(message.ifEmpty { "No se encontraron datos del cliente" })
             }
 
+            // Aunque el success sea false (cliente ya registrado), si hay datos de persona, los devolvemos
             IPerson(
                 id = 0,
                 names = personData.sntNames.orEmpty(),
                 documentNumber = document,
                 phone = "",
                 email = "",
-                address = personData.sntAddress.orEmpty()
+                address = personData.sntAddress.orEmpty(),
+                driverLicense = personData.sntDriverLicense.orEmpty()
             )
         }
     }
@@ -685,11 +778,23 @@ class OperationRepository @Inject constructor(
 
     suspend fun createSale(input: CreateSaleMutation): Result<CreateSaleMutation.Data> {
         return try {
-            val response = apolloClient.mutation(input).execute()
-            if (response.hasErrors()) {
-                Result.failure(Exception(response.errors?.first()?.message ?: "Error desconocido"))
+            val result = executeWithTokenRefresh { token ->
+                val response = apolloClient.mutation(input).addHttpHeader("Authorization", "JWT $token").execute()
+                if (response.hasErrors()) {
+                    val errorMessage = response.errors?.first()?.message ?: "Error desconocido"
+                    if (errorMessage.contains("Signature has expired") || errorMessage.contains("token_expired")) {
+                        throw Exception(errorMessage)
+                    }
+                    throw Exception(errorMessage)
+                } else {
+                    response.data!!
+                }
+            }
+            
+            if (result != null) {
+                Result.success(result)
             } else {
-                Result.success(response.data!!)
+                Result.failure(Exception("No se pudo ejecutar la operación"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -698,14 +803,25 @@ class OperationRepository @Inject constructor(
 
     suspend fun getGuideModes(): Result<GuideModesQuery.Data> {
         return try {
-            val token = preferencesManager.getAuthToken() ?: return Result.failure(Exception("No hay token de autenticación"))
-            val response = apolloClient.query(GuideModesQuery())
-                .addHttpHeader("Authorization", "JWT $token")
-                .execute()
-            if (response.hasErrors()) {
-                Result.failure(Exception(response.errors?.first()?.message))
+            val result = executeWithTokenRefresh { token ->
+                val response = apolloClient.query(GuideModesQuery())
+                    .addHttpHeader("Authorization", "JWT $token")
+                    .execute()
+                if (response.hasErrors()) {
+                    val errorMessage = response.errors?.first()?.message ?: "Error desconocido"
+                    if (errorMessage.contains("Signature has expired") || errorMessage.contains("token_expired")) {
+                        throw Exception(errorMessage)
+                    }
+                    throw Exception(errorMessage)
+                } else {
+                    response.data!!
+                }
+            }
+            
+            if (result != null) {
+                Result.success(result)
             } else {
-                Result.success(response.data!!)
+                Result.failure(Exception("No se pudo ejecutar la operación"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -714,15 +830,25 @@ class OperationRepository @Inject constructor(
 
     suspend fun getGuideReasons(): Result<GuideReasonsQuery.Data> {
         return try {
-            val token = preferencesManager.getAuthToken() ?: return Result.failure(Exception("No hay token de autenticación"))
-            Log.d("fibo app", token)
-            val response = apolloClient.query(GuideReasonsQuery())
-                .addHttpHeader("Authorization", "JWT $token")
-                .execute()
-            if (response.hasErrors()) {
-                Result.failure(Exception(response.errors?.first()?.message))
+            val result = executeWithTokenRefresh { token ->
+                val response = apolloClient.query(GuideReasonsQuery())
+                    .addHttpHeader("Authorization", "JWT $token")
+                    .execute()
+                if (response.hasErrors()) {
+                    val errorMessage = response.errors?.first()?.message ?: "Error desconocido"
+                    if (errorMessage.contains("Signature has expired") || errorMessage.contains("token_expired")) {
+                        throw Exception(errorMessage)
+                    }
+                    throw Exception(errorMessage)
+                } else {
+                    response.data!!
+                }
+            }
+            
+            if (result != null) {
+                Result.success(result)
             } else {
-                Result.success(response.data!!)
+                Result.failure(Exception("No se pudo ejecutar la operación"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -737,6 +863,199 @@ class OperationRepository @Inject constructor(
                 Result.failure(Exception(response.errors?.first()?.message))
             } else {
                 Result.success(response.data!!)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun searchClientByParameter(
+        search: String,
+        isClient: Boolean = false,
+        documentType: String? = null,
+        operationDocumentType: String? = null,
+        isDriver: Boolean = false,
+        isSupplier: Boolean = false,
+        isReceiver: Boolean = false
+    ): Result<SearchClientQuery.Data> {
+        Log.d("SearchClientByParameter", "search: $search, isClient: $isClient, documentType: $documentType, operationDocumentType: $operationDocumentType, isDriver: $isDriver, isSupplier: $isSupplier, isReceiver: $isReceiver")
+        return try {
+            val result = executeWithTokenRefresh { token ->
+                val response = apolloClient.query(
+                    SearchClientQuery(
+                        search = search,
+                        isClient = Optional.present(isClient),
+                        documentType = Optional.presentIfNotNull(documentType),
+                        operationDocumentType = Optional.presentIfNotNull(operationDocumentType),
+                        isDriver = Optional.present(isDriver),
+                        isSupplier = Optional.present(isSupplier),
+                        isReceiver = Optional.present(isReceiver)
+                    )
+                ).addHttpHeader("Authorization", "JWT $token").execute()
+
+                if (response.hasErrors()) {
+                    val errorMessage = response.errors?.first()?.message ?: "Error desconocido"
+                    if (errorMessage.contains("Signature has expired") || errorMessage.contains("token_expired")) {
+                        throw Exception(errorMessage)
+                    }
+                    throw Exception(errorMessage)
+                } else {
+                    response.data!!
+                }
+            }
+            
+            if (result != null) {
+                Result.success(result)
+            } else {
+                Result.failure(Exception("No se pudo ejecutar la operación"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun searchGeographicLocation(search: String): Result<List<IGeographicLocation>> {
+        return try {
+            val result = executeWithTokenRefresh { token ->
+                val response = apolloClient.query(
+                    SearchGeographicLocationQuery(search = search)
+                ).addHttpHeader("Authorization", "JWT $token").execute()
+
+                if (response.hasErrors()) {
+                    val errorMessage = response.errors?.first()?.message ?: "Error desconocido"
+                    if (errorMessage.contains("Signature has expired") || errorMessage.contains("token_expired")) {
+                        throw Exception(errorMessage)
+                    }
+                    throw Exception(errorMessage)
+                } else {
+                    response.data?.searchGeographicLocationCode?.map { location ->
+                        IGeographicLocation(
+                            districtId = location?.districtId ?: "",
+                            districtDescription = location?.districtDescription ?: "",
+                            provinceDescription = location?.provinceDescription ?: "",
+                            departmentDescription = location?.departmentDescription ?: ""
+                        )
+                    } ?: emptyList()
+                }
+            }
+            
+            if (result != null) {
+                Result.success(result)
+            } else {
+                Result.failure(Exception("No se pudo ejecutar la operación"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getDocumentTypes(): Result<DocumentTypesQuery.Data> {
+        return try {
+            val result = executeWithTokenRefresh { token ->
+                val response = apolloClient.query(DocumentTypesQuery())
+                    .addHttpHeader("Authorization", "JWT $token")
+                    .execute()
+                if (response.hasErrors()) {
+                    val errorMessage = response.errors?.first()?.message ?: "Error desconocido"
+                    if (errorMessage.contains("Signature has expired") || errorMessage.contains("token_expired")) {
+                        throw Exception(errorMessage)
+                    }
+                    throw Exception(errorMessage)
+                } else {
+                    response.data!!
+                }
+            }
+            
+            if (result != null) {
+                Result.success(result)
+            } else {
+                Result.failure(Exception("No se pudo ejecutar la operación"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getAllGuides(
+        subsidiaryId: Int,
+        startDate: String,
+        endDate: String,
+        documentType: String,
+        page: Int,
+        pageSize: Int
+    ): Result<IGuideResponse> {
+        return try {
+            val result = executeWithTokenRefresh { token ->
+                val response = apolloClient.query(
+                    AllGuidesQuery(
+                        subsidiaryId = subsidiaryId,
+                        startDate = startDate,
+                        endDate = endDate,
+                        documentType = documentType,
+                        page = page,
+                        pageSize = pageSize
+                    )
+                ).addHttpHeader("Authorization", "JWT $token").execute()
+
+                if (response.hasErrors()) {
+                    val errorMessage = response.errors?.first()?.message ?: "Error desconocido"
+                    if (errorMessage.contains("Signature has expired") || errorMessage.contains("token_expired")) {
+                        throw Exception(errorMessage)
+                    }
+                    throw Exception(errorMessage)
+                } else {
+                    val data = response.data?.allGuides
+                    val guides = data?.guides?.map { guide ->
+                        IGuide(
+                            id = guide?.id?.toInt() ?: 0,
+                            emitDate = guide?.emitDate?.toString() ?: "",
+                            emitTime = guide?.emitTime?.toString() ?: "",
+                            documentType = guide?.documentType?.toString()?.replace("A_", "") ?: "",
+                            serial = guide?.serial ?: "",
+                            correlative = guide?.correlative ?: 0,
+                            subsidiary = guide?.subsidiary?.let { sub ->
+                                ISubsidiary(
+                                    id = 0,
+                                    serial = "",
+                                    name = sub.companyName ?: "",
+                                    address = "",
+                                    token = ""
+                                )
+                            },
+                            client = guide?.client?.let { client ->
+                                IPerson(
+                                    id = 0,
+                                    names = client.names ?: "",
+                                    documentType = client.documentType?.toString() ?: "",
+                                    documentNumber = "",
+                                    phone = "",
+                                    email = "",
+                                    address = ""
+                                )
+                            },
+                            sendWhatsapp = guide?.sendWhatsapp ?: false,
+                            sendClient = guide?.sendClient ?: false,
+                            linkXml = guide?.linkXml,
+                            linkCdr = guide?.linkCdr,
+                            sunatStatus = guide?.sunatStatus?.toString(),
+                            sunatDescription = guide?.sunatDescription?.toString(),
+                            operationStatus = guide?.operationStatus?.toString() ?: "",
+                            operationStatusReadable = guide?.operationStatusReadable ?: ""
+                        )
+                    } ?: emptyList()
+
+                    IGuideResponse(
+                        guides = guides,
+                        totalNumberOfPages = data?.totalNumberOfPages ?: 0,
+                        totalNumberOfSales = data?.totalNumberOfSales ?: 0
+                    )
+                }
+            }
+            
+            if (result != null) {
+                Result.success(result)
+            } else {
+                Result.failure(Exception("No se pudo ejecutar la operación"))
             }
         } catch (e: Exception) {
             Result.failure(e)
