@@ -1,0 +1,8 @@
+query SearchGeographicLocationQuery($search: String!) {
+    searchGeographicLocationCode(search: $search) {
+        districtId
+        districtDescription
+        provinceDescription
+        departmentDescription
+    }
+}

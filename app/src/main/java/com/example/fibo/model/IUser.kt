@@ -9,8 +9,10 @@ data class IUser(
     val role: String,
     val isActive: Boolean,
     val mobileDescription: String,
-    val jwtToken: String
+    val jwtToken: String,
+    val refreshToken: String
 ) {
+
     // Constructor secundario para compatibilidad con versiones anteriores
     constructor(id: Int) : this(
         id = id,
@@ -21,9 +23,10 @@ data class IUser(
         role = "",
         isActive = true,
         mobileDescription = "",
-        jwtToken = ""
+        jwtToken = "",
+        refreshToken = ""
     )
-    constructor(id: Int, jwtToken: String) : this(
+    constructor(id: Int, jwtToken: String, refreshToken: String) : this(
         id = id,
         username = "",
         email = "",
@@ -32,6 +35,7 @@ data class IUser(
         role = "",
         isActive = true,
         mobileDescription = "",
-        jwtToken = jwtToken
+        jwtToken = jwtToken,
+        refreshToken = refreshToken
     )
 }

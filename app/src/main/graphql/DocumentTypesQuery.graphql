@@ -1,0 +1,6 @@
+query DocumentTypesQuery {
+    allDocumentTypes {
+        code
+        name
+    }
+}

@@ -1,0 +1,46 @@
+query AllGuidesQuery(
+    $subsidiaryId: Int!
+    $startDate: Date!
+    $endDate: Date!
+    $documentType: String!
+    $page: Int!
+    $pageSize: Int!
+) {
+    allGuides(
+        subsidiaryId: $subsidiaryId
+        startDate: $startDate
+        endDate: $endDate
+        documentType: $documentType
+        page: $page
+        pageSize: $pageSize
+    ) {
+        guides {
+            id
+            emitDate
+            emitTime
+            documentType
+            serial
+            correlative
+            subsidiary {
+                companyName
+                company {
+                    doc
+                }
+            }
+            client {
+                names
+                documentType
+            }
+            sendWhatsapp
+            sendClient
+            linkXml
+            linkCdr
+            sunatStatus
+            sunatDescription
+            operationStatus
+            operationStatusReadable
+        }
+        totalNumberOfPages
+        totalNumberOfSales
+    }
+}

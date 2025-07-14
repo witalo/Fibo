@@ -1,7 +1,7 @@
 package com.example.fibo.model
 
-class IRelatedDocument {
-    val serial: String? = null
-    val documentType: String? = null
-    val correlative: Int? = null
-}
+data class IRelatedDocument (
+    val serial: String? = null,
+    val documentType: String? = null,
+    val correlative: Int? = null,
+)
