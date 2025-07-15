@@ -686,20 +686,42 @@ class OperationRepository @Inject constructor(
         available: Boolean
     ): List<IProduct> {
         return try {
+            Log.d("OperationRepository", "Ejecutando getAllProductsBySubsidiaryId - subsidiaryId: $subsidiaryId, available: $available")
+            
+            // Probar primero sin executeWithTokenRefresh
+            val token = preferencesManager.getAuthToken()
+            Log.d("OperationRepository", "Token obtenido: ${!token.isNullOrEmpty()}")
+            
+            if (token.isNullOrEmpty()) {
+                Log.e("OperationRepository", "No hay token disponible")
+                return emptyList()
+            }
+            
+            Log.d("OperationRepository", "Ejecutando query con token directo...")
             val response = apolloClient.query(
                 GetAllProductsBySubsidiaryIdQuery(
                     subsidiaryId = Optional.Present(subsidiaryId),
                     available = Optional.Present(available)
                 )
-            ).execute()
+            ).addHttpHeader("Authorization", "JWT $token").execute()
+
+            Log.d("OperationRepository", "Respuesta GraphQL recibida - hasErrors: ${response.hasErrors()}")
 
             if (response.hasErrors()) {
-                val errorMessage =
-                    response.errors?.joinToString { it.message } ?: "Error desconocido"
-                throw Exception("Error al mostrar listado de productos: $errorMessage")
+                val errorMessage = response.errors?.joinToString { it.message } ?: "Error desconocido"
+                Log.e("OperationRepository", "Error en GraphQL: $errorMessage")
+                return emptyList()
             }
 
-            response.data?.allProducts?.filterNotNull()?.map { product ->
+            val rawProducts = response.data?.allProducts
+            Log.d("OperationRepository", "Productos raw de GraphQL: ${rawProducts?.size ?: 0}")
+            
+            if (rawProducts != null && rawProducts.isNotEmpty()) {
+                Log.d("OperationRepository", "Primer producto raw: ${rawProducts.first()}")
+            }
+
+            val mappedProducts = rawProducts?.filterNotNull()?.map { product ->
+                Log.d("OperationRepository", "Mapeando producto - ID: ${product.id}, code: ${product.code}, name: ${product.name}")
                 IProduct(
                     id = product.id!!,
                     code = product.code.orEmpty(),
@@ -710,9 +732,12 @@ class OperationRepository @Inject constructor(
                     minimumUnitName = product.minimumUnitName.orEmpty()
                 )
             } ?: emptyList()
+            
+            Log.d("OperationRepository", "Productos mapeados: ${mappedProducts.size}")
+            mappedProducts
+            
         } catch (e: Exception) {
-            // Log del error si es necesario
-            println("Error en mostrar la lista de productos: ${e.message}")
+            Log.e("OperationRepository", "Error en getAllProductsBySubsidiaryId: ${e.message}", e)
             emptyList()
         }
     }

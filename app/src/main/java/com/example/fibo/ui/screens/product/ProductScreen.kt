@@ -1,4 +1,5 @@
 package com.example.fibo.ui.screens.product
+import android.util.Log
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -49,6 +50,10 @@ fun ProductScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
+    
+    // Debug: Log del estado UI en ProductScreen
+    Log.d("ProductScreen", "UI State - isLoading: ${uiState.isLoading}, products.size: ${uiState.products.size}, error: ${uiState.error}")
+    Log.d("ProductScreen", "Estado hash: ${uiState.hashCode()}")
 
     Scaffold(
         topBar = {
@@ -291,6 +296,12 @@ private fun CompactBodyCard(
     onPreviousPage: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Debug logs
+    Log.d("CompactBodyCard", "isLoading: ${uiState.isLoading}")
+    Log.d("CompactBodyCard", "error: ${uiState.error}")
+    Log.d("CompactBodyCard", "products.size: ${uiState.products.size}")
+    Log.d("CompactBodyCard", "products.isEmpty(): ${uiState.products.isEmpty()}")
+    
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -298,26 +309,32 @@ private fun CompactBodyCard(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent)
     ) {
-        when {
-            uiState.isLoading -> {
-                CompactLoadingContent()
-            }
-            uiState.error != null -> {
-                CompactErrorContent(error = uiState.error, onRetry = onRetry)
-            }
-            uiState.products.isEmpty() -> {
-                CompactEmptyContent()
-            }
-            else -> {
-                CompactProductList(
-                    products = uiState.products,
-                    hasMorePages = uiState.hasMorePages,
-                    hasPreviousPages = uiState.hasPreviousPages,
-                    currentPage = uiState.currentPage,
-                    totalPages = uiState.totalPages,
-                    onNextPage = onNextPage,
-                    onPreviousPage = onPreviousPage
-                )
+        // TEMPORAL: Forzar mostrar productos si existen, ignorar isLoading
+        if (uiState.products.isNotEmpty()) {
+            Log.d("CompactBodyCard", "FORZANDO lista de productos: ${uiState.products.size}")
+            CompactProductList(
+                products = uiState.products,
+                hasMorePages = uiState.hasMorePages,
+                hasPreviousPages = uiState.hasPreviousPages,
+                currentPage = uiState.currentPage,
+                totalPages = uiState.totalPages,
+                onNextPage = onNextPage,
+                onPreviousPage = onPreviousPage
+            )
+        } else {
+            when {
+                uiState.isLoading -> {
+                    Log.d("CompactBodyCard", "Mostrando loading...")
+                    CompactLoadingContent()
+                }
+                uiState.error != null -> {
+                    Log.d("CompactBodyCard", "Mostrando error: ${uiState.error}")
+                    CompactErrorContent(error = uiState.error, onRetry = onRetry)
+                }
+                else -> {
+                    Log.d("CompactBodyCard", "Mostrando empty...")
+                    CompactEmptyContent()
+                }
             }
         }
     }

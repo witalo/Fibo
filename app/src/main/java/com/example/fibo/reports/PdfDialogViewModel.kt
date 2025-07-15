@@ -1388,11 +1388,11 @@ class PdfDialogViewModel @Inject constructor(
 
             // Detalle de productos
             outputStream.write(PrinterCommands.ESC_BOLD_ON)
-            writer.write("# DETALLE CANT\n")
+            writer.write("#   DETALLE   CANT\n")
             outputStream.write(PrinterCommands.ESC_BOLD_OFF)
 
             guideData.operationDetailSet.forEachIndexed { index, detail ->
-                writer.write("${index + 1} ${convertAccents(detail.productName)} ${detail.quantity}\n")
+                writer.write("${index + 1}   ${convertAccents(detail.productName)}   ${detail.quantity}\n")
                 if (detail.description.isNotEmpty()) {
                     writer.write("   ${convertAccents(detail.description)}\n")
                 }
