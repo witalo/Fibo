@@ -1138,7 +1138,7 @@ fun NewInvoiceScreen(
                             onClick = {
                                 if (paymentsEnabled) {
                                     // Si los pagos están habilitados, mostrar el diálogo de pagos
-                                    viewModel.showPaymentDialog(totalToPay)
+                                    viewModel.showPaymentDialog(String.format("%.2f", totalToPay).toDouble())
                                 } else {
                                     // Si los pagos están deshabilitados, mostrar confirmación directa
                                     showConfirmationDialog = true

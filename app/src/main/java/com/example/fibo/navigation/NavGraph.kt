@@ -24,6 +24,10 @@ import com.example.fibo.ui.screens.reports.ReportScreen
 import com.example.fibo.utils.DeviceUtils
 import com.example.fibo.ui.screens.guide.NewGuideScreen
 import com.example.fibo.ui.screens.GuideListScreen
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import android.widget.Toast
 
 @Composable
 @RequiresApi(Build.VERSION_CODES.O)
@@ -39,17 +43,40 @@ fun NavGraph(
         // Pantallas de autenticación
         composable(Screen.QrScanner.route) {
             val context = LocalContext.current
+            val scanResult by authViewModel.scanResult.collectAsState()
+            val isLoading by authViewModel.isLoading.collectAsState()
+            val error by authViewModel.error.collectAsState()
+            
+            // Limpiar estados al cargar la pantalla
+            LaunchedEffect(Unit) {
+                authViewModel.clearStates()
+            }
+            
+            // Observar el resultado de la autenticación
+            LaunchedEffect(scanResult) {
+                if (scanResult?.data?.qrScan?.success == true) {
+                    // Solo navegar cuando la autenticación sea exitosa
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.QrScanner.route) { inclusive = true }
+                    }
+                }
+            }
+            
+            // Mostrar errores si los hay
+            LaunchedEffect(error) {
+                error?.let {
+                    Toast.makeText(context, it, Toast.LENGTH_LONG).show()
+                }
+            }
+            
             QrScannerScreen(
                 onQrCodeScanned = { qrCode ->
-                    // Aquí puedes procesar el código QR y luego navegar
+                    // Solo iniciar el proceso de autenticación
                     authViewModel.scanQr(
                         qrCode,
                         DeviceUtils.getDeviceId(context),
                         DeviceUtils.getDeviceDescription(context)
                     )
-                    navController.navigate(Screen.Home.route) {
-                        popUpTo(Screen.QrScanner.route) { inclusive = true }
-                    }
                 }
             )
         }

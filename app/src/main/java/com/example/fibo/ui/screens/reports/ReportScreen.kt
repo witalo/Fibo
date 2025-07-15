@@ -35,6 +35,9 @@ import com.example.fibo.ui.screens.ErrorMessage
 import com.example.fibo.utils.ReportState
 import java.text.NumberFormat
 import java.util.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontStyle
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -211,59 +214,115 @@ fun ReportTopBar(
 ) {
     TopAppBar(
         title = {
-            Column {
-                Text(
-                    text = "Reportes",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = dateRange,
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = documentTypes,
-                    fontSize = 10.sp,
-                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.Bottom,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "Reportes",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                        Text(
+                            text = "•",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f),
+                            modifier = Modifier.padding(bottom = 2.dp)
+                        )
+                        Text(
+                            text = dateRange,
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(bottom = 1.dp)
+                        )
+                    }
+                    
+                    if (documentTypes != "Todos los tipos") {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.padding(top = 2.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.FilterList,
+                                contentDescription = null,
+                                modifier = Modifier.size(10.dp),
+                                tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
+                            )
+                            Text(
+                                text = documentTypes,
+                                fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                fontStyle = FontStyle.Italic
+                            )
+                        }
+                    }
+                }
             }
         },
         navigationIcon = {
-            IconButton(onClick = onMenuClick) {
+            IconButton(
+                onClick = onMenuClick,
+                modifier = Modifier.size(48.dp)
+            ) {
                 Icon(
                     imageVector = Icons.Default.Menu,
-                    contentDescription = "Menú"
+                    contentDescription = "Menú",
+                    modifier = Modifier.size(24.dp)
                 )
             }
         },
         actions = {
-            Box {
-                IconButton(onClick = onFilterClick) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(0.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box {
+                    IconButton(
+                        onClick = onFilterClick,
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FilterList,
+                            contentDescription = "Filtros",
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                    if (documentTypes != "Todos los tipos") {
+                        Box(
+                            modifier = Modifier
+                                .offset(x = (-8).dp, y = 8.dp)
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.secondary)
+                                .align(Alignment.TopEnd)
+                        )
+                    }
+                }
+
+                IconButton(
+                    onClick = onExportClick,
+                    modifier = Modifier.size(40.dp)
+                ) {
                     Icon(
-                        imageVector = Icons.Default.FilterList,
-                        contentDescription = "Filtros"
+                        imageVector = Icons.Default.GetApp,
+                        contentDescription = "Exportar Excel",
+                        modifier = Modifier.size(22.dp)
                     )
                 }
-                if (documentTypes != "Todos los tipos") {
-                    Badge(
-                        modifier = Modifier
-                            .offset(x = (-4).dp, y = 4.dp)
-                            .size(8.dp),
-                        containerColor = MaterialTheme.colorScheme.secondary
-                    ) { }
-                }
-            }
-
-            IconButton(onClick = onExportClick) {
-                Icon(
-                    imageVector = Icons.Default.GetApp,
-                    contentDescription = "Exportar Excel"
-                )
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
@@ -271,7 +330,8 @@ fun ReportTopBar(
             titleContentColor = MaterialTheme.colorScheme.onPrimary,
             navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
             actionIconContentColor = MaterialTheme.colorScheme.onPrimary
-        )
+        ),
+        modifier = Modifier.height(56.dp)
     )
 }
 

@@ -515,7 +515,7 @@ private fun CompactProductItem(product: IProduct, scrollState: ScrollState) {
             Text(
                 text = product.code,
                 style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFFFCFAFA),
+//                color = Color(0xFFFCFAFA),
                 modifier = Modifier.width(60.dp),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -527,7 +527,7 @@ private fun CompactProductItem(product: IProduct, scrollState: ScrollState) {
             Text(
                 text = product.name,
                 style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFFFCFAFA),
+//                color = Color(0xFFFCFAFA),
                 modifier = Modifier.width(140.dp),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,

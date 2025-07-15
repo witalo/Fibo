@@ -227,6 +227,8 @@ type SubsidiaryType {
   districtId: String
 
   districtName: String
+
+  geographicLocationByDistrict: String
 }
 
 """
@@ -327,6 +329,10 @@ type CompanyType {
   isAgentPerception: Boolean!
 
   subsidiarySet: [SubsidiaryType!]!
+
+  stoppointSet: [StopPointType!]!
+
+  vehicleSet: [VehicleType!]!
 }
 
 """
@@ -348,12 +354,30 @@ value as specified by
 """
 scalar DateTime
 
+type StopPointType {
+  id: ID!
+
+  serial: String
+
+  address: String
+
+  district: DistrictType
+
+  company: CompanyType
+
+  origins: [OperationType!]!
+
+  arrivals: [OperationType!]!
+}
+
 type DistrictType {
   id: String!
 
   description: String
 
   subsidiarySet: [SubsidiaryType!]!
+
+  stoppointSet: [StopPointType!]!
 
   personSet: [PersonType!]!
 }
@@ -1732,6 +1756,10 @@ type OperationType {
 
   warehouse: WarehouseType
 
+  guideOrigin: StopPointType
+
+  guideArrival: StopPointType
+
   discountForItem: Decimal!
 
   discountGlobal: Decimal!
@@ -1824,6 +1852,8 @@ type OperationType {
 
   othersDrivers: [PersonType!]!
 
+  othersVehicles: [VehicleType!]!
+
   relatedDocuments: [DocumentEmittedType!]!
 
   guideTicket: String
@@ -1837,6 +1867,8 @@ type OperationType {
   weightMeasurementUnit: UnitType
 
   transportationCompany: PersonType
+
+  mainVehicle: VehicleType
 
   mainDriver: PersonType
 
@@ -1887,6 +1919,10 @@ type OperationType {
   totalDue: Float
 
   totalOther: Float
+
+  guideReasonTransferReadable: String
+
+  guideModeTransferReadable: String
 }
 
 """
@@ -3098,6 +3134,37 @@ enum OperationsOperationGuideModeTransferChoices {
   NA
 }
 
+type VehicleType {
+  id: ID!
+
+  typeVehicle: OperationsVehicleTypeVehicleChoices!
+
+  licensePlate: String
+
+  company: CompanyType
+
+  capacity: Decimal!
+
+  operationSet: [OperationType!]!
+
+  vehicles: [OperationType!]!
+}
+
+"""
+An enumeration.
+"""
+enum OperationsVehicleTypeVehicleChoices {
+  """
+  TRACTO
+  """
+  A_01
+
+  """
+  FURGON
+  """
+  A_02
+}
+
 type DocumentEmittedType {
   id: ID!
 
@@ -3938,7 +4005,7 @@ type Mutation {
 
   annulInvoice(correlative: Int, serial: String): AnnulInvoiceMutation
 
-  registerGuide(carrier: CarrierType, client: ClienteType, guide: GuideType, items: [ItemType], points: StopPointType, relatedDocuments: VentaType, transportation: TransportationType): RegisterGuideMutation
+  registerGuide(carrier: CarrierType, client: ClienteType, guide: GuideType, items: [ItemType], points: StopPointInputType, relatedDocuments: VentaType, transportation: TransportationType): RegisterGuideMutation
 
   registerCreditNote(client: ClienteType, creditNote: VentaType, items: [ItemType], relatedDocuments: RelatedDocumentType): RegisterCreditNoteMutation
 
@@ -3971,6 +4038,8 @@ type Mutation {
   refreshToken(refreshToken: String): Refresh
 
   revokeToken(refreshToken: String): Revoke
+
+  customRefreshToken(refreshToken: String!): CustomRefreshToken
 
   logout(userId: Int): LogoutMutation
 
@@ -4417,7 +4486,7 @@ input GuideType {
   note: String
 }
 
-input StopPointType {
+input StopPointInputType {
   guideOriginDistrictId: String
 
   guideOriginAddress: String
@@ -4558,6 +4627,18 @@ type Revoke {
   revoked: Int!
 }
 
+type CustomRefreshToken {
+  token: String
+
+  refreshToken: String
+
+  refreshExpiresIn: Float
+
+  success: Boolean
+
+  message: String
+}
+
 type LogoutMutation {
   success: Boolean
 }
@@ -4584,6 +4665,8 @@ type QrScan {
   user: UserType
 
   jwtToken: String
+
+  refreshToken: String
 }
 
 type CreateUserMutation {

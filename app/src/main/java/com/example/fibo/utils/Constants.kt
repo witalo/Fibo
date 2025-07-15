@@ -2,7 +2,7 @@ package com.example.fibo.utils
 
 object Constants {
     // URLs base para diferentes entornos
-    const val BASE_API_URL_LOCAL = "http://192.168.1.20:9021"
+    const val BASE_API_URL_LOCAL = "http://192.168.1.245:8000"
     const val BASE_API_URL_PRODUCTION = "https://ng.tuf4ctur4.net.pe"
     
     // Configuración del entorno actual (cambiar según necesidad)
