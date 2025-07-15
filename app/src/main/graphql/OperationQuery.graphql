@@ -38,14 +38,13 @@ query GetOperationByDateAndUserId($date: Date!, $userId: Int!) {
             email
         }
     }
-
 }
 query SearchProducts($query: String!, $subsidiaryId: Int!) {
     searchProduct(search: $query, subsidiaryId: $subsidiaryId, first: 50) {
-                id
-                code
-                name
-                stock
+        id
+        code
+        name
+        stock
     }
 }
 query GetTariffByProductId($productId: Int!) {
@@ -63,7 +62,7 @@ query GetTariffByProductId($productId: Int!) {
     }
 }
 query GetOperationById($OperationId: Int!) {
-    operationById(id: $OperationId){
+    operationById(id: $OperationId) {
         id
         emitDate
         emitTime
@@ -101,7 +100,7 @@ query GetOperationById($OperationId: Int!) {
         sunatDescriptionLow
         codeHash
         userId
-        client{
+        client {
             id
             documentType
             documentNumber
@@ -110,7 +109,7 @@ query GetOperationById($OperationId: Int!) {
             phone
             email
         }
-        operationdetailSet{
+        operationdetailSet {
             id
             typeAffectationId
             quantity
@@ -126,7 +125,7 @@ query GetOperationById($OperationId: Int!) {
             totalAmount
             totalToPay
             description
-            productTariff{
+            productTariff {
                 id
                 productId
                 productCode
@@ -143,7 +142,11 @@ query GetAllSerialsById($subsidiaryId: Int!, $documentType: String!) {
         serial
     }
 }
-query GetOperationsByDateAndUserId($date: Date!, $userId: Int!, $types:  [String!]) {
+query GetOperationsByDateAndUserId(
+    $date: Date!
+    $userId: Int!
+    $types: [String!]
+) {
     operationsByDateAndUserId(date: $date, userId: $userId, types: $types) {
         id
         emitDate
@@ -183,7 +186,6 @@ query GetOperationsByDateAndUserId($date: Date!, $userId: Int!, $types:  [String
             email
         }
     }
-
 }
 query SearchPersons($query: String!) {
     searchPersons(search: $query) {
@@ -196,8 +198,16 @@ query SearchPersons($query: String!) {
         address
     }
 }
-query GetOperationsByPersonAndUser($personId: Int!, $userId: Int!, $types:  [String!]) {
-    operationsByPersonAndUser(personId: $personId, userId: $userId, types: $types) {
+query GetOperationsByPersonAndUser(
+    $personId: Int!
+    $userId: Int!
+    $types: [String!]
+) {
+    operationsByPersonAndUser(
+        personId: $personId
+        userId: $userId
+        types: $types
+    ) {
         id
         emitDate
         operationDate
@@ -236,32 +246,30 @@ query GetOperationsByPersonAndUser($personId: Int!, $userId: Int!, $types:  [Str
             email
         }
     }
-
 }
-query GetAllProductsBySubsidiaryId($subsidiaryId: Int, $available: Boolean){
-        allProducts(subsidiaryId:$subsidiaryId, available: $available){
-            id
-            code
-            name
-            priceWithIgv3
-            priceWithoutIgv3
-            stock
-            minimumUnitName
-        }
+query GetAllProductsBySubsidiaryId($subsidiaryId: Int, $available: Boolean) {
+    allProducts(subsidiaryId: $subsidiaryId, available: $available) {
+        id
+        code
+        name
+        priceWithIgv3
+        priceWithoutIgv3
+        stock
+        minimumUnitName
+    }
 }
-
 
 # GetOperationsByDateRange.graphql
 query GetOperationsByDateRange(
-    $startDate: String!,
-    $endDate: String!,
-    $userId: Int!,
+    $startDate: String!
+    $endDate: String!
+    $userId: Int!
     $types: [String]!
 ) {
     operationsByDateRange(
-        startDate: $startDate,
-        endDate: $endDate,
-        userId: $userId,
+        startDate: $startDate
+        endDate: $endDate
+        userId: $userId
         types: $types
     ) {
         id
@@ -298,6 +306,94 @@ query GetOperationsByDateRange(
             email
             phone
             address
+        }
+    }
+}
+
+query GetGuideById($id: Int) {
+    operationById(id: $id) {
+        id
+        subsidiary {
+            address
+            geographicLocationByDistrict
+            company {
+                businessName
+                doc
+                address
+            }
+        }
+        client {
+            documentTypeReadable
+            documentNumber
+            names
+        }
+        documentType
+        documentTypeReadable
+        serial
+        correlative
+        emitDate
+        guideModeTransferReadable
+        guideReasonTransferReadable
+        operationdetailSet {
+            productName
+            quantity
+            description
+        }
+        relatedDocuments {
+            serial
+            correlative
+            documentType
+        }
+        transferDate
+        totalWeight
+        weightMeasurementUnit {
+            shortName
+        }
+        quantityPackages
+        transportationCompany {
+            documentTypeReadable
+            documentNumber
+            names
+            mtcRegistrationNumber
+        }
+        mainDriver {
+            names
+            driverLicense
+            documentTypeReadable
+            documentNumber
+        }
+        mainVehicle {
+            licensePlate
+        }
+        othersDrivers {
+            names
+            driverLicense
+            documentTypeReadable
+            documentNumber
+        }
+        othersVehicles {
+            licensePlate
+        }
+        receiver {
+            documentTypeReadable
+            documentNumber
+            names
+        }
+        guideOrigin {
+            district {
+                id
+                description
+            }
+            address
+            serial
+        }
+        guideArrival {
+            district {
+                id
+                description
+            }
+            address
+            serial
         }
     }
 }

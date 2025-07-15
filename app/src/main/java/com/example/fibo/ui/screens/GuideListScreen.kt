@@ -31,8 +31,12 @@ import com.example.fibo.ui.components.LoadingDialog
 import java.text.SimpleDateFormat
 import java.util.*
 import com.example.fibo.ui.screens.guide.GuidePdfPreviewDialog
+import kotlinx.coroutines.delay
+import androidx.compose.runtime.Stable
+import android.util.Log
+import androidx.compose.foundation.ExperimentalFoundationApi
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun GuideListScreen(
     navController: NavController,
@@ -55,6 +59,29 @@ fun GuideListScreen(
     // Estados para el diálogo PDF
     var showPdfDialog by remember { mutableStateOf(false) }
     var selectedGuideId by remember { mutableStateOf(0) }
+    
+    // Función para abrir PDF que evita recomposiciones innecesarias
+    val openPdfDialog:  (Int) -> Unit = remember(selectedGuideId, showPdfDialog) {
+        { guideId: Int ->
+            if (guideId != selectedGuideId || !showPdfDialog) {
+                selectedGuideId = guideId
+                showPdfDialog = true
+            }
+        }
+    }
+
+    // Función para cerrar PDF
+    val closePdfDialog = remember { {
+        showPdfDialog = false
+    } }
+
+    // Resetear selectedGuideId con delay para evitar recomposiciones
+    LaunchedEffect(showPdfDialog) {
+        if (!showPdfDialog && selectedGuideId != 0) {
+            delay(100) // Pequeño delay para evitar recomposiciones
+            selectedGuideId = 0
+        }
+    }
 
     // Estado para el modal de filtros
     var showFiltersDialog by remember { mutableStateOf(false) }
@@ -156,13 +183,14 @@ fun GuideListScreen(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(guides) { guide ->
+                    items(
+                        items = guides,
+                        key = { guide -> guide.id }
+                    ) { guide ->
                         GuideItem(
                             guide = guide,
-                            onPdfClick = { guideId ->
-                                selectedGuideId = guideId
-                                showPdfDialog = true
-                            }
+                            onPdfClick = openPdfDialog,
+                            modifier = Modifier.animateItemPlacement()
                         )
                     }
                 }
@@ -193,14 +221,11 @@ fun GuideListScreen(
         }
 
         // Diálogo de PDF
-        if (showPdfDialog) {
+        if (showPdfDialog && selectedGuideId > 0) {
             GuidePdfPreviewDialog(
                 isVisible = showPdfDialog,
                 guideId = selectedGuideId,
-                onDismiss = { 
-                    showPdfDialog = false
-                    selectedGuideId = 0
-                }
+                onDismiss = closePdfDialog
             )
         }
 
@@ -375,10 +400,11 @@ private fun FilterDialog(
 @Composable
 private fun GuideItem(
     guide: IGuide,
-    onPdfClick: (Int) -> Unit
+    onPdfClick: (Int) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(
@@ -469,8 +495,14 @@ private fun GuideItem(
                 }
 
                 // Botón PDF
+                val pdfClickHandler = remember(guide.id) { 
+                    { 
+                        Log.d("GuideListScreen", "PDF click para guía ID: ${guide.id}")
+                        onPdfClick(guide.id) 
+                    } 
+                }
                 IconButton(
-                    onClick = { onPdfClick(guide.id) }
+                    onClick = pdfClickHandler
                 ) {
                     Icon(
                         Icons.Default.PictureAsPdf,
@@ -531,7 +563,9 @@ private fun DatePickerDialog(
         confirmButton = {
             TextButton(onClick = {
                 datePickerState.selectedDateMillis?.let { millis ->
-                    val date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(millis))
+                    val date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
+                        timeZone = TimeZone.getTimeZone("UTC")
+                    }.format(Date(millis))
                     onDateSelected(date)
                 }
                 onDismiss()

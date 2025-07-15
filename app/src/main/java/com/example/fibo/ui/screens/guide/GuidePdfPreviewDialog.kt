@@ -1,10 +1,13 @@
 package com.example.fibo.ui.screens.guide
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.util.Log
 import android.widget.FrameLayout
 import android.widget.Toast
@@ -31,10 +34,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.app.ActivityCompat
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.fibo.reports.PrintControlsSection
+import com.example.fibo.reports.GuidesPrintControlsSection
 import com.example.fibo.reports.PdfDialogViewModel
+import com.example.fibo.model.IGuideData
 import com.example.fibo.utils.Constants
 import com.github.barteksc.pdfviewer.PDFView
 import kotlinx.coroutines.*
@@ -60,13 +66,15 @@ fun GuidePdfPreviewDialog(
 
     val context = LocalContext.current
     
-    // Estados para el PDF y Bluetooth
-    var pdfLoadingState by remember { mutableStateOf(PdfLoadingState.LOADING) }
+    // Estados para el PDF y Bluetooth - usar isVisible como clave principal
+    var pdfLoadingState by remember(isVisible, guideId) { mutableStateOf(PdfLoadingState.LOADING) }
     var isBluetoothActive by remember { mutableStateOf(false) }
-    var pdfFile by remember { mutableStateOf<File?>(null) }
+    var pdfFile by remember(isVisible, guideId) { mutableStateOf<File?>(null) }
+    var guideData by remember(isVisible, guideId) { mutableStateOf<IGuideData?>(null) }
+    var currentGuideId by remember { mutableStateOf(0) }
     
     // URL del PDF para previsualización
-    val pdfUrl = remember { Constants.getPreviewPdfUrl(guideId) }
+    val pdfUrl = remember(guideId) { Constants.getPreviewPdfUrl(guideId) }
     
     // BluetoothAdapter
     val bluetoothAdapter: BluetoothAdapter? by remember {
@@ -76,6 +84,33 @@ fun GuidePdfPreviewDialog(
     // Verificar estado de Bluetooth
     LaunchedEffect(bluetoothAdapter) {
         isBluetoothActive = bluetoothAdapter?.isEnabled == true
+    }
+
+    // Limpiar estado cuando se cierra el diálogo
+    DisposableEffect(isVisible) {
+        onDispose {
+            if (!isVisible) {
+                Log.d("GuidePdfPreview", "Limpiando estado del diálogo")
+                // Resetear el estado del ViewModel para evitar conflictos
+                viewModel.resetState()
+            }
+        }
+    }
+
+    // Cargar datos de la guía solo cuando cambia el guideId y es diferente al actual
+    LaunchedEffect(guideId, isVisible) {
+        if (isVisible && guideId > 0 && guideId != currentGuideId) {
+            Log.d("GuidePdfPreview", "Cargando datos para guía ID: $guideId")
+            currentGuideId = guideId
+            try {
+                val repository = viewModel.operationRepository
+                val data = repository.getGuideById(guideId)
+                guideData = data
+                Log.d("GuidePdfPreview", "Datos cargados exitosamente para guía ID: $guideId")
+            } catch (e: Exception) {
+                Log.e("GuidePdfPreview", "Error cargando datos de guía: ${e.message}")
+            }
+        }
     }
 
     // Función para descargar PDF desde URL
@@ -179,7 +214,22 @@ fun GuidePdfPreviewDialog(
     }
 
     Dialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = {
+            // Verificar permisos antes de cancelar el descubrimiento
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (ActivityCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.BLUETOOTH_SCAN
+                    ) == PackageManager.PERMISSION_GRANTED) {
+                    bluetoothAdapter?.cancelDiscovery()
+                }
+            } else {
+                bluetoothAdapter?.cancelDiscovery()
+            }
+            // Resetear el estado del ViewModel antes de cerrar
+            viewModel.resetState()
+            onDismiss()
+        },
         properties = DialogProperties(
             dismissOnBackPress = true,
             dismissOnClickOutside = false,
@@ -227,7 +277,11 @@ fun GuidePdfPreviewDialog(
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
 
-                            IconButton(onClick = onDismiss) {
+                            IconButton(onClick = {
+                                // Resetear el estado del ViewModel antes de cerrar
+                                viewModel.resetState()
+                                onDismiss()
+                            }) {
                                 Icon(
                                     imageVector = Icons.Default.Close,
                                     contentDescription = "Cerrar",
@@ -259,17 +313,19 @@ fun GuidePdfPreviewDialog(
                                     }
                                 }
 
-                                // Iniciar la descarga del PDF
-                                LaunchedEffect(pdfUrl) {
-                                    Log.d("GuidePdfPreview", "Iniciando descarga de PDF desde: $pdfUrl")
-                                    downloadPdfToFile(context, pdfUrl) { file ->
-                                        if (file != null) {
-                                            Log.d("GuidePdfPreview", "PDF descargado exitosamente: ${file.absolutePath}")
-                                            pdfFile = file
-                                            pdfLoadingState = PdfLoadingState.SUCCESS
-                                        } else {
-                                            Log.e("GuidePdfPreview", "Error: PDF file es null")
-                                            pdfLoadingState = PdfLoadingState.ERROR
+                                // Iniciar la descarga del PDF solo si no se ha descargado ya
+                                LaunchedEffect(pdfUrl, pdfLoadingState) {
+                                    if (pdfLoadingState == PdfLoadingState.LOADING && pdfFile == null) {
+                                        Log.d("GuidePdfPreview", "Iniciando descarga de PDF desde: $pdfUrl")
+                                        downloadPdfToFile(context, pdfUrl) { file ->
+                                            if (file != null) {
+                                                Log.d("GuidePdfPreview", "PDF descargado exitosamente: ${file.absolutePath}")
+                                                pdfFile = file
+                                                pdfLoadingState = PdfLoadingState.SUCCESS
+                                            } else {
+                                                Log.e("GuidePdfPreview", "Error: PDF file es null")
+                                                pdfLoadingState = PdfLoadingState.ERROR
+                                            }
                                         }
                                     }
                                 }
@@ -409,18 +465,23 @@ fun GuidePdfPreviewDialog(
                                 Log.d("GuidePdfPreview", "pdfFile estado en PrintControlsSection: ${pdfFile?.absolutePath ?: "NULL"}")
                             }
                             
-                            // Solo mostrar PrintControlsSection cuando pdfFile esté disponible
-                            if (pdfFile != null) {
-                                Log.d("GuidePdfPreview", "Pasando pdfFile a PrintControlsSection: ${pdfFile?.absolutePath!!}")
-                                PrintControlsSection(
-                                    viewModel = viewModel,
-                                    context = context,
-                                    pdfFile = pdfFile,
-                                    isBluetoothActive = isBluetoothActive,
-                                    onPrintSuccess = { onDismiss() }
-                                )
+                                        // Solo mostrar GuidesPrintControlsSection cuando pdfFile y guideData estén disponibles
+            if (pdfFile != null && guideData != null) {
+                Log.d("GuidePdfPreview", "Pasando pdfFile y guideData a GuidesPrintControlsSection")
+                GuidesPrintControlsSection(
+                    viewModel = viewModel,
+                    context = context,
+                    pdfFile = pdfFile,
+                    guideData = guideData,
+                    isBluetoothActive = isBluetoothActive,
+                    onPrintSuccess = { 
+                        // No cerrar automáticamente el diálogo
+                        // El usuario puede cerrar manualmente si desea
+                        Log.d("GuidePdfPreview", "Impresión completada exitosamente")
+                    }
+                )
                             } else {
-                                // Mostrar mensaje mientras se carga el PDF
+                                // Mostrar mensaje mientras se carga el PDF o los datos de la guía
                                 Box(
                                     modifier = Modifier.fillMaxWidth().padding(16.dp),
                                     contentAlignment = Alignment.Center
@@ -429,7 +490,11 @@ fun GuidePdfPreviewDialog(
                                         CircularProgressIndicator(modifier = Modifier.size(32.dp))
                                         Spacer(modifier = Modifier.height(8.dp))
                                         Text(
-                                            text = "Preparando archivo para impresión...",
+                                            text = when {
+                                                pdfFile == null -> "Preparando archivo para impresión..."
+                                                guideData == null -> "Cargando datos de la guía..."
+                                                else -> "Preparando para impresión..."
+                                            },
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )

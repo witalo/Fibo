@@ -10,6 +10,7 @@ data class IPerson(
     val address: String? = null,
     val fullNames: String = "",
     val driverLicense: String = "",
+    val mtcRegistrationNumber: String? = null,
 ) {
     constructor(id: Int, names: String, documentType: String, documentNumber: String, email: String, phone: String, address: String) : this(
         id = id,

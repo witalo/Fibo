@@ -31,7 +31,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.example.fibo.model.IGuideData
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.RadioButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.BugReport
@@ -537,6 +540,315 @@ fun PrinterSelector(
                 text = "Parece que no hay impresoras emparejadas. Empareje su impresora en Ajustes de Bluetooth.",
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.Gray,
+                modifier = Modifier.padding(vertical = 4.dp)
+            )
+        }
+    }
+}
+
+@SuppressLint("MissingPermission")
+@Composable
+fun GuidesPrintControlsSection(
+    viewModel: PdfDialogViewModel,
+    context: Context,
+    pdfFile: File?,
+    guideData: IGuideData?,
+    isBluetoothActive: Boolean,
+    onPrintSuccess: () -> Unit
+) {
+    // Estados del ViewModel
+    val selectedPrinter by viewModel.selectedPrinter.collectAsState()
+    val printers by viewModel.availablePrinters.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
+
+    // Estados locales
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var showBluetoothAlert by remember { mutableStateOf(false) }
+    var showPermissionDialog by remember { mutableStateOf(false) }
+    var isPrintingInProgress by remember { mutableStateOf(false) }
+    var isBluetoothOperationInProgress by remember { mutableStateOf(false) }
+    var localBluetoothActive by remember { mutableStateOf(isBluetoothActive) }
+
+    // Estados y permisos
+    val bluetoothManager = LocalContext.current.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+    val bluetoothAdapter = remember { bluetoothManager?.adapter }
+    val (hasPermissions, requestPermissions) = rememberBluetoothPermissionsState()
+
+    val composableScope = rememberCoroutineScope()
+    var bluetoothMonitorJob by remember { mutableStateOf<Job?>(null) }
+
+    // Monitoreo continuo del estado de Bluetooth
+    LaunchedEffect(Unit) {
+        bluetoothMonitorJob = launch {
+            try {
+                while (isActive) {
+                    localBluetoothActive = bluetoothAdapter?.isEnabled == true
+                    delay(1000)
+                }
+            } catch (e: CancellationException) {
+                // Cancelación normal
+            } catch (e: Exception) {
+                Log.e("Bluetooth", "Error checking Bluetooth state", e)
+            }
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            bluetoothMonitorJob?.cancel()
+            Log.d("GuidesPrintControlsSection", "Disposable effect cleanup executed")
+        }
+    }
+
+    LaunchedEffect(hasPermissions) {
+        if (hasPermissions && isBluetoothOperationInProgress) {
+            isBluetoothOperationInProgress = false
+            if (localBluetoothActive) {
+                try {
+                    viewModel.scanForPrinters(context)
+                } catch (e: Exception) {
+                    Log.e("Bluetooth", "Error escaneando después de permiso", e)
+                    errorMessage = "Error al buscar impresoras: ${e.message}"
+                }
+            }
+        }
+    }
+
+    val bluetoothLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val isEnabled = bluetoothAdapter?.isEnabled == true
+        localBluetoothActive = isEnabled
+
+        if (isEnabled) {
+            Handler(Looper.getMainLooper()).postDelayed({
+                try {
+                    viewModel.scanForPrinters(context)
+                } catch (e: Exception) {
+                    Log.e("Bluetooth", "Error scanning printers", e)
+                    errorMessage = "Error al buscar impresoras: ${e.message}"
+                    isBluetoothOperationInProgress = false
+                }
+            }, 500)
+        } else {
+            errorMessage = "Bluetooth no fue activado"
+            isBluetoothOperationInProgress = false
+        }
+    }
+
+    fun enableBluetooth() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.BLUETOOTH_CONNECT
+                    ) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    requestPermissions()
+                    return
+                }
+            }
+
+            val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+            bluetoothLauncher.launch(enableBtIntent)
+        } catch (e: SecurityException) {
+            errorMessage = "Permiso denegado: ${e.message}"
+            requestPermissions()
+            isBluetoothOperationInProgress = false
+        } catch (e: Exception) {
+            Log.e("GuidesPrintControlsSection", "Error activando Bluetooth", e)
+            errorMessage = "Error al activar Bluetooth: ${e.message}"
+            isBluetoothOperationInProgress = false
+        }
+    }
+
+    // Manejar estados del ViewModel
+    LaunchedEffect(uiState) {
+        when (uiState) {
+            is PdfDialogUiState.PrintComplete -> {
+                isPrintingInProgress = false
+                try {
+                    onPrintSuccess()
+                } catch (e: Exception) {
+                    Log.e("GuidesPrintControlsSection", "Error en onPrintSuccess", e)
+                }
+            }
+            is PdfDialogUiState.Error -> {
+                isPrintingInProgress = false
+                errorMessage = (uiState as PdfDialogUiState.Error).message
+            }
+            is PdfDialogUiState.Printing -> {
+                isPrintingInProgress = true
+                errorMessage = null
+            }
+            else -> {
+                // No hacer nada para otros estados
+            }
+        }
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        // Título
+        Text(
+            text = "Controles de Impresión",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        // Botón Bluetooth
+        Button(
+            onClick = {
+                try {
+                    if (!localBluetoothActive) {
+                        enableBluetooth()
+                    } else {
+                        if (hasPermissions) {
+                            viewModel.scanForPrinters(context)
+                        } else {
+                            requestPermissions()
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("GuidesPrintControlsSection", "Error en botón Bluetooth", e)
+                    errorMessage = "Error: ${e.message}"
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !isBluetoothOperationInProgress,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (localBluetoothActive) Color(0xFF4CAF50) else Color(0xFFFF9800)
+            )
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Bluetooth,
+                    contentDescription = null,
+                    tint = Color.White
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = when {
+                        isBluetoothOperationInProgress -> "Procesando..."
+                        !localBluetoothActive -> "Activar Bluetooth"
+                        printers.isEmpty() -> "Buscar Impresoras"
+                        else -> "Actualizar Lista"
+                    },
+                    color = Color.White
+                )
+            }
+        }
+
+        // Lista de impresoras
+        if (printers.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Impresoras disponibles:",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+            
+            LazyColumn(
+                modifier = Modifier.heightIn(max = 120.dp)
+            ) {
+                items(printers) { printer ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { viewModel.selectPrinter(printer) }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = selectedPrinter == printer,
+                            onClick = { viewModel.selectPrinter(printer) }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = try {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                    if (ContextCompat.checkSelfPermission(
+                                            context,
+                                            Manifest.permission.BLUETOOTH_CONNECT
+                                        ) == PackageManager.PERMISSION_GRANTED
+                                    ) {
+                                        printer.name ?: "Dispositivo desconocido"
+                                    } else {
+                                        "Dispositivo sin permisos"
+                                    }
+                                } else {
+                                    printer.name ?: "Dispositivo desconocido"
+                                }
+                            } catch (e: SecurityException) {
+                                "Dispositivo sin permisos"
+                            },
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            }
+        }
+
+        // Botón de impresión
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(
+            onClick = {
+                try {
+                    selectedPrinter?.let { printer ->
+                        guideData?.let { data ->
+                            viewModel.printToBluetoothDevice(context, printer, data)
+                        } ?: run {
+                            errorMessage = "No hay datos de guía para imprimir"
+                        }
+                    } ?: run {
+                        errorMessage = "Selecciona una impresora"
+                    }
+                } catch (e: Exception) {
+                    Log.e("GuidesPrintControlsSection", "Error en botón imprimir", e)
+                    errorMessage = "Error al imprimir: ${e.message}"
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = selectedPrinter != null && guideData != null && !isPrintingInProgress,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary
+            )
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (isPrintingInProgress) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Print,
+                        contentDescription = null,
+                        tint = Color.White
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = if (isPrintingInProgress) "Imprimiendo..." else "Imprimir Guía",
+                    color = Color.White
+                )
+            }
+        }
+
+        // Mostrar errores
+        errorMessage?.let { message ->
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = message,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(vertical = 4.dp)
             )
         }

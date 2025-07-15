@@ -16,6 +16,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.apollographql.apollo3.exception.ApolloException
 import com.example.fibo.model.IOperation
+import com.example.fibo.model.IGuideData
 import com.example.fibo.repository.OperationRepository
 import com.example.fibo.utils.PdfDialogUiState
 import com.itextpdf.io.exceptions.IOException
@@ -54,10 +55,11 @@ import com.google.zxing.MultiFormatWriter
 import com.google.zxing.qrcode.QRCodeWriter
 import java.io.ByteArrayOutputStream
 import kotlin.math.min
+import androidx.core.app.ActivityCompat
 
 @HiltViewModel
 class PdfDialogViewModel @Inject constructor(
-    private val operationRepository: OperationRepository,
+    val operationRepository: OperationRepository,
     val pdfGenerator: PdfGenerator
 ) : ViewModel() {
 
@@ -71,6 +73,7 @@ class PdfDialogViewModel @Inject constructor(
     val selectedPrinter: StateFlow<BluetoothDevice?> = _selectedPrinter.asStateFlow()
 
     private var currentOperation: IOperation? = null
+    private var currentGuideData: IGuideData? = null
     private var scanPrintersJob: Job? = null
     private var printOperationJob: Job? = null
 
@@ -861,42 +864,54 @@ class PdfDialogViewModel @Inject constructor(
         try {
             val textBytes = text.toByteArray(Charsets.UTF_8)
             val dataLength = textBytes.size
-            outputStream.write("\n\n".toByteArray())
+
+            Log.d("QR", "Iniciando impresión de QR con texto: $text")
 
             // 1. Centrar para el QR
             outputStream.write(byteArrayOf(0x1B, 0x61, 0x01)) // Centrar
+            outputStream.flush()
+            Thread.sleep(50)
 
             // 2. Modelo QR 2
             outputStream.write(byteArrayOf(0x1D, 0x28, 0x6B, 0x04, 0x00, 0x31, 0x41, 0x32, 0x00))
+            outputStream.flush()
+            Thread.sleep(50)
 
             // 3. Tamaño más grande (5)
             outputStream.write(byteArrayOf(0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x43, 0x05))
+            outputStream.flush()
+            Thread.sleep(50)
 
             // 4. Nivel de corrección M (mejor que L)
             outputStream.write(byteArrayOf(0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x45, 0x31))
+            outputStream.flush()
+            Thread.sleep(50)
 
             // 5. Almacenar datos
             val pL = (dataLength + 3) and 0xFF
             val pH = ((dataLength + 3) shr 8) and 0xFF
             outputStream.write(byteArrayOf(0x1D, 0x28, 0x6B, pL.toByte(), pH.toByte(), 0x31, 0x50, 0x30))
             outputStream.write(textBytes)
+            outputStream.flush()
+            Thread.sleep(100)
 
             // 6. Imprimir QR
             outputStream.write(byteArrayOf(0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x51, 0x30))
+            outputStream.flush()
+            Thread.sleep(200) // Pausa más larga para que se procese el QR
 
-            // 7. IMPORTANTE: Salto de línea ANTES de cambiar alineación
-            outputStream.write("".toByteArray())
-
-            // 8. RESETEAR completamente la alineación a izquierda
+            // 7. RESETEAR completamente la alineación a izquierda
             outputStream.write(byteArrayOf(0x1B, 0x61, 0x00)) // Izquierda
-
-            // 9. Salto adicional para separar
-//            outputStream.write("\n".toByteArray())
-
             outputStream.flush()
 
+            Log.d("QR", "QR impreso exitosamente")
+
+        } catch (e: IOException) {
+            Log.e("QR", "Error de E/S al imprimir QR: ${e.message}")
+            throw e
         } catch (e: Exception) {
-            Log.e("QR", "Error QR grande: ${e.message}")
+            Log.e("QR", "Error inesperado al imprimir QR: ${e.message}")
+            throw e
         }
     }
 
@@ -1089,4 +1104,346 @@ class PdfDialogViewModel @Inject constructor(
 
         return output.toByteArray()
     }
+
+    // Método para imprimir guía a dispositivo Bluetooth
+    fun printToBluetoothDevice(context: Context, device: BluetoothDevice, guideData: IGuideData) {
+        viewModelScope.launch(Dispatchers.IO) {
+            var socket: BluetoothSocket? = null
+            var outputStream: OutputStream? = null
+            
+            try {
+                // Mostrar estado de impresión
+                withContext(Dispatchers.Main) {
+                    updateUiState(PdfDialogUiState.Loading)
+                }
+
+                // Cancelar descubrimiento antes de conectar
+                val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    if (ActivityCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.BLUETOOTH_SCAN
+                        ) == PackageManager.PERMISSION_GRANTED
+                    ) {
+                        bluetoothAdapter?.cancelDiscovery()
+                    }
+                } else {
+                    bluetoothAdapter?.cancelDiscovery()
+                }
+
+                // Pequeña pausa para asegurar que el descubrimiento se cancele
+                delay(500)
+
+                // Crear un UUID para el servicio de impresión SPP
+                val uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
+
+                // Obtener un socket Bluetooth con timeout
+                socket = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    if (ActivityCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.BLUETOOTH_CONNECT
+                        ) == PackageManager.PERMISSION_GRANTED
+                    ) {
+                        device.createRfcommSocketToServiceRecord(uuid)
+                    } else {
+                        throw SecurityException("Se requiere permiso BLUETOOTH_CONNECT")
+                    }
+                } else {
+                    device.createRfcommSocketToServiceRecord(uuid)
+                }
+
+                Log.d("BluetoothPrint", "Intentando conectar a ${device.name}")
+
+                // Conectar con timeout
+                withTimeout(15000) { // 15 segundos timeout
+                    socket.connect()
+                }
+
+                Log.d("BluetoothPrint", "Conectado exitosamente a ${device.name}")
+
+                // Obtener flujo de salida
+                outputStream = socket.outputStream
+                
+                // Pequeña pausa después de conectar
+                delay(1000)
+                
+                // Enviar contenido de la guía con manejo de errores mejorado
+                sendGuideContentSafely(outputStream, guideData)
+
+                // Pausa antes de cerrar para asegurar que todos los datos se envíen
+                delay(2000)
+
+                Log.d("BluetoothPrint", "Impresión completada exitosamente")
+
+                // Mostrar mensaje de éxito en el hilo principal
+                withContext(Dispatchers.Main) {
+                    updateUiState(PdfDialogUiState.PrintComplete)
+                }
+
+            } catch (e: TimeoutCancellationException) {
+                Log.e("BluetoothPrint", "Timeout al conectar con la impresora")
+                withContext(Dispatchers.Main) {
+                    updateUiState(PdfDialogUiState.Error("Timeout al conectar con la impresora. Verifique que esté encendida y cerca."))
+                }
+            } catch (e: SecurityException) {
+                Log.e("BluetoothPrint", "Error de permisos: ${e.message}")
+                withContext(Dispatchers.Main) {
+                    updateUiState(PdfDialogUiState.Error("Error de permisos Bluetooth: ${e.message}"))
+                }
+            } catch (e: IOException) {
+                Log.e("BluetoothPrint", "Error de conexión Bluetooth: ${e.message}")
+                withContext(Dispatchers.Main) {
+                    updateUiState(PdfDialogUiState.Error("Error de conexión: ${e.message}. Verifique que la impresora esté encendida."))
+                }
+            } catch (e: Exception) {
+                Log.e("BluetoothPrint", "Error en la impresión: ${e.message}")
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    updateUiState(PdfDialogUiState.Error("Error en la impresión: ${e.message}"))
+                }
+            } finally {
+                // Cerrar recursos de manera segura
+                try {
+                    outputStream?.close()
+                    Log.d("BluetoothPrint", "OutputStream cerrado")
+                } catch (e: Exception) {
+                    Log.e("BluetoothPrint", "Error al cerrar outputStream: ${e.message}")
+                }
+
+                try {
+                    socket?.close()
+                    Log.d("BluetoothPrint", "Socket cerrado")
+                } catch (e: Exception) {
+                    Log.e("BluetoothPrint", "Error al cerrar socket: ${e.message}")
+                }
+            }
+        }
+    }
+
+    // Función para convertir texto con acentos a formato compatible con impresora
+    private fun convertAccents(text: String): String {
+        return text
+            .replace("á", "a")
+            .replace("é", "e")
+            .replace("í", "i")
+            .replace("ó", "o")
+            .replace("ú", "u")
+            .replace("ñ", "n")
+            .replace("Á", "A")
+            .replace("É", "E")
+            .replace("Í", "I")
+            .replace("Ó", "O")
+            .replace("Ú", "U")
+            .replace("Ñ", "N")
+            .replace("ü", "u")
+            .replace("Ü", "U")
+    }
+
+    private fun sendGuideContentSafely(outputStream: OutputStream, guideData: IGuideData) {
+        try {
+            sendGuideContent(outputStream, guideData)
+        } catch (e: IOException) {
+            Log.e("BluetoothPrint", "Error de E/S durante la impresión: ${e.message}")
+            throw e
+        } catch (e: Exception) {
+            Log.e("BluetoothPrint", "Error inesperado durante la impresión: ${e.message}")
+            throw e
+        }
+    }
+
+    private fun sendGuideContent(outputStream: OutputStream, guideData: IGuideData) {
+        val writer = BufferedWriter(OutputStreamWriter(outputStream, Charsets.UTF_8))
+        val numberFormat = DecimalFormat("#,##0.00")
+
+        try {
+            // Inicialización de la impresora
+            outputStream.write(PrinterCommands.INIT)
+            outputStream.flush()
+            Thread.sleep(200) // Pequeña pausa después de inicializar
+            
+            // Configurar codificación básica para impresoras térmicas
+            outputStream.write(byteArrayOf(0x1B, 0x74, 0x00)) // ESC t 0 (PC437)
+            outputStream.flush()
+            Thread.sleep(100)
+            
+            outputStream.write(PrinterCommands.ESC_ALIGN_CENTER)
+            outputStream.flush()
+
+            // Encabezado - Nombre de la empresa
+            outputStream.write(PrinterCommands.ESC_BOLD_ON)
+            writer.write("${convertAccents(guideData.subsidiary.company?.businessName ?: "")}\n")
+            outputStream.write(PrinterCommands.ESC_BOLD_OFF)
+
+            // Dirección de la empresa
+            writer.write("${convertAccents(guideData.subsidiary.address)}\n")
+            writer.write("${convertAccents(guideData.subsidiary.geographicLocationByDistrict)}\n")
+            writer.write("RUC ${guideData.subsidiary.company?.doc ?: ""}\n\n")
+
+            // Tipo de documento
+            outputStream.write(PrinterCommands.ESC_BOLD_ON)
+            when (guideData.documentType) {
+                "A_09" -> writer.write("GUIA DE REMISION REMITENTE ELECTRONICA\n")
+                "A_31" -> writer.write("GUIA DE REMISION TRANSPORTISTA ELECTRONICA\n")
+                else -> writer.write("${convertAccents(guideData.documentTypeReadable)}\n")
+            }
+            writer.write("${guideData.serial}-${String.format("%06d", guideData.correlative)}\n")
+            outputStream.write(PrinterCommands.ESC_BOLD_OFF)
+
+            writer.write("\n")
+            writer.flush()
+            outputStream.flush()
+            Thread.sleep(100) // Pausa después del encabezado
+
+            // Sección de remitente (solo para guías de remisión remitente)
+            if (guideData.documentType == "A_09") {
+                outputStream.write(PrinterCommands.ESC_ALIGN_LEFT)
+                outputStream.write(PrinterCommands.ESC_BOLD_ON)
+                writer.write("REMITENTE\n")
+                outputStream.write(PrinterCommands.ESC_BOLD_OFF)
+                writer.write("${guideData.client.documentType}: ${guideData.client.documentNumber}\n")
+                writer.write("${convertAccents(guideData.client.names ?: "")}\n\n")
+            }
+
+            // Sección de destinatario (solo para guías de remisión transportista)
+            if (guideData.documentType == "A_31") {
+                outputStream.write(PrinterCommands.ESC_ALIGN_LEFT)
+                outputStream.write(PrinterCommands.ESC_BOLD_ON)
+                writer.write("DESTINATARIO\n")
+                outputStream.write(PrinterCommands.ESC_BOLD_OFF)
+                writer.write("${guideData.receiver?.documentType ?: ""}: ${guideData.receiver?.documentNumber ?: ""}\n")
+                writer.write("${convertAccents(guideData.receiver?.names ?: "")}\n\n")
+            }
+
+            // Datos del traslado
+            outputStream.write(PrinterCommands.ESC_BOLD_ON)
+            writer.write("DATOS DEL TRASLADO\n")
+            outputStream.write(PrinterCommands.ESC_BOLD_OFF)
+            writer.write("FECHA EMISION: ${formatDate(guideData.emitDate)}\n")
+            guideData.transferDate?.let { transferDate ->
+                writer.write("FECHA DE ENTREGA DE BIENES AL TRANSPORTISTA: ${formatDate(transferDate)}\n")
+            }
+
+            // Motivo y modalidad solo para guías de remisión remitente
+            if (guideData.documentType == "A_09") {
+                guideData.guideReasonTransferReadable?.let { reason ->
+                    writer.write("MOTIVO DE TRASLADO: ${convertAccents(reason)}\n")
+                }
+                guideData.guideModeTransferReadable?.let { mode ->
+                    writer.write("MODALIDAD DE TRANSPORTE: ${convertAccents(mode)}\n")
+                }
+            }
+
+            guideData.totalWeight?.let { weight ->
+                val unitName = guideData.weightMeasurementUnit?.shortName ?: "KGM"
+                writer.write("PESO BRUTO TOTAL ($unitName): $weight $unitName\n")
+            }
+            guideData.quantityPackages?.let { packages ->
+                writer.write("NÚMERO DE BULTOS: $packages\n")
+            }
+
+            writer.write("\n")
+            writer.flush()
+            outputStream.flush()
+            Thread.sleep(100) // Pausa después de datos del traslado
+
+            // Datos del transporte
+            outputStream.write(PrinterCommands.ESC_BOLD_ON)
+            writer.write("DATOS DEL TRANSPORTE\n")
+            outputStream.write(PrinterCommands.ESC_BOLD_OFF)
+
+            // Transportista (solo para modalidad transporte público)
+            guideData.transportationCompany?.let { company ->
+                writer.write("TRANSPORTISTA: ${company.documentType} ${company.documentNumber} ${convertAccents(company.names ?: "")}\n")
+            }
+
+            // Vehículo principal (solo para modalidad transporte privado)
+            guideData.mainVehicle?.let { vehicle ->
+                writer.write("VEHICULO PRINCIPAL: ${vehicle.licensePlate}\n")
+            }
+
+            // Conductor principal (solo para modalidad transporte privado)
+            guideData.mainDriver?.let { driver ->
+                writer.write("CONDUCTOR PRINCIPAL: ${driver.documentType} ${driver.documentNumber} - ${convertAccents(driver.names ?: "")}\n")
+                driver.driverLicense?.let { license ->
+                    writer.write("LICENCIA DE CONDUCIR DEL CONDUCTOR PRINCIPAL: $license\n")
+                }
+            }
+
+            // Punto de partida
+            guideData.guideOrigin?.let { origin ->
+                writer.write("PUNTO DE PARTIDA\n")
+                writer.write("(${origin.district.id}) - ${convertAccents(origin.district.description)} - ${convertAccents(origin.address)}\n")
+            }
+
+            // Punto de llegada
+            guideData.guideArrival?.let { arrival ->
+                writer.write("PUNTO DE LLEGADA\n")
+                writer.write("(${arrival.district.id}) - ${convertAccents(arrival.district.description)} - ${convertAccents(arrival.address)}\n")
+            }
+
+            writer.write("\n")
+            writer.flush()
+            outputStream.flush()
+            Thread.sleep(100) // Pausa después de datos del transporte
+
+            // Detalle de productos
+            outputStream.write(PrinterCommands.ESC_BOLD_ON)
+            writer.write("# DETALLE CANT\n")
+            outputStream.write(PrinterCommands.ESC_BOLD_OFF)
+
+            guideData.operationDetailSet.forEachIndexed { index, detail ->
+                writer.write("${index + 1} ${convertAccents(detail.productName)} ${detail.quantity}\n")
+                if (detail.description.isNotEmpty()) {
+                    writer.write("   ${convertAccents(detail.description)}\n")
+                }
+            }
+
+            writer.write("\n")
+
+            // Documentos relacionados
+            if (guideData.relatedDocuments.isNotEmpty()) {
+                outputStream.write(PrinterCommands.ESC_BOLD_ON)
+                writer.write("DOCUMENTOS RELACIONADOS:\n")
+                outputStream.write(PrinterCommands.ESC_BOLD_OFF)
+                guideData.relatedDocuments.forEach { doc ->
+                    val docTypeName = when (doc.documentType) {
+                        "A_01" -> "FACTURA ELECTRONICA"
+                        "A_03" -> "BOLETA ELECTRONICA"
+                        else -> convertAccents(doc.documentType ?: "")
+                    }
+                    writer.write("$docTypeName: ${doc.serial}-${String.format("%06d", doc.correlative)}\n")
+                }
+                writer.write("\n")
+            }
+
+            // Pie de página
+            outputStream.write(PrinterCommands.ESC_ALIGN_CENTER)
+            writer.write("Representacion impresa de la ${convertAccents(guideData.documentTypeReadable ?: "")}\n")
+            writer.write("ELECTRONICA, para ver el documento visita\n")
+            writer.write("https://www.tuf4ct.com/cpe\n")
+            
+            // IMPORTANTE: Flush antes del QR para asegurar que todo el texto se imprima primero
+            writer.flush()
+            outputStream.flush()
+            Thread.sleep(500) // Pausa más larga antes del QR
+
+            // Código QR
+            val qrText = "https://www.tuf4ct.com/cpe/${guideData.id}"
+            printNativeQRLarge(outputStream, qrText)
+            
+            // Pausa después del QR para asegurar que se procese
+            Thread.sleep(1000)
+
+            writer.write("\n\n\n")
+
+            // Finalización
+            outputStream.write(PrinterCommands.ESC_FEED_PAPER_AND_CUT)
+            writer.flush()
+            outputStream.flush()
+        } finally {
+            writer.close()
+        }
+    }
+
+
 }

@@ -47,6 +47,14 @@ import com.example.fibo.model.IGuide
 import com.example.fibo.model.IGuideResponse
 import com.example.fibo.model.ISubsidiary
 import com.example.fibo.model.ICompany
+import com.example.fibo.GetGuideByIdQuery
+import com.example.fibo.model.IGuideData
+import com.example.fibo.model.IGuideDetail
+import com.example.fibo.model.IWeightMeasurementUnit
+import com.example.fibo.model.IGuideLocation
+import com.example.fibo.model.IDistrict
+import com.example.fibo.model.IVehicle
+import com.example.fibo.model.IRelatedDocument
 
 
 @Singleton
@@ -1018,6 +1026,7 @@ class OperationRepository @Inject constructor(
                                     id = 0,
                                     serial = "",
                                     name = sub.companyName ?: "",
+                                    geographicLocationByDistrict = "",
                                     address = "",
                                     token = ""
                                 )
@@ -1060,5 +1069,158 @@ class OperationRepository @Inject constructor(
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    suspend fun getGuideById(guideId: Int): IGuideData {
+        val query = GetGuideByIdQuery(id = Optional.present(guideId))
+        val response = apolloClient.query(query).execute()
+        
+        if (response.hasErrors()) {
+            val errorMessage = response.errors?.firstOrNull()?.message ?: "Error desconocido"
+            throw ApolloException("Error en la consulta GraphQL: $errorMessage")
+        }
+        
+        val operationData = response.data?.operationById
+            ?: throw ApolloException("No se encontró la operación con ID $guideId")
+        
+        return IGuideData(
+            id = operationData.id.toInt(),
+            subsidiary = operationData.subsidiary?.let { sub ->
+                ISubsidiary(
+                    id = 0, // No disponible en la query
+                    serial = "",
+                    name = sub.company?.businessName.orEmpty(),
+                    address = sub.address.orEmpty(),
+                    geographicLocationByDistrict = sub.geographicLocationByDistrict.orEmpty(),
+                    token = "",
+                    company = sub.company?.let { comp ->
+                        ICompany(
+                            id = 0,
+                            businessName = comp.businessName.orEmpty(),
+                            doc = comp.doc.orEmpty(),
+                            address = comp.address.orEmpty(),
+                            logo = ""
+                        )
+                    }
+                )
+            } ?: throw ApolloException("Los datos de la subsidiaria están vacíos"),
+            client = operationData.client?.let { client ->
+                IPerson(
+                    id = 0,
+                    names = client.names.orEmpty(),
+                    documentType = client.documentTypeReadable,
+                    documentNumber = client.documentNumber.orEmpty(),
+                    phone = "",
+                    email = "",
+                    address = ""
+                )
+            } ?: throw ApolloException("Los datos del cliente están vacíos"),
+            documentType = operationData.documentType.toString(),
+            documentTypeReadable = operationData.documentTypeReadable.toString(),
+            serial = operationData.serial.orEmpty(),
+            correlative = operationData.correlative ?: 0,
+            emitDate = operationData.emitDate.toString(),
+            guideModeTransferReadable = operationData.guideModeTransferReadable,
+            guideReasonTransferReadable = operationData.guideReasonTransferReadable,
+            operationDetailSet = operationData.operationdetailSet.map { detail ->
+                IGuideDetail(
+                    productName = detail.productName.orEmpty(),
+                    quantity = detail.quantity.toString(),
+                    description = detail.description.orEmpty()
+                )
+            },
+            relatedDocuments = operationData.relatedDocuments.map { doc ->
+                IRelatedDocument(
+                    serial = doc.serial,
+                    correlative = doc.correlative,
+                    documentType = doc.documentType.toString()
+                )
+            },
+            transferDate = operationData.transferDate?.toString(),
+            totalWeight = operationData.totalWeight?.toString(),
+            weightMeasurementUnit = operationData.weightMeasurementUnit?.let { unit ->
+                IWeightMeasurementUnit(shortName = unit.shortName.orEmpty())
+            },
+            quantityPackages = operationData.quantityPackages?.toString(),
+            transportationCompany = operationData.transportationCompany?.let { company ->
+                IPerson(
+                    id = 0,
+                    names = company.names.orEmpty(),
+                    documentType = company.documentTypeReadable,
+                    documentNumber = company.documentNumber.orEmpty(),
+                    phone = "",
+                    email = "",
+                    address = "",
+                    mtcRegistrationNumber = company.mtcRegistrationNumber
+                )
+            },
+            mainDriver = operationData.mainDriver?.let { driver ->
+                IPerson(
+                    id = 0,
+                    names = driver.names.orEmpty(),
+                    documentType = driver.documentTypeReadable,
+                    documentNumber = driver.documentNumber.orEmpty(),
+                    phone = "",
+                    email = "",
+                    address = "",
+                    driverLicense = driver.driverLicense.orEmpty()
+                )
+            },
+            mainVehicle = operationData.mainVehicle?.let { vehicle ->
+                IVehicle(
+                    id = 0,
+                    licensePlate = vehicle.licensePlate.orEmpty()
+                )
+            },
+            othersDrivers = operationData.othersDrivers.map { driver ->
+                IPerson(
+                    id = 0,
+                    names = driver.names.orEmpty(),
+                    documentType = driver.documentTypeReadable,
+                    documentNumber = driver.documentNumber.orEmpty(),
+                    phone = "",
+                    email = "",
+                    address = "",
+                    driverLicense = driver.driverLicense.orEmpty()
+                )
+            },
+            othersVehicles = operationData.othersVehicles.map { vehicle ->
+                IVehicle(
+                    id = 0,
+                    licensePlate = vehicle.licensePlate.orEmpty()
+                )
+            },
+            receiver = operationData.receiver?.let { receiver ->
+                IPerson(
+                    id = 0,
+                    names = receiver.names.orEmpty(),
+                    documentType = receiver.documentTypeReadable,
+                    documentNumber = receiver.documentNumber.orEmpty(),
+                    phone = "",
+                    email = "",
+                    address = ""
+                )
+            },
+            guideOrigin = operationData.guideOrigin?.let { origin ->
+                IGuideLocation(
+                    district = IDistrict(
+                        id = origin.district?.id.orEmpty(),
+                        description = origin.district?.description.orEmpty()
+                    ),
+                    address = origin.address.orEmpty(),
+                    serial = origin.serial.orEmpty()
+                )
+            },
+            guideArrival = operationData.guideArrival?.let { arrival ->
+                IGuideLocation(
+                    district = IDistrict(
+                        id = arrival.district?.id.orEmpty(),
+                        description = arrival.district?.description.orEmpty()
+                    ),
+                    address = arrival.address.orEmpty(),
+                    serial = arrival.serial.orEmpty()
+                )
+            }
+        )
     }
 }
