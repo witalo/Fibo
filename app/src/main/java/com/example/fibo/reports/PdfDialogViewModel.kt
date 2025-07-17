@@ -1320,7 +1320,7 @@ class PdfDialogViewModel @Inject constructor(
             outputStream.write(PrinterCommands.ESC_BOLD_OFF)
             writer.write("FECHA EMISION: ${formatDate(guideData.emitDate)}\n")
             guideData.transferDate?.let { transferDate ->
-                writer.write("FECHA DE ENTREGA DE BIENES AL TRANSPORTISTA: ${formatDate(transferDate)}\n")
+                writer.write("FECHA DE ENTREGA DE BIENES\nAL TRANSPORTISTA: ${formatDate(transferDate)}\n")
             }
 
             // Motivo y modalidad solo para guías de remisión remitente
@@ -1329,16 +1329,16 @@ class PdfDialogViewModel @Inject constructor(
                     writer.write("MOTIVO DE TRASLADO: ${convertAccents(reason)}\n")
                 }
                 guideData.guideModeTransferReadable?.let { mode ->
-                    writer.write("MODALIDAD DE TRANSPORTE: ${convertAccents(mode)}\n")
+                    writer.write("MODALIDAD DE TRANSPORTE:\n${convertAccents(mode)}\n")
                 }
             }
 
             guideData.totalWeight?.let { weight ->
                 val unitName = guideData.weightMeasurementUnit?.shortName ?: "KGM"
-                writer.write("PESO BRUTO TOTAL ($unitName): $weight $unitName\n")
+                writer.write("PESO BRUTO TOTAL ($unitName): $weight\n")
             }
             guideData.quantityPackages?.let { packages ->
-                writer.write("NÚMERO DE BULTOS: $packages\n")
+                writer.write("NUMERO DE BULTOS: $packages\n")
             }
 
             writer.write("\n")
@@ -1347,13 +1347,11 @@ class PdfDialogViewModel @Inject constructor(
             Thread.sleep(100) // Pausa después de datos del traslado
 
             // Datos del transporte
-            outputStream.write(PrinterCommands.ESC_BOLD_ON)
             writer.write("DATOS DEL TRANSPORTE\n")
-            outputStream.write(PrinterCommands.ESC_BOLD_OFF)
 
             // Transportista (solo para modalidad transporte público)
             guideData.transportationCompany?.let { company ->
-                writer.write("TRANSPORTISTA: ${company.documentType} ${company.documentNumber} ${convertAccents(company.names ?: "")}\n")
+                writer.write("TRANSPORTISTA: ${company.documentType} ${company.documentNumber}\n${convertAccents(company.names ?: "")}\n")
             }
 
             // Vehículo principal (solo para modalidad transporte privado)
@@ -1363,9 +1361,9 @@ class PdfDialogViewModel @Inject constructor(
 
             // Conductor principal (solo para modalidad transporte privado)
             guideData.mainDriver?.let { driver ->
-                writer.write("CONDUCTOR PRINCIPAL: ${driver.documentType} ${driver.documentNumber} - ${convertAccents(driver.names ?: "")}\n")
+                writer.write("CONDUCTOR PRINCIPAL: ${driver.documentType} ${driver.documentNumber}\n${convertAccents(driver.names ?: "")}\n")
                 driver.driverLicense?.let { license ->
-                    writer.write("LICENCIA DE CONDUCIR DEL CONDUCTOR PRINCIPAL: $license\n")
+                    writer.write("LICENCIA DE CONDUCIR DEL\nCONDUCTOR PRINCIPAL: $license\n")
                 }
             }
 
@@ -1387,15 +1385,17 @@ class PdfDialogViewModel @Inject constructor(
             Thread.sleep(100) // Pausa después de datos del transporte
 
             // Detalle de productos
-            outputStream.write(PrinterCommands.ESC_BOLD_ON)
-            writer.write("#   DETALLE   CANT\n")
-            outputStream.write(PrinterCommands.ESC_BOLD_OFF)
-
+            writer.write("DETALLE DE PRODUCTOS\n")
+            writer.write("#      DESCRIPCION      CANT\n")
             guideData.operationDetailSet.forEachIndexed { index, detail ->
-                writer.write("${index + 1}   ${convertAccents(detail.productName)}   ${detail.quantity}\n")
-                if (detail.description.isNotEmpty()) {
-                    writer.write("   ${convertAccents(detail.description)}\n")
-                }
+                outputStream.write(PrinterCommands.ESC_ALIGN_LEFT)
+                writer.write(
+                    if (detail.description.isNotBlank()) {
+                        "${index + 1}   ${detail.productName.uppercase()} (${detail.description.uppercase()})   ${detail.quantity}\n"
+                    } else {
+                        "${index + 1}   ${detail.productName.uppercase()}   ${detail.quantity}\n"
+                    }
+                )
             }
 
             writer.write("\n")
@@ -1418,7 +1418,7 @@ class PdfDialogViewModel @Inject constructor(
 
             // Pie de página
             outputStream.write(PrinterCommands.ESC_ALIGN_CENTER)
-            writer.write("Representacion impresa de la ${convertAccents(guideData.documentTypeReadable ?: "")}\n")
+            writer.write("Representacion impresa de la \n${convertAccents(guideData.documentTypeReadable ?: "")}\n")
             writer.write("ELECTRONICA, para ver el documento visita\n")
             writer.write("https://www.tuf4ct.com/cpe\n")
             
@@ -1430,7 +1430,7 @@ class PdfDialogViewModel @Inject constructor(
             // Código QR
             val qrText = "https://www.tuf4ct.com/cpe/${guideData.id}"
             printNativeQRLarge(outputStream, qrText)
-            
+
             // Pausa después del QR para asegurar que se procese
             Thread.sleep(1000)
 

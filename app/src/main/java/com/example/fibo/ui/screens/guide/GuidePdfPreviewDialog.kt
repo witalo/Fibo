@@ -248,10 +248,10 @@ fun GuidePdfPreviewDialog(
                 modifier = Modifier.fillMaxSize()
             ) {
                 val maxHeight = this.maxHeight
-                val headerHeight = 60.dp
+                val headerHeight = 50.dp
                 val minControlsHeight = 200.dp
-                val maxControlsHeight = 320.dp
-                val pdfViewHeight = maxHeight - headerHeight - minControlsHeight
+                val maxControlsHeight = 280.dp
+                val pdfViewHeight = maxHeight - headerHeight - minControlsHeight - 50.dp
 
                 Column(
                     modifier = Modifier.fillMaxSize()
