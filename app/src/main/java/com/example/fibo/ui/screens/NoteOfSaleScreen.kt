@@ -71,10 +71,10 @@ import com.example.fibo.model.IPerson
 import com.example.fibo.navigation.Screen
 import com.example.fibo.reports.PdfDialogViewModel
 import com.example.fibo.reports.PdfViewerDialog
-import com.example.fibo.ui.components.AppTopBar
+import com.example.fibo.ui.components.AppScaffold
+import com.example.fibo.ui.components.AppTopBarWithSearch
 import com.example.fibo.ui.components.ClientFilterChip
 import com.example.fibo.ui.components.ClientSearchDialog
-import com.example.fibo.ui.components.SideMenu
 import com.example.fibo.utils.ColorGradients
 import com.example.fibo.viewmodels.NoteOfSaleViewModel
 import java.text.SimpleDateFormat
@@ -86,12 +86,11 @@ import java.util.concurrent.TimeUnit
 fun NoteOfSaleScreen(
     navController: NavController,
     viewModel: NoteOfSaleViewModel = hiltViewModel(),
+    subsidiaryData: com.example.fibo.model.ISubsidiary? = null,
     onLogout: () -> Unit
 ) {
-    val subsidiaryData by viewModel.subsidiaryData.collectAsState()
     val selectedDate by viewModel.selectedDate.collectAsState()
     val invoiceState by viewModel.invoiceState.collectAsState()
-    var isMenuOpen by remember { mutableStateOf(false) }
 
     // Estados para el diálogo de búsqueda
     var isSearchDialogOpen by remember { mutableStateOf(false) }
@@ -116,128 +115,82 @@ fun NoteOfSaleScreen(
         }
     }
 
-    SideMenu(
-        isOpen = isMenuOpen,
-        onClose = { isMenuOpen = false },
+    AppScaffold(
+        navController = navController,
         subsidiaryData = subsidiaryData,
-        onMenuItemSelected = { option ->
-            when (option) {
-                "Inicio" -> navController.navigate(Screen.Home.route)
-                "Cotizaciones" -> navController.navigate(Screen.Quotation.route)
-                "Nota de salida" -> navController.navigate(Screen.NoteOfSale.route)
-                "Perfil" -> navController.navigate(Screen.Profile.route)
-                "Nueva Factura" -> navController.navigate(Screen.NewInvoice.route)
-                "Nueva Boleta" -> navController.navigate(Screen.NewReceipt.route)
-                "Nueva Cotización" -> navController.navigate(Screen.NewQuotation.route)
-                "Productos" -> navController.navigate(Screen.Product.route)
-                "Nueva Nota de salida" -> navController.navigate(Screen.NewNoteOfSale.route)
-
-            }
-            isMenuOpen = false
-        },
         onLogout = onLogout,
-        content = {
-            Scaffold(
-                topBar = {
-                    AppTopBar(
-//                        title = "Inicio",
-                        title = if (selectedClient != null) {
-                            "${selectedClient?.names?.take(15)}..."
-                        } else {
-                            "Comprobantes"
-                        },
-                        onMenuClick = { isMenuOpen = !isMenuOpen },
-                        onDateSelected = { date ->
-                            viewModel.updateSelectedDate(date)
-                        },
-                        currentDate = selectedDate,
-                        onTitleClick = { isSearchDialogOpen = true }
-                    )
+        topBar = {
+            AppTopBarWithSearch(
+                title = if (selectedClient != null) {
+                    "${selectedClient?.names?.take(15)}..."
+                } else {
+                    "Comprobantes"
                 },
-                content = { paddingValues ->
+                onDateSelected = { date ->
+                    viewModel.updateSelectedDate(date)
+                },
+                currentDate = selectedDate,
+                onTitleClick = { isSearchDialogOpen = true }
+            )
+        }
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            when (invoiceState) {
+                is NoteOfSaleViewModel.InvoiceState.Loading -> NoteOfSaleCenterLoadingIndicator()
+                is NoteOfSaleViewModel.InvoiceState.WaitingForUser -> {
+                    // Mensaje de espera para autenticación
                     Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(paddingValues)
-                            .background(MaterialTheme.colorScheme.background)
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
                     ) {
-
-                        when (invoiceState) {
-                            is NoteOfSaleViewModel.InvoiceState.Loading -> NoteOfSaleCenterLoadingIndicator()
-                            is NoteOfSaleViewModel.InvoiceState.WaitingForUser -> {
-                                // Mensaje de espera para autenticación
-                                Box(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        CircularProgressIndicator()
-                                        Spacer(modifier = Modifier.height(16.dp))
-                                        Text("Esperando autenticación...")
-                                    }
-                                }
-                            }
-                            is NoteOfSaleViewModel.InvoiceState.Success -> {
-                                val invoices =
-                                    (invoiceState as NoteOfSaleViewModel.InvoiceState.Success).data
-                                NoteOfSaleContent(
-                                    invoices = invoices,
-                                    onInvoiceClick = { invoice ->
-                                        navController.navigate("note_of_sale_detail/${invoice.id}")
-                                    },
-                                    onNewInvoice = { navController.navigate(Screen.NewNoteOfSale.route) },
-                                    onNewReceipt = { navController.navigate(Screen.NewNoteOfSale.route) },
-                                    selectedClient = selectedClient,
-                                    onClearClientFilter = { viewModel.clearClientSearch() }
-                                )
-                            }
-                            is NoteOfSaleViewModel.InvoiceState.Error -> {
-                                NoteOfSaleErrorMessage(
-                                    message = (invoiceState as NoteOfSaleViewModel.InvoiceState.Error).message,
-                                    onRetry = {viewModel.loadNoteOfSale(selectedDate) }
-                                )
-                            }
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            CircularProgressIndicator()
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text("Esperando autenticación...")
                         }
-//                        when (invoiceState) {
-//                            is HomeViewModel.InvoiceState.Loading -> CenterLoadingIndicator()
-//                            is HomeViewModel.InvoiceState.Success -> {
-//                                val invoices =
-//                                    (invoiceState as HomeViewModel.InvoiceState.Success).data
-//                                InvoiceContent(
-//                                    invoices = invoices,
-//                                    onInvoiceClick = { invoice ->
-//                                        navController.navigate("invoice_detail/${invoice.id}")
-//                                    },
-//                                    onNewInvoice = { navController.navigate(Screen.NewInvoice.route) },
-//                                    onNewReceipt = { navController.navigate(Screen.NewReceipt.route) }
-//                                )
-//                            }
-//
-//                            is HomeViewModel.InvoiceState.Error -> {
-//                                ErrorMessage(
-//                                    message = (invoiceState as HomeViewModel.InvoiceState.Error).message,
-//                                    onRetry = { homeViewModel.loadInvoices(selectedDate) }
-//                                )
-//                            }
-//                        }
                     }
                 }
-            )
-            // Diálogo de búsqueda de clientes
-            ClientSearchDialog(
-                isVisible = isSearchDialogOpen,
-                onDismiss = { isSearchDialogOpen = false },
-                searchQuery = searchQuery,
-                onSearchQueryChange = { query -> viewModel.searchClients(query) },
-                searchResults = searchResults,
-                isLoading = isSearching,
-                onClientSelected = { client ->
-                    viewModel.selectClient(client)
-                    isSearchDialogOpen = false
+                is NoteOfSaleViewModel.InvoiceState.Success -> {
+                    val invoices = (invoiceState as NoteOfSaleViewModel.InvoiceState.Success).data
+                    NoteOfSaleContent(
+                        invoices = invoices,
+                        onInvoiceClick = { invoice ->
+                            navController.navigate("invoice_detail/${invoice.id}")
+                        },
+                        onNewInvoice = { navController.navigate(Screen.NewInvoice.route) },
+                        onNewReceipt = { navController.navigate(Screen.NewNoteOfSale.route) },
+                        selectedClient = selectedClient,
+                        onClearClientFilter = { viewModel.clearClientSearch() }
+                    )
                 }
-            )
+                is NoteOfSaleViewModel.InvoiceState.Error -> {
+                    NoteOfSaleErrorMessage(
+                        message = (invoiceState as NoteOfSaleViewModel.InvoiceState.Error).message,
+                        onRetry = {viewModel.loadNoteOfSale(selectedDate) }
+                    )
+                }
+            }
+        }
+    }
+    
+    // Diálogo de búsqueda de clientes
+    ClientSearchDialog(
+        isVisible = isSearchDialogOpen,
+        onDismiss = { isSearchDialogOpen = false },
+        searchQuery = searchQuery,
+        onSearchQueryChange = { query -> viewModel.searchClients(query) },
+        searchResults = searchResults,
+        isLoading = isSearching,
+        onClientSelected = { client ->
+            viewModel.selectClient(client)
+            isSearchDialogOpen = false
         }
     )
 }

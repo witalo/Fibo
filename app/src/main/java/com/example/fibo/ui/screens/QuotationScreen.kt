@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ReceiptLong
@@ -59,9 +60,9 @@ import com.example.fibo.R
 import com.example.fibo.model.IOperation
 import com.example.fibo.model.IPerson
 import com.example.fibo.navigation.Screen
-import com.example.fibo.ui.components.AppTopBar
+import com.example.fibo.ui.components.AppScaffold
+import com.example.fibo.ui.components.AppTopBarWithSearch
 import com.example.fibo.ui.components.ClientFilterChip
-import com.example.fibo.ui.components.SideMenu
 import com.example.fibo.ui.components.ClientSearchDialog
 import com.example.fibo.ui.screens.quotation.QuotationPdfDialog
 import com.example.fibo.utils.ColorGradients
@@ -72,14 +73,13 @@ import com.example.fibo.viewmodels.QuotationViewModel
 fun QuotationScreen(
     navController: NavController,
     viewModel: QuotationViewModel = hiltViewModel(),
+    subsidiaryData: com.example.fibo.model.ISubsidiary? = null,
     onLogout: () -> Unit
 ) {
-    val subsidiaryData by viewModel.subsidiaryData.collectAsState()
     val companyData by viewModel.companyData.collectAsState()
     val userData by viewModel.userData.collectAsState()
     val selectedDate by viewModel.selectedDate.collectAsState()
     val quotationState by viewModel.quotationState.collectAsState()
-    var isMenuOpen by remember { mutableStateOf(false) }
 
     // Estados para el diálogo de búsqueda
     var isSearchDialogOpen by remember { mutableStateOf(false) }
@@ -87,112 +87,91 @@ fun QuotationScreen(
     val searchResults by viewModel.searchResults.collectAsState()
     val isSearching by viewModel.isSearching.collectAsState()
     val selectedClient by viewModel.selectedClient.collectAsState()
-    SideMenu(
-        isOpen = isMenuOpen,
-        onClose = { isMenuOpen = false },
+    
+    AppScaffold(
+        navController = navController,
         subsidiaryData = subsidiaryData,
-        onMenuItemSelected = { option ->
-            when (option) {
-                "Inicio" -> navController.navigate(Screen.Home.route)
-                "Cotizaciones" -> navController.navigate(Screen.Quotation.route)
-                "Nota de salida" -> navController.navigate(Screen.NoteOfSale.route)
-                "Perfil" -> navController.navigate(Screen.Profile.route)
-                "Nueva Factura" -> navController.navigate(Screen.NewInvoice.route)
-                "Nueva Boleta" -> navController.navigate(Screen.NewReceipt.route)
-                "Nueva Cotización" -> navController.navigate(Screen.NewQuotation.route)
-                "Nueva Nota de salida" -> navController.navigate(Screen.NewNoteOfSale.route)
-            }
-            isMenuOpen = false
-        },
         onLogout = onLogout,
-        content = {
-            Scaffold(
-                topBar = {
-                    AppTopBar(
-//                        title = "Cotizaciones",
-                        title = if (selectedClient != null) {
-                            "${selectedClient?.names?.take(15)}..."
-                        } else {
-                            "Cotizaciones"
-                        },
-                        onMenuClick = { isMenuOpen = !isMenuOpen },
-                        onDateSelected = { date ->
-                            viewModel.updateDate(date)
-                        },
-                        currentDate = selectedDate,
-                        onTitleClick = { isSearchDialogOpen = true }
-                    )
+        topBar = {
+            AppTopBarWithSearch(
+                title = if (selectedClient != null) {
+                    "${selectedClient?.names?.take(15)}..."
+                } else {
+                    "Cotizaciones"
                 },
-                content = { paddingValues ->
+                onDateSelected = { date ->
+                    viewModel.updateDate(date)
+                },
+                currentDate = selectedDate,
+                onTitleClick = { isSearchDialogOpen = true }
+            )
+        }
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            when (quotationState) {
+                is QuotationState.Loading -> CenterLoadingIndicator()
+                is QuotationState.WaitingForUser -> {
+                    // Mensaje de espera para autenticación
                     Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(paddingValues)
-                            .background(MaterialTheme.colorScheme.background)
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
                     ) {
-
-                        when (quotationState) {
-                            is QuotationState.Loading -> CenterLoadingIndicator()
-                            is QuotationState.WaitingForUser -> {
-                                // Mensaje de espera para autenticación
-                                Box(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        CircularProgressIndicator()
-                                        Spacer(modifier = Modifier.height(16.dp))
-                                        Text("Esperando autenticación...")
-                                    }
-                                }
-                            }
-
-                            is QuotationState.Success -> {
-                                val quotation =
-                                    (quotationState as QuotationState.Success).data
-                                QuotationContent(
-                                    quotation = quotation,
-                                    onQuotationClick = { q ->
-                                        navController.navigate("quotation_detail/${q.id}")
-                                    },
-                                    onNewQuotation = { navController.navigate(Screen.NewQuotation.route) },
-                                    navController = navController,
-                                    selectedClient = selectedClient,
-                                    onClearClientFilter = { viewModel.clearClientSearch() }
-                                )
-                            }
-
-                            is QuotationState.Error -> {
-                                ErrorMessage(
-                                    message = (quotationState as QuotationState.Error).message,
-                                    onRetry = {
-                                        userData?.id?.let { userId ->
-                                            viewModel.loadQuotation(selectedDate, userId)
-                                        } ?: run {
-                                            QuotationState.WaitingForUser
-                                        }
-                                    }
-                                )
-                            }
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            CircularProgressIndicator()
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text("Esperando autenticación...")
                         }
                     }
                 }
-            )
-            // Diálogo de búsqueda de clientes
-            ClientSearchDialog(
-                isVisible = isSearchDialogOpen,
-                onDismiss = { isSearchDialogOpen = false },
-                searchQuery = searchQuery,
-                onSearchQueryChange = { query -> viewModel.searchClients(query) },
-                searchResults = searchResults,
-                isLoading = isSearching,
-                onClientSelected = { client ->
-                    viewModel.selectClient(client)
-                    isSearchDialogOpen = false
+
+                is QuotationState.Success -> {
+                    val quotation = (quotationState as QuotationState.Success).data
+                    QuotationContent(
+                        quotation = quotation,
+                        onQuotationClick = { q ->
+                            navController.navigate("quotation_detail/${q.id}")
+                        },
+                        onNewQuotation = { navController.navigate(Screen.NewQuotation.route) },
+                        navController = navController,
+                        selectedClient = selectedClient,
+                        onClearClientFilter = { viewModel.clearClientSearch() }
+                    )
                 }
-            )
+
+                is QuotationState.Error -> {
+                    ErrorMessage(
+                        message = (quotationState as QuotationState.Error).message,
+                        onRetry = {
+                            userData?.id?.let { userId ->
+                                viewModel.loadQuotation(selectedDate, userId)
+                            } ?: run {
+                                QuotationState.WaitingForUser
+                            }
+                        }
+                    )
+                }
+            }
+        }
+    }
+    
+    // Diálogo de búsqueda de clientes
+    ClientSearchDialog(
+        isVisible = isSearchDialogOpen,
+        onDismiss = { isSearchDialogOpen = false },
+        searchQuery = searchQuery,
+        onSearchQueryChange = { query -> viewModel.searchClients(query) },
+        searchResults = searchResults,
+        isLoading = isSearching,
+        onClientSelected = { client ->
+            viewModel.selectClient(client)
+            isSearchDialogOpen = false
         }
     )
 }
@@ -226,17 +205,16 @@ fun QuotationContent(
                 modifier = Modifier.padding(vertical = 8.dp)
             )
         }
-
-        // Sección de Listado (90% del espacio)
+        
+        // Sección de Listado (toma todo el espacio disponible)
         Box(
             modifier = Modifier
-                .weight(0.90f)
+                .weight(1f)
                 .fillMaxWidth()
         ) {
             if (quotation.isEmpty()) {
                 EmptyState(message = "No hay cotizaciones")
             } else {
-                // Wrap the InvoiceList in a Box to ensure scrolling works
                 QuotationList(
                     quotation = quotation,
                     onQuotationClick = onQuotationClick,
@@ -245,21 +223,12 @@ fun QuotationContent(
             }
         }
 
-        Spacer(modifier = Modifier.height(6.dp))
-
-        // Sección de Botones (10% del espacio)
-        Column(
-            modifier = Modifier
-                .weight(0.10f)
-                .fillMaxWidth(),
-//            verticalArrangement = Arrangement.Bottom
-        ) {
-            ActionButtonsQuotation(
-                onNewQuotation = onNewQuotation,
-                quotationCount = quotationCount,
-                quotationAmountTotal = quotationAmountTotal,
-            )
-        }
+        // Sección de Botones (fijo en la parte inferior)
+        ActionButtonsQuotation(
+            onNewQuotation = onNewQuotation,
+            quotationCount = quotationCount,
+            quotationAmountTotal = quotationAmountTotal
+        )
     }
 }
 
@@ -269,7 +238,6 @@ fun QuotationList(
     onQuotationClick: (IOperation) -> Unit,
     navController: NavController
 ) {
-    // Removed fillMaxSize to allow proper scrolling
     LazyColumn(
         contentPadding = PaddingValues(vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -278,7 +246,7 @@ fun QuotationList(
             QuotationItem(
                 quotation = quotation,
                 onClick = { onQuotationClick(quotation) },
-                navController = navController  // Pasar hacia abajo
+                navController = navController
             )
         }
     }
@@ -288,236 +256,104 @@ fun QuotationList(
 fun QuotationItem(
     quotation: IOperation,
     onClick: () -> Unit,
-    navController: NavController,
+    navController: NavController
 ) {
-
-    var showConvertDialog by remember { mutableStateOf(false) }
-    var selectedDocumentType by remember { mutableStateOf("FACTURA") } // Default to Factura
-
-
-    val isAnulado = quotation.operationStatus.replace(
-        "A_",
-        ""
-    ) == "06" || quotation.operationStatus.replace("A_", "") == "04"
+    val isDarkTheme = isSystemInDarkTheme()
     var showPdfDialog by remember { mutableStateOf(false) }
-    // Show PDF Dialog if needed
-    if (showPdfDialog) {
-        QuotationPdfDialog(
-            isVisible = true,
-            quotation = quotation,
-            onDismiss = { showPdfDialog = false }
+    
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(horizontal = 4.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isDarkTheme) Color(0xFF2C2C2C) else Color.White
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (isDarkTheme) Color(0xFF444444) else Color(0xFFE0E0E0)
         )
-    }
-    // Show Convert Dialog
-    if (showConvertDialog) {
-        AlertDialog(
-            onDismissRequest = { showConvertDialog = false },
-            title = {
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Icono de la izquierda
+            Surface(
+                modifier = Modifier.size(48.dp),
+                shape = RoundedCornerShape(8.dp),
+                color = Color(0xFF4CAF50).copy(alpha = 0.1f)
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Icon(
+                        Icons.Default.ReceiptLong,
+                        contentDescription = null,
+                        tint = Color(0xFF4CAF50),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+
+            // Contenido principal
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 12.dp)
+            ) {
                 Text(
                     text = "${quotation.serial}-${quotation.correlative}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = if (isDarkTheme) Color.White else Color(0xFF1976D2)
                 )
-            },
-            text = {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                ) {
-                    Text(
-                        text = "Convertir a documento",
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
 
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Document type selector
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        DocumentTypeChip(
-                            label = "FACTURA",
-                            isSelected = selectedDocumentType == "FACTURA",
-                            onClick = { selectedDocumentType = "FACTURA" },
-                            modifier = Modifier.weight(1f)
-                        )
-                        DocumentTypeChip(
-                            label = "BOLETA",
-                            isSelected = selectedDocumentType == "BOLETA",
-                            onClick = { selectedDocumentType = "BOLETA" },
-                            modifier = Modifier.weight(1f)
-                        )
-                        DocumentTypeChip(
-                            label = "VENTA",
-                            isSelected = selectedDocumentType == "NOTA DE SALIDA",
-                            onClick = { selectedDocumentType = "NOTA DE SALIDA" },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showConvertDialog = false
-                        // Lógica condicional para navegar según el tipo de documento
-                        if (selectedDocumentType == "FACTURA") {
-                            navController.navigate(Screen.NewInvoice.createRoute(quotation.id)) {
-                                popUpTo(Screen.Quotation.route)
-                            }
-                        } else if (selectedDocumentType == "BOLETA") {
-                            navController.navigate(Screen.NewReceipt.createRoute(quotation.id)) {
-                                popUpTo(Screen.Quotation.route)
-                            }
-                        } else if (selectedDocumentType == "NOTA DE SALIDA") {
-                            navController.navigate(Screen.NewNoteOfSale.createRoute(quotation.id)) {
-                                popUpTo(Screen.Quotation.route)
-                            }
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF2196F3) // Azul más vibrante
-                    )
-                ) {
-                    Text(
-                        "Generar",
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 16.sp
-                    )
-                }
-            },
-            dismissButton = {
-                OutlinedButton(
-                    onClick = { showConvertDialog = false },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    border = BorderStroke(1.dp, Color(0xFF2196F3)),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color(0xFF2196F3)
-                    )
-                ) {
-                    Text(
-                        "Cancelar",
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 16.sp
-                    )
-                }
-            },
-            shape = RoundedCornerShape(16.dp),
-            containerColor = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp
-        )
-    }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                shape = RoundedCornerShape(8.dp)
-            ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isAnulado)
-//                Color.Red.copy(alpha = 0.1f)
-                when (isSystemInDarkTheme()) {
-                    true -> Color(0xFF7C1D1D)
-                    false -> Color(0xFFFDCFCF)
-                }
-            else
-                MaterialTheme.colorScheme.surfaceVariant
-        ),
-        shape = RoundedCornerShape(8.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
                 Text(
-                    text = "${quotation.serial}-${quotation.correlative}",
-                    style = MaterialTheme.typography.titleSmall.copy(
-                        brush = ColorGradients.orangeFire
-                    ),
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
+                    text = quotation.client.names?:"-",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (isDarkTheme) Color(0xFFCCCCCC) else Color(0xFF666666),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp)
                 )
+
                 Text(
                     text = quotation.emitDate,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    color = if (isDarkTheme) Color(0xFF999999) else Color(0xFF888888),
+                    modifier = Modifier.padding(top = 4.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            quotation.client.names?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.titleSmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            // Información de precio y botones
+            Column(
+                horizontalAlignment = Alignment.End
             ) {
-                // Modified Chip to be clickable
-                Box(
-                    modifier = Modifier.clickable { showConvertDialog = true }
-                ) {
-                    Chip(
-                        label = "COTIZACIÓN",
-                        gradient = when (quotation.documentTypeReadable) {
-                            "COTIZACIÓN" -> ColorGradients.blueOcean
-                            else -> ColorGradients.greenNature
-                        }
-                    )
-                }
-
-                IconButton(
-                    onClick = {
-                        showPdfDialog = true
-                    },
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_pdf),
-                        contentDescription = "PDF",
-                        modifier = Modifier.size(25.dp),
-                        contentScale = ContentScale.Fit
-                    )
-                }
-
                 Text(
                     text = "S/. ${String.format("%.2f", quotation.totalToPay)}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = when (isSystemInDarkTheme()) {
+                    color = when (isDarkTheme) {
                         true -> Color(0xFFFF9800)
                         false -> Color(0xF5097BD9)
                     }
                 )
             }
         }
+    }
+
+    if (showPdfDialog) {
+        QuotationPdfDialog(
+            isVisible = showPdfDialog,
+            quotation = quotation,
+            onDismiss = { showPdfDialog = false }
+        )
     }
 }
 
@@ -533,14 +369,14 @@ fun ActionButtonsQuotation(
             .padding(horizontal = 3.dp, vertical = 3.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        // Botón Nueva Cotización - Versión mejorada
+        // Botón Nueva Cotización - Estilo mejorado como HomeScreen
         ElevatedButton(
             onClick = onNewQuotation,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
             colors = ButtonDefaults.elevatedButtonColors(
-                containerColor = Color(0xFFAB6703),  // Azul profesional
+                containerColor = Color(0xFF8E44AD),  // Morado profesional para cotizaciones
                 contentColor = Color.White
             ),
             elevation = ButtonDefaults.elevatedButtonElevation(
@@ -584,7 +420,7 @@ fun ActionButtonsQuotation(
                     )
                 }
 
-                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.weight(1f)) // Espacio flexible
 
                 Icon(
                     imageVector = Icons.Default.ReceiptLong,
@@ -596,9 +432,9 @@ fun ActionButtonsQuotation(
                     text = "Nueva Cotización",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
-                    maxLines = 1
+                    maxLines = 1 // Forzar una sola línea
                 )
-                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.weight(1f)) // Espacio flexible
             }
         }
     }
@@ -608,23 +444,24 @@ fun ActionButtonsQuotation(
 fun DocumentTypeChip(
     label: String,
     isSelected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    onClick: () -> Unit
 ) {
-    Card(
-        modifier = modifier
-            .height(48.dp)
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) Color(0xFF2196F3) else MaterialTheme.colorScheme.surfaceVariant
-        ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isSelected) 4.dp else 0.dp
-        )
+    Surface(
+        onClick = onClick,
+        modifier = Modifier
+            .height(32.dp)
+            .border(
+                width = 1.dp,
+                color = if (isSelected) Color.Transparent else MaterialTheme.colorScheme.outline,
+                shape = RoundedCornerShape(16.dp)
+            ),
+        shape = RoundedCornerShape(16.dp),
+        color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
     ) {
         Box(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .padding(horizontal = 16.dp)
+                .fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -635,5 +472,4 @@ fun DocumentTypeChip(
             )
         }
     }
-}
-
+} 

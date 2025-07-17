@@ -25,7 +25,6 @@ fun AppTopBar(
     onTitleClick: () -> Unit
 ) {
     TopAppBar(
-//        title = { Text(text = title) },
         title = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -59,10 +58,134 @@ fun AppTopBar(
             )
         },
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = Color.Black, // Fondo negro
+            containerColor = Color.Black,
             titleContentColor = Color.White,
             navigationIconContentColor = Color.White,
             actionIconContentColor = Color.White
+        )
+    )
+}
+
+// Versión que usa LocalMenuClickHandler (para uso con AppScaffold)
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AppTopBarWithSearch(
+    title: String,
+    onDateSelected: (String) -> Unit,
+    currentDate: String,
+    onTitleClick: () -> Unit
+) {
+    val onMenuClick = LocalMenuClickHandler.current
+    
+    TopAppBar(
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { onTitleClick() }
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = "Buscar cliente",
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        },
+        navigationIcon = {
+            IconButton(onClick = onMenuClick) {
+                Icon(
+                    imageVector = Icons.Default.Menu,
+                    contentDescription = "Menú"
+                )
+            }
+        },
+        actions = {
+            DateSelector(
+                currentDate = currentDate,
+                onDateSelected = onDateSelected
+            )
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = Color.Black,
+            titleContentColor = Color.White,
+            navigationIconContentColor = Color.White,
+            actionIconContentColor = Color.White
+        )
+    )
+}
+
+// Versión simple solo con título (para pantallas como Productos)
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SimpleAppTopBar(
+    title: String,
+    backgroundColor: Color = Color.Black,
+    contentColor: Color = Color.White
+) {
+    val onMenuClick = LocalMenuClickHandler.current
+    
+    TopAppBar(
+        title = {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        navigationIcon = {
+            IconButton(onClick = onMenuClick) {
+                Icon(
+                    imageVector = Icons.Default.Menu,
+                    contentDescription = "Menú"
+                )
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = backgroundColor,
+            titleContentColor = contentColor,
+            navigationIconContentColor = contentColor
+        )
+    )
+}
+
+// Versión personalizable para cualquier necesidad
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CustomAppTopBar(
+    title: String,
+    actions: @Composable () -> Unit = {},
+    backgroundColor: Color = Color.Black,
+    contentColor: Color = Color.White
+) {
+    val onMenuClick = LocalMenuClickHandler.current
+    
+    TopAppBar(
+        title = {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        navigationIcon = {
+            IconButton(onClick = onMenuClick) {
+                Icon(
+                    imageVector = Icons.Default.Menu,
+                    contentDescription = "Menú"
+                )
+            }
+        },
+        actions = { actions() },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = backgroundColor,
+            titleContentColor = contentColor,
+            navigationIconContentColor = contentColor,
+            actionIconContentColor = contentColor
         )
     )
 }

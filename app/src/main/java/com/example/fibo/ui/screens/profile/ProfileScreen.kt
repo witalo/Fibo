@@ -29,42 +29,28 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import com.example.fibo.datastore.PreferencesManager
+import com.example.fibo.ui.components.AppScaffold
+import com.example.fibo.ui.components.SimpleAppTopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
-    onBack: () -> Unit,
+    navController: NavController,
+    subsidiaryData: com.example.fibo.model.ISubsidiary? = null,
+    onLogout: () -> Unit = {},
     preferencesManager: PreferencesManager = PreferencesManager(LocalContext.current)
 ) {
     val userData by preferencesManager.currentUserData.collectAsState()
 
-    Scaffold(
+    AppScaffold(
+        navController = navController,
+        subsidiaryData = subsidiaryData,
+        onLogout = onLogout,
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Mi Perfil",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold
-                        )
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Volver",
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Black,
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White,
-                    actionIconContentColor = Color.White
-                )
+            SimpleAppTopBar(
+                title = "Mi Perfil"
             )
         }
     ) { paddingValues ->

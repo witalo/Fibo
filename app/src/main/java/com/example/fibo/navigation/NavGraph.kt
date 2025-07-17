@@ -22,6 +22,7 @@ import com.example.fibo.ui.screens.receipt.NewReceiptScreen
 import com.example.fibo.ui.screens.reportpayment.ReportPaymentScreen
 import com.example.fibo.ui.screens.reports.ReportScreen
 import com.example.fibo.utils.DeviceUtils
+import com.example.fibo.ui.screens.GuideScreen
 import com.example.fibo.ui.screens.guide.NewGuideScreen
 import com.example.fibo.ui.screens.GuideListScreen
 import androidx.compose.runtime.LaunchedEffect
@@ -36,6 +37,9 @@ fun NavGraph(
     startDestination: String,
     authViewModel: AuthViewModel
 ) {
+    // Obtener subsidiaryData una vez para todas las pantallas
+    val preferencesManager = PreferencesManager(LocalContext.current)
+    val subsidiaryData by preferencesManager.subsidiaryData.collectAsState()
     NavHost(
         navController = navController,
         startDestination = startDestination
@@ -98,6 +102,7 @@ fun NavGraph(
         composable(Screen.Quotation.route) {
             QuotationScreen(
                 navController = navController,
+                subsidiaryData = subsidiaryData,
                 onLogout = {
                     authViewModel.logout()
                     navController.navigate(Screen.QrScanner.route) {
@@ -110,6 +115,7 @@ fun NavGraph(
         composable(Screen.NoteOfSale.route) {
             NoteOfSaleScreen(
                 navController = navController,
+                subsidiaryData = subsidiaryData,
                 onLogout = {
                     authViewModel.logout()
                     navController.navigate(Screen.QrScanner.route) {
@@ -122,17 +128,32 @@ fun NavGraph(
         // Perfil
         composable(Screen.Profile.route) {
             ProfileScreen(
-                onBack = { navController.popBackStack() },
-                preferencesManager = PreferencesManager(LocalContext.current)
+                navController = navController,
+                subsidiaryData = subsidiaryData,
+                onLogout = {
+                    authViewModel.logout()
+                    navController.navigate(Screen.QrScanner.route) {
+                        popUpTo(navController.graph.id) { inclusive = true }
+                    }
+                },
+                preferencesManager = preferencesManager
             )
         }
         // Productos
         composable(Screen.Product.route) {
             ProductScreen(
-                onBack  = { navController.popBackStack() },
+                navController = navController,
+                onBack = { navController.popBackStack() },
                 onAddProduct = {
                     // TODO: Navegar a pantalla de agregar producto
                     // navController.navigate(Screen.AddProduct.route)
+                },
+                subsidiaryData = subsidiaryData,
+                onLogout = {
+                    authViewModel.logout()
+                    navController.navigate(Screen.QrScanner.route) {
+                        popUpTo(navController.graph.id) { inclusive = true }
+                    }
                 }
             )
         }
@@ -218,13 +239,26 @@ fun NavGraph(
         composable(Screen.NewGuide.route) {
             NewGuideScreen(navController = navController)
         }
+        // Guías
+        composable(Screen.Guide.route) {
+            GuideScreen(
+                navController = navController,
+                subsidiaryData = subsidiaryData,
+                onLogout = {
+                    authViewModel.logout()
+                    navController.navigate(Screen.QrScanner.route) {
+                        popUpTo(navController.graph.id) { inclusive = true }
+                    }
+                }
+            )
+        }
         composable(Screen.Guides.route) {
             GuideListScreen(navController = navController)
         }
         composable(Screen.Reports.route) {
             ReportScreen(
                 navController = navController,
-                subsidiaryData = null, // Se obtendrá desde el ViewModel
+                subsidiaryData = subsidiaryData,
                 onLogout = {
                     authViewModel.logout()
                     navController.navigate(Screen.QrScanner.route) {

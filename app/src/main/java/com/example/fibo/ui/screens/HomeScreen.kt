@@ -47,8 +47,8 @@ import com.example.fibo.navigation.Screen
 import com.example.fibo.reports.PdfDialogViewModel
 import com.example.fibo.reports.PdfGenerator
 import com.example.fibo.reports.PdfViewerDialog
-import com.example.fibo.ui.components.AppTopBar
-import com.example.fibo.ui.components.SideMenu
+import com.example.fibo.ui.components.AppScaffold
+import com.example.fibo.ui.components.AppTopBarWithSearch
 import com.example.fibo.utils.ColorGradients
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.icons.filled.Close
@@ -75,7 +75,6 @@ fun HomeScreen(
     val subsidiaryData by homeViewModel.subsidiaryData.collectAsState()
     val selectedDate by homeViewModel.selectedDate.collectAsState()
     val invoiceState by homeViewModel.invoiceState.collectAsState()
-    var isMenuOpen by remember { mutableStateOf(false) }
 
     // Estados para el diálogo de búsqueda
     var isSearchDialogOpen by remember { mutableStateOf(false) }
@@ -100,137 +99,85 @@ fun HomeScreen(
         }
     }
 
-
-    SideMenu(
-        isOpen = isMenuOpen,
-        onClose = { isMenuOpen = false },
+    AppScaffold(
+        navController = navController,
         subsidiaryData = subsidiaryData,
-        onMenuItemSelected = { option ->
-            when (option) {
-                "Inicio" -> navController.navigate(Screen.Home.route)
-                "Cotizaciones" -> navController.navigate(Screen.Quotation.route)
-                "Nota de salida" -> navController.navigate(Screen.NoteOfSale.route)
-                "Perfil" -> navController.navigate(Screen.Profile.route)
-                "Nueva Factura" -> navController.navigate(Screen.NewInvoice.route)
-                "Nueva Boleta" -> navController.navigate(Screen.NewReceipt.route)
-                "Nueva Cotización" -> navController.navigate(Screen.NewQuotation.route)
-                "Productos" -> navController.navigate(Screen.Product.route)
-                "Nueva Nota de salida" -> navController.navigate(Screen.NewNoteOfSale.route)
-                "Nueva Guía" -> {
-                    Log.d("Navigation", "Intentando navegar a Nueva Guía")
-                    navController.navigate(Screen.NewGuide.route)
-                }
-                "Guías" -> navController.navigate(Screen.Guides.route)
-                "Reporte" -> navController.navigate(Screen.Reports.route)
-                "Reporte Pagos" -> navController.navigate(Screen.ReportPayment.route)
-            }
-            isMenuOpen = false
-        },
         onLogout = onLogout,
-        content = {
-            Scaffold(
-                topBar = {
-                    AppTopBar(
-//                        title = "Inicio",
-                        title = if (selectedClient != null) {
-                            "${selectedClient?.names?.take(15)}..."
-                        } else {
-                            "Comprobantes"
-                        },
-                        onMenuClick = { isMenuOpen = !isMenuOpen },
-                        onDateSelected = { date ->
-                            homeViewModel.updateSelectedDate(date)
-                        },
-                        currentDate = selectedDate,
-                        onTitleClick = { isSearchDialogOpen = true }
-                    )
+        topBar = {
+            AppTopBarWithSearch(
+                title = if (selectedClient != null) {
+                    "${selectedClient?.names?.take(15)}..."
+                } else {
+                    "Comprobantes"
                 },
-                content = { paddingValues ->
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(paddingValues)
-                            .background(MaterialTheme.colorScheme.background)
-                    ) {
-
-                        when (invoiceState) {
-                            is HomeViewModel.InvoiceState.Loading -> CenterLoadingIndicator()
-                            is HomeViewModel.InvoiceState.WaitingForUser -> {
-                                // Mensaje de espera para autenticación
-                                Box(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        CircularProgressIndicator()
-                                        Spacer(modifier = Modifier.height(16.dp))
-                                        Text("Esperando autenticación...")
-                                    }
-                                }
-                            }
-                            is HomeViewModel.InvoiceState.Success -> {
-                                val invoices =
-                                    (invoiceState as HomeViewModel.InvoiceState.Success).data
-                                InvoiceContent(
-                                    invoices = invoices,
-                                    onInvoiceClick = { invoice ->
-                                        navController.navigate("invoice_detail/${invoice.id}")
-                                    },
-                                    onNewInvoice = { navController.navigate(Screen.NewInvoice.route) },
-                                    onNewReceipt = { navController.navigate(Screen.NewReceipt.route) },
-                                    selectedClient = selectedClient,
-                                    onClearClientFilter = { homeViewModel.clearClientSearch() }
-                                )
-                            }
-                            is HomeViewModel.InvoiceState.Error -> {
-                                ErrorMessage(
-                                    message = (invoiceState as HomeViewModel.InvoiceState.Error).message,
-                                    onRetry = { homeViewModel.loadInvoices(selectedDate) }
-                                )
-                            }
-                        }
-//                        when (invoiceState) {
-//                            is HomeViewModel.InvoiceState.Loading -> CenterLoadingIndicator()
-//                            is HomeViewModel.InvoiceState.Success -> {
-//                                val invoices =
-//                                    (invoiceState as HomeViewModel.InvoiceState.Success).data
-//                                InvoiceContent(
-//                                    invoices = invoices,
-//                                    onInvoiceClick = { invoice ->
-//                                        navController.navigate("invoice_detail/${invoice.id}")
-//                                    },
-//                                    onNewInvoice = { navController.navigate(Screen.NewInvoice.route) },
-//                                    onNewReceipt = { navController.navigate(Screen.NewReceipt.route) }
-//                                )
-//                            }
-//
-//                            is HomeViewModel.InvoiceState.Error -> {
-//                                ErrorMessage(
-//                                    message = (invoiceState as HomeViewModel.InvoiceState.Error).message,
-//                                    onRetry = { homeViewModel.loadInvoices(selectedDate) }
-//                                )
-//                            }
-//                        }
-                    }
-                }
-            )
-            // Diálogo de búsqueda de clientes
-            ClientSearchDialog(
-                isVisible = isSearchDialogOpen,
-                onDismiss = { isSearchDialogOpen = false },
-                searchQuery = searchQuery,
-                onSearchQueryChange = { query -> homeViewModel.searchClients(query) },
-                searchResults = searchResults,
-                isLoading = isSearching,
-                onClientSelected = { client ->
-                    homeViewModel.selectClient(client)
-                    isSearchDialogOpen = false
-                }
+                onDateSelected = { date ->
+                    homeViewModel.updateSelectedDate(date)
+                },
+                currentDate = selectedDate,
+                onTitleClick = { isSearchDialogOpen = true }
             )
         }
-    )
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            when (invoiceState) {
+                is HomeViewModel.InvoiceState.Loading -> CenterLoadingIndicator()
+                is HomeViewModel.InvoiceState.WaitingForUser -> {
+                    // Mensaje de espera para autenticación
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            CircularProgressIndicator()
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text("Esperando autenticación...")
+                        }
+                    }
+                }
+                is HomeViewModel.InvoiceState.Success -> {
+                    val invoices =
+                        (invoiceState as HomeViewModel.InvoiceState.Success).data
+                    InvoiceContent(
+                        invoices = invoices,
+                        onInvoiceClick = { invoice ->
+                            navController.navigate("invoice_detail/${invoice.id}")
+                        },
+                        onNewInvoice = { navController.navigate(Screen.NewInvoice.route) },
+                        onNewReceipt = { navController.navigate(Screen.NewReceipt.route) },
+                        selectedClient = selectedClient,
+                        onClearClientFilter = { homeViewModel.clearClientSearch() }
+                    )
+                }
+                is HomeViewModel.InvoiceState.Error -> {
+                    ErrorMessage(
+                        message = (invoiceState as HomeViewModel.InvoiceState.Error).message,
+                        onRetry = { homeViewModel.loadInvoices(selectedDate) }
+                    )
+                }
+            }
+        }
+        
+        // Diálogo de búsqueda de clientes
+        ClientSearchDialog(
+            isVisible = isSearchDialogOpen,
+            onDismiss = { isSearchDialogOpen = false },
+            searchQuery = searchQuery,
+            onSearchQueryChange = { query -> homeViewModel.searchClients(query) },
+            searchResults = searchResults,
+            isLoading = isSearching,
+            onClientSelected = { client ->
+                homeViewModel.selectClient(client)
+                isSearchDialogOpen = false
+            }
+        )
+    }
 }
 
 @Composable

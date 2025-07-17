@@ -21,6 +21,7 @@ sealed class Screen(
     object NewQuotation : Screen("new_quotation")
 //    object NewNoteOfSale : Screen("new_note_of_sale")
     object Product : Screen("product")
+    object Guide : Screen("guide")
     object Reports : Screen("reports")
     object ReportPayment : Screen("report_payment")
     object NewInvoice : Screen(
