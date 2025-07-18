@@ -15,6 +15,7 @@ data class IOperation(
     val emitTime: String = "", //Hora emision
     val userId: Int = 0, //Usuario ID
     val client: IPerson, //Person
+    val supplier: ISupplier? = null, //Supplier (para compras)
     val subsidiaryId: Int, //subsidiary ID
     val discountGlobal: Double = 0.0, //Descuento Global
     val discountPercentageGlobal: Double = 0.0, //Porcentaje del descuento global

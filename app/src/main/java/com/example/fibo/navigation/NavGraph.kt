@@ -25,6 +25,8 @@ import com.example.fibo.utils.DeviceUtils
 import com.example.fibo.ui.screens.GuideScreen
 import com.example.fibo.ui.screens.guide.NewGuideScreen
 import com.example.fibo.ui.screens.GuideListScreen
+import com.example.fibo.ui.screens.purchase.PurchaseScreen
+import com.example.fibo.ui.screens.purchase.NewPurchaseScreen
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -255,6 +257,29 @@ fun NavGraph(
         composable(Screen.Guides.route) {
             GuideListScreen(navController = navController)
         }
+
+        // Pantallas de compras
+        composable(Screen.Purchase.route) {
+            PurchaseScreen(
+                navController = navController,
+                subsidiaryData = subsidiaryData,
+                onLogout = {
+                    authViewModel.logout()
+                    navController.navigate(Screen.QrScanner.route) {
+                        popUpTo(navController.graph.id) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(Screen.NewPurchase.route) {
+            NewPurchaseScreen(
+                onBack = { navController.popBackStack() },
+                onPurchaseCreated = { purchaseId ->
+                    navController.navigate(Screen.PurchaseDetail.createRoute(purchaseId.toInt()))
+                }
+            )
+        }
         composable(Screen.Reports.route) {
             ReportScreen(
                 navController = navController,
@@ -326,6 +351,19 @@ fun NavGraph(
                 val noteOfSaleId = backStackEntry.arguments?.getString(Screen.NoteOfSaleDetail.noteOfSaleIdArg)?.toIntOrNull() ?: 0
                 // InvoiceDetailScreen(
                 //     invoiceId = invoiceId,
+                //     onBack = { navController.popBackStack() }
+                // )
+            }
+        }
+
+        Screen.PurchaseDetail.routeWithArgs?.let {
+            composable(
+                route = it,
+                arguments = Screen.PurchaseDetail.arguments
+            ) { backStackEntry ->
+                val purchaseId = backStackEntry.arguments?.getString(Screen.PurchaseDetail.purchaseIdArg)?.toIntOrNull() ?: 0
+                // PurchaseDetailScreen(
+                //     purchaseId = purchaseId,
                 //     onBack = { navController.popBackStack() }
                 // )
             }

@@ -1,0 +1,90 @@
+query GetPurchases(
+    $subsidiaryId: Int!
+    $supplierId: Int!
+    $startDate: Date!
+    $endDate: Date!
+    $documentType: String!
+    $page: Int!
+    $pageSize: Int!
+    $serial: String
+    $correlative: Int
+) {
+    allPurchases(
+        subsidiaryId: $subsidiaryId
+        supplierId: $supplierId
+        startDate: $startDate
+        endDate: $endDate
+        documentType: $documentType
+        page: $page
+        pageSize: $pageSize
+        serial: $serial
+        correlative: $correlative
+    ) {
+        purchases {
+            id
+            emitDate
+            operationDate
+            currencyType
+            documentType
+            serial
+            correlative
+            totalAmount
+            totalTaxed
+            totalDiscount
+            totalExonerated
+            totalUnaffected
+            totalFree
+            totalIgv
+            totalToPay
+            totalPayed
+            operationStatus
+            operationStatusReadable
+            linkXml
+            linkXmlLow
+            linkCdr
+            linkCdrLow
+            sunatStatus
+            sunatDescription
+            sunatDescriptionLow
+            codeHash
+            supplier {
+                names
+                documentNumber
+            }
+            subsidiary {
+                companyName
+                company {
+                    doc
+                }
+            }
+            creditNoteReferences
+        }
+        totalInvoices
+        totalPurchasesTickets
+        totalCreditNotes
+        totalDebitNotes
+        totalNumberOfPages
+        totalNumberOfPurchases
+    }
+}
+
+query GetSuppliers {
+    allSuppliers {
+        names
+        id
+        address
+        documentNumber
+        documentType
+        phone
+        email
+    }
+}
+
+query SearchSupplierByParameter($search: String!, $isSupplier: Boolean!) {
+    searchClientByParameter(search: $search, isSupplier: $isSupplier) {
+        id
+        names
+        documentNumber
+        documentType
+    }
+} 

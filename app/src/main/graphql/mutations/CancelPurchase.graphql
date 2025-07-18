@@ -1,0 +1,6 @@
+mutation CancelPurchase($operationId: Int!, $lowDate: Date!) {
+    cancelInvoice(operationId: $operationId, lowDate: $lowDate) {
+        message
+        success
+    }
+} 

@@ -55,6 +55,14 @@ import com.example.fibo.model.IGuideLocation
 import com.example.fibo.model.IDistrict
 import com.example.fibo.model.IVehicle
 import com.example.fibo.model.IRelatedDocument
+import com.example.fibo.model.ISupplier
+import com.example.fibo.GetPurchasesQuery
+import com.example.fibo.GetSuppliersQuery
+import com.example.fibo.SearchSupplierByParameterQuery
+import com.example.fibo.CreatePurchaseMutation
+import com.example.fibo.CancelPurchaseMutation
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 
 @Singleton
@@ -1247,5 +1255,205 @@ class OperationRepository @Inject constructor(
                 )
             }
         )
+    }
+
+    // ========== MÉTODOS PARA COMPRAS ==========
+    
+    /**
+     * Obtener compras por fecha y filtros
+     */
+    suspend fun getPurchases(
+        subsidiaryId: Int,
+        supplierId: Int,
+        startDate: String,
+        endDate: String,
+        documentType: String,
+        page: Int,
+        pageSize: Int,
+        serial: String? = null,
+        correlative: Int? = null
+    ): List<IOperation> {
+        return try {
+            val result = executeWithTokenRefresh { token ->
+                val response = apolloClient.query(
+                    GetPurchasesQuery(
+                        subsidiaryId = subsidiaryId,
+                        supplierId = supplierId,
+                        startDate = startDate,
+                        endDate = endDate,
+                        documentType = documentType,
+                        page = page,
+                        pageSize = pageSize,
+                        serial = Optional.presentIfNotNull(serial),
+                        correlative = Optional.presentIfNotNull(correlative)
+                    )
+                ).addHttpHeader("Authorization", "JWT $token").execute()
+
+                if (response.hasErrors()) {
+                    val errorMessage = response.errors?.first()?.message ?: "Error desconocido"
+                    if (errorMessage.contains("Signature has expired") || errorMessage.contains("token_expired")) {
+                        throw Exception(errorMessage)
+                    }
+                    throw Exception(errorMessage)
+                } else {
+                    response.data?.allPurchases?.purchases?.map { purchase ->
+                        IOperation(
+                            id = purchase?.id?.toInt() ?: 0,
+                            documentType = purchase?.documentType?.toString() ?: "",
+                            documentTypeReadable = when (purchase?.documentType?.toString()?.replace("A_", "")) {
+                                "01" -> "FACTURA"
+                                "03" -> "BOLETA"
+                                "07" -> "NOTA DE CRÉDITO"
+                                else -> "COMPROBANTE"
+                            },
+                            emitDate = purchase?.emitDate?.toString() ?: "",
+                            serial = purchase?.serial ?: "",
+                            correlative = purchase?.correlative ?: 0,
+                            totalAmount = purchase?.totalAmount?.toSafeDouble() ?: 0.0,
+                            totalTaxed = purchase?.totalTaxed?.toSafeDouble() ?: 0.0,
+                            totalDiscount = purchase?.totalDiscount?.toSafeDouble() ?: 0.0,
+                            totalExonerated = purchase?.totalExonerated?.toSafeDouble() ?: 0.0,
+                            totalUnaffected = purchase?.totalUnaffected?.toSafeDouble() ?: 0.0,
+                            totalFree = purchase?.totalFree?.toSafeDouble() ?: 0.0,
+                            totalIgv = purchase?.totalIgv?.toSafeDouble() ?: 0.0,
+                            totalToPay = purchase?.totalToPay?.toSafeDouble() ?: 0.0,
+                            totalPayed = purchase?.totalPayed?.toSafeDouble() ?: 0.0,
+                            operationStatus = purchase?.operationStatus?.toString() ?: "",
+                            subsidiaryId = subsidiaryId,
+                            supplier = purchase?.supplier?.let { supplier ->
+                                ISupplier(
+                                    id = 0,
+                                    names = supplier.names ?: "",
+                                    documentNumber = supplier.documentNumber ?: "",
+                                    address = null,
+                                    documentType = null,
+                                    phone = null,
+                                    email = null
+                                )
+                            },
+                            // Para compras, el cliente será nulo ya que se usa supplier
+                            client = IPerson(id = 0, names = "", documentNumber = "", phone = "", email = "")
+                        )
+                    } ?: emptyList()
+                }
+            }
+            
+            result ?: emptyList()
+        } catch (e: Exception) {
+            Log.e("OperationRepository", "Error en getPurchases: ${e.message}", e)
+            emptyList()
+        }
+    }
+
+    /**
+     * Buscar proveedores por parámetro
+     */
+    suspend fun searchSuppliers(query: String): List<ISupplier> {
+        return try {
+            val result = executeWithTokenRefresh { token ->
+                val response = apolloClient.query(
+                    SearchSupplierByParameterQuery(
+                        search = query,
+                        isSupplier = true
+                    )
+                ).addHttpHeader("Authorization", "JWT $token").execute()
+
+                if (response.hasErrors()) {
+                    val errorMessage = response.errors?.first()?.message ?: "Error desconocido"
+                    if (errorMessage.contains("Signature has expired") || errorMessage.contains("token_expired")) {
+                        throw Exception(errorMessage)
+                    }
+                    throw Exception(errorMessage)
+                } else {
+                    response.data?.searchClientByParameter?.map { supplier ->
+                        ISupplier(
+                            id = supplier?.id?.toInt() ?: 0,
+                            names = supplier?.names ?: "",
+                            documentNumber = supplier?.documentNumber ?: "",
+                            documentType = supplier?.documentType?.toString(),
+                            address = null,
+                            phone = null,
+                            email = null
+                        )
+                    } ?: emptyList()
+                }
+            }
+            
+            result ?: emptyList()
+        } catch (e: Exception) {
+            Log.e("OperationRepository", "Error en searchSuppliers: ${e.message}", e)
+            emptyList()
+        }
+    }
+
+    /**
+     * Obtener todos los proveedores
+     */
+    suspend fun getAllSuppliers(): List<ISupplier> {
+        return try {
+            val result = executeWithTokenRefresh { token ->
+                val response = apolloClient.query(GetSuppliersQuery())
+                    .addHttpHeader("Authorization", "JWT $token")
+                    .execute()
+
+                if (response.hasErrors()) {
+                    val errorMessage = response.errors?.first()?.message ?: "Error desconocido"
+                    if (errorMessage.contains("Signature has expired") || errorMessage.contains("token_expired")) {
+                        throw Exception(errorMessage)
+                    }
+                    throw Exception(errorMessage)
+                } else {
+                    response.data?.allSuppliers?.map { supplier ->
+                        ISupplier(
+                            id = supplier?.id?.toInt() ?: 0,
+                            names = supplier?.names ?: "",
+                            documentNumber = supplier?.documentNumber ?: "",
+                            documentType = supplier?.documentType?.toString(),
+                            address = supplier?.address,
+                            phone = supplier?.phone,
+                            email = supplier?.email
+                        )
+                    } ?: emptyList()
+                }
+            }
+            
+            result ?: emptyList()
+        } catch (e: Exception) {
+            Log.e("OperationRepository", "Error en getAllSuppliers: ${e.message}", e)
+            emptyList()
+        }
+    }
+
+    /**
+     * Cancelar una operación (compra o venta)
+     */
+    suspend fun cancelOperation(operationId: Int): Boolean {
+        return try {
+            val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(java.util.Date())
+            
+            val result = executeWithTokenRefresh { token ->
+                val response = apolloClient.mutation(
+                    CancelPurchaseMutation(
+                        operationId = operationId,
+                        lowDate = today
+                    )
+                ).addHttpHeader("Authorization", "JWT $token").execute()
+
+                if (response.hasErrors()) {
+                    val errorMessage = response.errors?.first()?.message ?: "Error desconocido"
+                    if (errorMessage.contains("Signature has expired") || errorMessage.contains("token_expired")) {
+                        throw Exception(errorMessage)
+                    }
+                    throw Exception(errorMessage)
+                } else {
+                    response.data?.cancelInvoice?.success ?: false
+                }
+            }
+            
+            result ?: false
+        } catch (e: Exception) {
+            Log.e("OperationRepository", "Error en cancelOperation: ${e.message}", e)
+            false
+        }
     }
 }

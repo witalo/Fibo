@@ -151,16 +151,21 @@ fun SideMenu(
                             text = "Cotizaciones",
                             onClick = { onMenuItemSelected("Cotizaciones") }
                         )
-                        MenuItem(
-                            icon = Icons.Default.AddCircleOutline,
-                            text = "Productos",
-                            onClick = { onMenuItemSelected("Productos") }
-                        )
-                        MenuItem(
-                            icon = Icons.Default.AddCircle,
-                            text = "Nota de salida",
-                            onClick = { onMenuItemSelected("Nota de salida") }
-                        )
+                                MenuItem(
+            icon = Icons.Default.AddCircleOutline,
+            text = "Productos",
+            onClick = { onMenuItemSelected("Productos") }
+        )
+        MenuItem(
+            icon = Icons.Default.ShoppingCart,
+            text = "Compras",
+            onClick = { onMenuItemSelected("Compras") }
+        )
+        MenuItem(
+            icon = Icons.Default.AddCircle,
+            text = "Nota de salida",
+            onClick = { onMenuItemSelected("Nota de salida") }
+        )
                          MenuItem(
                             icon = Icons.Default.AddCircle,
                             text = "Nueva Guía",

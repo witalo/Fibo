@@ -1,9 +1,10 @@
-package com.example.fibo.ui.screens
+package com.example.fibo.ui.screens.purchase
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,11 +36,9 @@ import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -60,51 +59,48 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.compose.LifecycleResumeEffect
-import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.example.fibo.R
 import com.example.fibo.model.IOperation
-import com.example.fibo.model.IPerson
+import com.example.fibo.model.ISupplier
 import com.example.fibo.navigation.Screen
-import com.example.fibo.reports.PdfDialogViewModel
-import com.example.fibo.reports.PdfViewerDialog
 import com.example.fibo.ui.components.AppScaffold
 import com.example.fibo.ui.components.AppTopBarWithSearch
 import com.example.fibo.ui.components.ClientFilterChip
-import com.example.fibo.ui.components.ClientSearchDialog
+import com.example.fibo.ui.screens.Chip
+import com.example.fibo.ui.screens.cleanDocumentType
+import com.example.fibo.ui.screens.isWithinDays
 import com.example.fibo.utils.ColorGradients
-import com.example.fibo.viewmodels.NoteOfSaleViewModel
+import com.example.fibo.utils.PurchaseState
+import com.example.fibo.viewmodels.PurchaseViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.concurrent.TimeUnit
 
 @Composable
-fun NoteOfSaleScreen(
+fun PurchaseScreen(
     navController: NavController,
-    viewModel: NoteOfSaleViewModel = hiltViewModel(),
+    viewModel: PurchaseViewModel = hiltViewModel(),
     subsidiaryData: com.example.fibo.model.ISubsidiary? = null,
     onLogout: () -> Unit
 ) {
     val selectedDate by viewModel.selectedDate.collectAsState()
-    val invoiceState by viewModel.invoiceState.collectAsState()
+    val purchaseState by viewModel.purchaseState.collectAsState()
 
-    // Estados para el diálogo de búsqueda
+    // Estados para el diálogo de búsqueda de proveedores
     var isSearchDialogOpen by remember { mutableStateOf(false) }
     val searchQuery by viewModel.searchQuery.collectAsState()
     val searchResults by viewModel.searchResults.collectAsState()
     val isSearching by viewModel.isSearching.collectAsState()
-    val selectedClient by viewModel.selectedClient.collectAsState()
+    val selectedSupplier by viewModel.selectedSupplier.collectAsState()
 
-    // Note Maneja el refresco cuando la pantalla obtiene foco
+    // Maneja el refresco cuando la pantalla obtiene foco
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                viewModel.loadNoteOfSale(viewModel.selectedDate.value)
+                viewModel.loadPurchases(viewModel.selectedDate.value)
             }
         }
 
@@ -121,10 +117,10 @@ fun NoteOfSaleScreen(
         onLogout = onLogout,
         topBar = {
             AppTopBarWithSearch(
-                title = if (selectedClient != null) {
-                    "${selectedClient?.names?.take(15)}..."
+                title = if (selectedSupplier != null) {
+                    "${selectedSupplier?.names?.take(15)}..."
                 } else {
-                    "Comprobantes"
+                    "Compras"
                 },
                 onDateSelected = { date ->
                     viewModel.updateSelectedDate(date)
@@ -140,10 +136,9 @@ fun NoteOfSaleScreen(
                 .padding(paddingValues)
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            when (invoiceState) {
-                is NoteOfSaleViewModel.InvoiceState.Loading -> NoteOfSaleCenterLoadingIndicator()
-                is NoteOfSaleViewModel.InvoiceState.WaitingForUser -> {
-                    // Mensaje de espera para autenticación
+            when (purchaseState) {
+                is PurchaseState.Loading -> CenterLoadingIndicator()
+                is PurchaseState.WaitingForUser -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
@@ -157,59 +152,62 @@ fun NoteOfSaleScreen(
                         }
                     }
                 }
-                is NoteOfSaleViewModel.InvoiceState.Success -> {
-                    val invoices = (invoiceState as NoteOfSaleViewModel.InvoiceState.Success).data
-                    NoteOfSaleContent(
-                        invoices = invoices,
-                        onInvoiceClick = { invoice ->
-                            navController.navigate("invoice_detail/${invoice.id}")
+                is PurchaseState.Success -> {
+                    val purchases = (purchaseState as PurchaseState.Success).data
+                    PurchaseContent(
+                        purchases = purchases,
+                        onPurchaseClick = { purchase ->
+                            navController.navigate("purchase_detail/${purchase.id}")
                         },
-                        onNewInvoice = { navController.navigate(Screen.NewNoteOfSale.route) },
-                        onNewReceipt = { navController.navigate(Screen.NewNoteOfSale.route) },
-                        selectedClient = selectedClient,
-                        onClearClientFilter = { viewModel.clearClientSearch() }
+                        onNewPurchase = { navController.navigate(Screen.NewPurchase.route) },
+                        selectedSupplier = selectedSupplier,
+                        onClearSupplierFilter = { viewModel.clearSupplierSearch() }
                     )
                 }
-                is NoteOfSaleViewModel.InvoiceState.Error -> {
-                    NoteOfSaleErrorMessage(
-                        message = (invoiceState as NoteOfSaleViewModel.InvoiceState.Error).message,
-                        onRetry = {viewModel.loadNoteOfSale(selectedDate) }
+                is PurchaseState.Error -> {
+                    ErrorMessage(
+                        message = (purchaseState as PurchaseState.Error).message,
+                        onRetry = { viewModel.loadPurchases(selectedDate) }
                     )
                 }
             }
         }
+        
+        // Diálogo de búsqueda de proveedores
+        SupplierSearchDialog(
+            isVisible = isSearchDialogOpen,
+            onDismiss = { isSearchDialogOpen = false },
+            searchQuery = searchQuery,
+            onSearchQueryChange = { query -> viewModel.searchSuppliers(query) },
+            searchResults = searchResults,
+            isLoading = isSearching,
+            onSupplierSelected = { supplier ->
+                viewModel.selectSupplier(supplier)
+                isSearchDialogOpen = false
+            }
+        )
     }
-    
-    // Diálogo de búsqueda de clientes
-    ClientSearchDialog(
-        isVisible = isSearchDialogOpen,
-        onDismiss = { isSearchDialogOpen = false },
-        searchQuery = searchQuery,
-        onSearchQueryChange = { query -> viewModel.searchClients(query) },
-        searchResults = searchResults,
-        isLoading = isSearching,
-        onClientSelected = { client ->
-            viewModel.selectClient(client)
-            isSearchDialogOpen = false
-        }
-    )
 }
 
 @Composable
-fun NoteOfSaleContent(
-    invoices: List<IOperation>,
-    onInvoiceClick: (IOperation) -> Unit,
-    onNewInvoice: () -> Unit,
-    onNewReceipt: () -> Unit,
-    selectedClient: IPerson?,
-    onClearClientFilter: () -> Unit
+fun PurchaseContent(
+    purchases: List<IOperation>,
+    onPurchaseClick: (IOperation) -> Unit,
+    onNewPurchase: () -> Unit,
+    selectedSupplier: ISupplier?,
+    onClearSupplierFilter: () -> Unit
 ) {
-    // Calculate cantidad de facturas y boletas
-    val invoiceCount = invoices.count { it.documentTypeReadable == "NOTA DE SALIDA" }
+    // Calculate cantidad de compras
+    val invoiceCount = purchases.count { it.documentTypeReadable == "FACTURA" }
+    val receiptCount = purchases.count { it.documentTypeReadable == "BOLETA" }
 
     // Calculate monetary totals
-    val invoiceAmountTotal = invoices
-        .filter { it.documentTypeReadable == "NOTA DE SALIDA" }
+    val invoiceAmountTotal = purchases
+        .filter { it.documentTypeReadable == "FACTURA" }
+        .sumOf { it.totalToPay }
+
+    val receiptAmountTotal = purchases
+        .filter { it.documentTypeReadable == "BOLETA" }
         .sumOf { it.totalToPay }
 
     Column(
@@ -217,85 +215,74 @@ fun NoteOfSaleContent(
             .fillMaxSize()
             .padding(horizontal = 8.dp)
     ) {
-        // Mostrar información del cliente seleccionado (si hay uno)
-        if (selectedClient != null) {
-            ClientFilterChip(
-                client = selectedClient,
-                onClear = onClearClientFilter,
+        // Mostrar información del proveedor seleccionado (si hay uno)
+        if (selectedSupplier != null) {
+            SupplierFilterChip(
+                supplier = selectedSupplier,
+                onClear = onClearSupplierFilter,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
         }
-        // Sección de Listado (82% del espacio)
+        
+        // Sección de Listado (toma todo el espacio disponible)
         Box(
             modifier = Modifier
-                .weight(0.90f)
+                .weight(1f)
                 .fillMaxWidth()
         ) {
-            if (invoices.isEmpty()) {
-                NoteOfSaleEmptyState(message = "No hay ventas")
+            if (purchases.isEmpty()) {
+                EmptyState(message = "No hay compras")
             } else {
-                // Wrap the InvoiceList in a Box to ensure scrolling works
-                NoteOfSaleList(
-                    invoices = invoices,
-                    onInvoiceClick = onInvoiceClick
+                PurchaseList(
+                    purchases = purchases,
+                    onPurchaseClick = onPurchaseClick
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(6.dp))
-
-        // Sección de Botones (18% del espacio)
-        Column(
-            modifier = Modifier
-                .weight(0.10f)
-                .fillMaxWidth(),
-//            verticalArrangement = Arrangement.Bottom
-        ) {
-            NoteOfSaleActionButtons(
-                onNewInvoice = onNewInvoice,
-                invoiceCount = invoiceCount,
-                invoiceAmountTotal = invoiceAmountTotal
-            )
-        }
+        // Sección de Botones (fijo en la parte inferior)
+        ActionButtonsPurchase(
+            onNewPurchase = onNewPurchase,
+            invoiceCount = invoiceCount,
+            receiptCount = receiptCount,
+            invoiceAmountTotal = invoiceAmountTotal,
+            receiptAmountTotal = receiptAmountTotal
+        )
     }
 }
 
 @Composable
-fun NoteOfSaleList(
-    invoices: List<IOperation>,
-    onInvoiceClick: (IOperation) -> Unit
+fun PurchaseList(
+    purchases: List<IOperation>,
+    onPurchaseClick: (IOperation) -> Unit
 ) {
-    // Removed fillMaxSize to allow proper scrolling
     LazyColumn(
         contentPadding = PaddingValues(vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(invoices) { invoice ->
-            NoteOfSaleItem(
-                invoice = invoice,
-                onClick = { onInvoiceClick(invoice) }
+        items(purchases) { purchase ->
+            PurchaseItem(
+                purchase = purchase,
+                onClick = { onPurchaseClick(purchase) }
             )
         }
     }
 }
 
 @Composable
-fun NoteOfSaleItem(
-    invoice: IOperation,
+fun PurchaseItem(
+    purchase: IOperation,
     onClick: () -> Unit,
-    viewModel: NoteOfSaleViewModel = hiltViewModel(),
-    pdfViewModel: PdfDialogViewModel = hiltViewModel()
+    viewModel: PurchaseViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
-
+    
     // Observar el estado del diálogo
-    val showPdfDialog by viewModel.showPdfDialog.collectAsState()
-    val currentInvoiceId by viewModel.currentInvoiceId.collectAsState()
     val showCancelDialog by viewModel.showCancelDialog.collectAsState()
     val currentOperationId by viewModel.currentOperationId.collectAsState()
-
-    val isAnulado = invoice.operationStatus.replace("A_", "") == "06" || invoice.operationStatus.replace("A_", "") == "04"
-
+    
+    val isAnulado = purchase.operationStatus.replace("A_", "") == "06" || purchase.operationStatus.replace("A_", "") == "04"
+    
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -306,13 +293,12 @@ fun NoteOfSaleItem(
             ),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isAnulado)
-//                Color.Red.copy(alpha = 0.1f)
+            containerColor = if (isAnulado) 
                 when (isSystemInDarkTheme()) {
                     true -> Color(0xFF7C1D1D)
                     false -> Color(0xFFFDCFCF)
                 }
-            else
+            else 
                 MaterialTheme.colorScheme.surfaceVariant
         ),
         shape = RoundedCornerShape(8.dp)
@@ -323,15 +309,15 @@ fun NoteOfSaleItem(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "${invoice.serial}-${invoice.correlative}",
+                    text = "${purchase.serial}-${purchase.correlative}",
                     style = MaterialTheme.typography.titleSmall.copy(
-                        brush = ColorGradients.orangeFire
+                        brush = ColorGradients.purpleDream
                     ),
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = invoice.emitDate,
+                    text = purchase.emitDate,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                 )
@@ -339,7 +325,8 @@ fun NoteOfSaleItem(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            invoice.client.names?.let {
+            // Mostrar información del proveedor en lugar del cliente
+            purchase.supplier?.names?.let {
                 Text(
                     text = it,
                     style = MaterialTheme.typography.titleSmall,
@@ -355,19 +342,18 @@ fun NoteOfSaleItem(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                NoteOfSaleChip(
-                    label = invoice.documentTypeReadable,
-                    gradient = when (invoice.documentTypeReadable) {
-                        "FACTURA" -> ColorGradients.blueOcean
-                        "BOLETA" -> ColorGradients.greenNature
-                        "NOTA DE SALIDA" -> ColorGradients.greenNature
-                        else -> ColorGradients.greenNature
+                Chip(
+                    label = purchase.documentTypeReadable,
+                    gradient = when (purchase.documentTypeReadable) {
+                        "FACTURA" -> ColorGradients.purpleDeep
+                        "BOLETA" -> ColorGradients.purpleDream
+                        else -> ColorGradients.purpleDream
                     }
                 )
-
+                
                 IconButton(
                     onClick = {
-                        viewModel.showPdfDialog(invoice.id)
+                        // PDF para compras - similar funcionalidad
                     },
                     modifier = Modifier.size(40.dp)
                 ) {
@@ -378,7 +364,7 @@ fun NoteOfSaleItem(
                         contentScale = ContentScale.Fit
                     )
                 }
-
+                
                 if (isAnulado) {
                     Box(
                         modifier = Modifier
@@ -397,7 +383,7 @@ fun NoteOfSaleItem(
                     IconButton(
                         onClick = {
                             if (!isAnulado) {
-                                viewModel.showCancelDialog(invoice.id)
+                                viewModel.showCancelDialog(purchase.id)
                             }
                         },
                         modifier = Modifier.size(40.dp)
@@ -405,10 +391,9 @@ fun NoteOfSaleItem(
                         Icon(
                             imageVector = Icons.Default.Cancel,
                             contentDescription = "Anular",
-                            tint = if (isNoteOfSaleWithinDays(invoice.emitDate, when (invoice.documentType.cleanNoteOfSaleDocumentType()) {
+                            tint = if (isWithinDays(purchase.emitDate, when (purchase.documentType.cleanDocumentType()) {
                                     "01" -> 3
                                     "03" -> 5
-                                    "NS" -> 90
                                     else -> 0
                                 })) {
                                 MaterialTheme.colorScheme.error
@@ -419,22 +404,22 @@ fun NoteOfSaleItem(
                         )
                     }
                 }
-
+                
                 Text(
-                    text = "S/. ${String.format("%.2f", invoice.totalToPay)}",
+                    text = "S/. ${String.format("%.2f", purchase.totalToPay)}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = when (isSystemInDarkTheme()) {
-                        true -> Color(0xFFFF9800)
-                        false -> Color(0xFF097BD9)
+                        true -> Color(0xFFAB47BC)
+                        false -> Color(0xFF8E24AA)
                     }
                 )
             }
         }
     }
 
-    // Diálogo de anulación
-    if (showCancelDialog && currentOperationId == invoice.id) {
+    // Diálogo de anulación para compras
+    if (showCancelDialog && currentOperationId == purchase.id) {
         AlertDialog(
             onDismissRequest = { viewModel.closeCancelDialog() },
             title = {
@@ -450,20 +435,20 @@ fun NoteOfSaleItem(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Anular Comprobante",
+                        text = "Anular Compra",
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.error
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "${invoice.serial}-${invoice.correlative}",
+                        text = "${purchase.serial}-${purchase.correlative}",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Emitido el: ${invoice.emitDate}",
+                        text = "Emitido el: ${purchase.emitDate}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
@@ -475,10 +460,9 @@ fun NoteOfSaleItem(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = when (invoice.documentType.cleanNoteOfSaleDocumentType()) {
+                        text = when (purchase.documentType.cleanDocumentType()) {
                             "01" -> "Facturas solo pueden anularse dentro de los 3 días de emisión"
                             "03" -> "Boletas solo pueden anularse dentro de los 5 días de emisión"
-                            "NS" -> "Notas de venta solo pueden anularse dentro de los 90 días de emisión"
                             else -> "Este comprobante no puede ser anulado"
                         },
                         style = MaterialTheme.typography.bodyMedium,
@@ -491,9 +475,9 @@ fun NoteOfSaleItem(
                 Button(
                     onClick = {
                         viewModel.cancelOperation(
-                            operationId = invoice.id,
-                            operationType = invoice.documentType.cleanNoteOfSaleDocumentType(),
-                            emitDate = invoice.emitDate
+                            operationId = purchase.id,
+                            operationType = purchase.documentType.cleanDocumentType(),
+                            emitDate = purchase.emitDate
                         )
                     },
                     colors = ButtonDefaults.buttonColors(
@@ -504,10 +488,9 @@ fun NoteOfSaleItem(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
-                    enabled = when (invoice.documentType.cleanNoteOfSaleDocumentType()) {
-                        "01" -> isNoteOfSaleWithinDays(invoice.emitDate, 3)
-                        "03" -> isNoteOfSaleWithinDays(invoice.emitDate, 5)
-                        "NS" -> isNoteOfSaleWithinDays(invoice.emitDate, 90)
+                    enabled = when (purchase.documentType.cleanDocumentType()) {
+                        "01" -> isWithinDays(purchase.emitDate, 3)
+                        "03" -> isWithinDays(purchase.emitDate, 5)
                         else -> false
                     }
                 ) {
@@ -542,48 +525,15 @@ fun NoteOfSaleItem(
             shape = RoundedCornerShape(16.dp)
         )
     }
-
-    // Mostrar el diálogo PDF cuando sea necesario
-    if (showPdfDialog) {
-        // Cargar los datos de la operación cuando el diálogo se muestra
-        LaunchedEffect(currentInvoiceId) {
-            if (currentInvoiceId > 0) {
-                pdfViewModel.fetchOperationById(currentInvoiceId)
-            }
-        }
-
-        // Implementar el diálogo de PDF
-        // Mostrar el diálogo PdfViewerDialog cuando showPdfDialog es true
-        PdfViewerDialog(
-            isVisible = showPdfDialog,
-            operationId = currentInvoiceId,
-            onDismiss = { viewModel.closePdfDialog() }
-        )
-    }
 }
-// Función de extensión para verificar días
-fun isNoteOfSaleWithinDays(emitDate: String, maxDays: Int): Boolean {
-    return try {
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val emitDateObj = dateFormat.parse(emitDate) ?: return false
-        val currentDate = Date()
 
-        val diffInMillis = currentDate.time - emitDateObj.time
-        val diffInDays = TimeUnit.MILLISECONDS.toDays(diffInMillis)
-
-        diffInDays <= maxDays
-    } catch (e: Exception) {
-        false
-    }
-}
-fun String.cleanNoteOfSaleDocumentType(): String {
-    return this.replace("A_", "")
-}
 @Composable
-fun NoteOfSaleActionButtons(
-    onNewInvoice: () -> Unit,
+fun ActionButtonsPurchase(
+    onNewPurchase: () -> Unit,
     invoiceCount: Int,
-    invoiceAmountTotal: Double
+    receiptCount: Int,
+    invoiceAmountTotal: Double,
+    receiptAmountTotal: Double
 ) {
     Column(
         modifier = Modifier
@@ -591,14 +541,14 @@ fun NoteOfSaleActionButtons(
             .padding(horizontal = 3.dp, vertical = 3.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        // Botón Nueva Factura - Versión mejorada
+        // Botón Nueva Compra - Estilo similar a HomeScreen
         ElevatedButton(
-            onClick = onNewInvoice,
+            onClick = onNewPurchase,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
             colors = ButtonDefaults.elevatedButtonColors(
-                containerColor = Color(0xFF4A6FA5),  // Azul profesional
+                containerColor = Color(0xFF8E24AA),  // Morado para compras
                 contentColor = Color.White
             ),
             elevation = ButtonDefaults.elevatedButtonElevation(
@@ -616,7 +566,7 @@ fun NoteOfSaleActionButtons(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier.fillMaxWidth(0.95f)
             ) {
-                // Counter Chip
+                // Counter Chips
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(16.dp))
@@ -624,7 +574,7 @@ fun NoteOfSaleActionButtons(
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Text(
-                        text = "Total: $invoiceCount",
+                        text = "F: $invoiceCount",
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.White
                     )
@@ -636,69 +586,173 @@ fun NoteOfSaleActionButtons(
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Text(
-                        text = "S/. ${String.format("%.2f", invoiceAmountTotal)}",
+                        text = "B: $receiptCount",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color.White.copy(alpha = 0.15f))
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = "S/. ${String.format("%.2f", invoiceAmountTotal + receiptAmountTotal)}",
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.White
                     )
                 }
 
-
-                Spacer(modifier = Modifier.weight(1f)) // Espacio flexible
+                Spacer(modifier = Modifier.weight(1f))
 
                 Icon(
                     imageVector = Icons.Default.ReceiptLong,
-                    contentDescription = "Nueva Venta",
+                    contentDescription = "Nueva Compra",
                     modifier = Modifier.size(18.dp),
                     tint = Color.White
                 )
                 Text(
-                    text = "Nueva Venta",
+                    text = "Nueva Compra",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
-                    maxLines = 1 // Forzar una sola línea
+                    maxLines = 1
                 )
-                Spacer(modifier = Modifier.weight(1f)) // Espacio flexible
-//                Spacer(modifier = Modifier.weight(1f))
-//                Icon(
-//                    imageVector = Icons.Filled.ArrowForward,
-//                    contentDescription = null,
-//                    modifier = Modifier.size(18.dp),
-//                    tint = Color.White.copy(alpha = 0.6f)
-//                )
+                Spacer(modifier = Modifier.weight(1f))
             }
         }
     }
 }
 
+@Composable
+fun SupplierFilterChip(
+    supplier: ISupplier,
+    onClear: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Proveedor seleccionado:",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                Text(
+                    text = supplier.names,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                Text(
+                    text = supplier.documentNumber,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+            IconButton(onClick = onClear) {
+                Icon(
+                    imageVector = Icons.Default.Cancel,
+                    contentDescription = "Limpiar filtro",
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+        }
+    }
+}
 
 @Composable
-fun NoteOfSaleChip(
-    label: String,
-    gradient: Brush // Mantenemos Brush pero con otro nombre
+fun SupplierSearchDialog(
+    isVisible: Boolean,
+    onDismiss: () -> Unit,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    searchResults: List<ISupplier>,
+    isLoading: Boolean,
+    onSupplierSelected: (ISupplier) -> Unit
 ) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color.White.copy(alpha = 0.1f)) // Fondo transparente
-//            .border(
-//                width = 1.dp,
-//                brush = gradient, // Borde con el gradiente
-//                shape = RoundedCornerShape(16.dp)
-//            )
-            .padding(horizontal = 12.dp, vertical = 6.dp)
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium.copy(
-                brush = gradient
-            )
+    if (isVisible) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = {
+                Text("Buscar Proveedor")
+            },
+            text = {
+                Column {
+                    androidx.compose.material3.OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = onSearchQueryChange,
+                        label = { Text("Nombre o RUC del proveedor") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    if (isLoading) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.height(200.dp)
+                        ) {
+                            items(searchResults) { supplier ->
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 2.dp)
+                                        .clickable { onSupplierSelected(supplier) },
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                    )
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(12.dp)
+                                    ) {
+                                        Text(
+                                            text = supplier.names,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = supplier.documentNumber,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = onDismiss) {
+                    Text("Cerrar")
+                }
+            }
         )
     }
 }
 
-
 @Composable
-fun NoteOfSaleCenterLoadingIndicator() {
+fun CenterLoadingIndicator() {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -708,7 +762,7 @@ fun NoteOfSaleCenterLoadingIndicator() {
 }
 
 @Composable
-fun NoteOfSaleEmptyState(message: String) {
+fun EmptyState(message: String) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -731,7 +785,7 @@ fun NoteOfSaleEmptyState(message: String) {
 }
 
 @Composable
-fun NoteOfSaleErrorMessage(message: String, onRetry: () -> Unit) {
+fun ErrorMessage(message: String, onRetry: () -> Unit) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -759,4 +813,4 @@ fun NoteOfSaleErrorMessage(message: String, onRetry: () -> Unit) {
             }
         }
     }
-}
+} 

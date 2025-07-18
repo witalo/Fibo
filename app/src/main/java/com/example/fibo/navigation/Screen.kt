@@ -22,6 +22,8 @@ sealed class Screen(
 //    object NewNoteOfSale : Screen("new_note_of_sale")
     object Product : Screen("product")
     object Guide : Screen("guide")
+    object Purchase : Screen("purchase")
+    object NewPurchase : Screen("new_purchase")
     object Reports : Screen("reports")
     object ReportPayment : Screen("report_payment")
     object NewInvoice : Screen(
@@ -115,5 +117,18 @@ sealed class Screen(
     ) {
         fun createRoute(noteOfSaleId: Int) = "noteOfSale/$noteOfSaleId"
         const val noteOfSaleIdArg = "noteOfSaleId"
+    }
+
+    object PurchaseDetail : Screen(
+        route = "purchase",
+        routeWithArgs = "purchase/{purchaseId}",
+        arguments = listOf(
+            navArgument("purchaseId") {
+                type = NavType.StringType
+            }
+        )
+    ) {
+        fun createRoute(purchaseId: Int) = "purchase/$purchaseId"
+        const val purchaseIdArg = "purchaseId"
     }
 }
