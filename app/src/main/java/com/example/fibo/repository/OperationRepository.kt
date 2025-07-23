@@ -1456,4 +1456,104 @@ class OperationRepository @Inject constructor(
             false
         }
     }
+
+//    suspend fun createPurchase(operation: IOperation): Result<String> {
+//        return try {
+//            // Convertir los detalles de la operación a los formatos requeridos
+//            val productTariffIdSet = operation.operationDetailSet.map { it.productTariffId }
+//            val typeAffectationIdSet = operation.operationDetailSet.map { it.typeAffectationId }
+//            val quantitySet = operation.operationDetailSet.map { it.quantity }
+//            val unitValueSet = operation.operationDetailSet.map { it.unitValue }
+//            val unitPriceSet = operation.operationDetailSet.map { it.unitPrice }
+//            val discountPercentageSet = operation.operationDetailSet.map { it.discountPercentage }
+//            val igvPercentageSet = operation.operationDetailSet.map { it.igvPercentage }
+//            val perceptionPercentageSet = operation.operationDetailSet.map { it.perceptionPercentage }
+//            val commentSet = operation.operationDetailSet.map { it.comment ?: "" }
+//            val totalDiscountSet = operation.operationDetailSet.map { it.totalDiscount }
+//            val totalValueSet = operation.operationDetailSet.map { it.totalValue }
+//            val totalIgvSet = operation.operationDetailSet.map { it.totalIgv }
+//            val totalAmountSet = operation.operationDetailSet.map { it.totalAmount }
+//            val totalPerceptionSet = operation.operationDetailSet.map { it.totalPerception }
+//            val totalToPaySet = operation.operationDetailSet.map { it.totalToPay }
+//            val wayPaySet = operation.payments?.map { it.wayPay } ?: emptyList()
+//            val totalSet = operation.payments?.map { it.amount } ?: emptyList()
+//            val descriptionSet = operation.payments?.map { it.description ?: "" } ?: emptyList()
+//            val transactionDateSet = operation.payments?.map { it.paymentDate } ?: emptyList()
+//
+//            val response = apolloClient.mutation(
+//                CreatePurchaseMutation(
+//                    serial = operation.serial,
+//                    correlative = operation.correlative,
+//                    operationType = operation.operationType,
+//                    documentType = operation.documentType,
+//                    currencyType = operation.currencyType,
+//                    saleExchangeRate = operation.saleExchangeRate,
+//                    emitDate = operation.emitDate,
+//                    dueDate = operation.dueDate,
+//                    supplierId = operation.supplier?.id ?: throw IllegalArgumentException("Supplier ID is required"),
+//                    productTariffIdSet = productTariffIdSet,
+//                    typeAffectationIdSet = typeAffectationIdSet,
+//                    quantitySet = quantitySet,
+//                    unitValueSet = unitValueSet,
+//                    unitPriceSet = unitPriceSet,
+//                    discountPercentageSet = discountPercentageSet,
+//                    igvPercentageSet = igvPercentageSet,
+//                    perceptionPercentageSet = perceptionPercentageSet,
+//                    commentSet = commentSet,
+//                    totalDiscountSet = totalDiscountSet,
+//                    totalValueSet = totalValueSet,
+//                    totalIgvSet = totalIgvSet,
+//                    totalAmountSet = totalAmountSet,
+//                    totalPerceptionSet = totalPerceptionSet,
+//                    totalToPaySet = totalToPaySet,
+//                    wayPaySet = wayPaySet,
+//                    totalSet = totalSet,
+//                    descriptionSet = descriptionSet,
+//                    transactionDateSet = transactionDateSet,
+//                    discountForItem = operation.discountForItem,
+//                    discountGlobal = operation.discountGlobal,
+//                    discountPercentageGlobal = operation.discountPercentageGlobal,
+//                    igvType = operation.igvType,
+//                    totalDiscount = operation.totalDiscount,
+//                    totalTaxed = operation.totalTaxed,
+//                    totalUnaffected = operation.totalUnaffected,
+//                    totalExonerated = operation.totalExonerated,
+//                    totalIgv = operation.totalIgv,
+//                    totalFree = operation.totalFree,
+//                    totalAmount = operation.totalAmount,
+//                    totalPerception = operation.totalPerception,
+//                    totalToPay = operation.totalToPay,
+//                    totalPayed = operation.totalPayed,
+//                    totalTurned = operation.totalTurned,
+//                    observation = operation.observation ?: "",
+//                    hasPerception = operation.hasPerception,
+//                    hasRetention = operation.hasRetention,
+//                    hasDetraction = operation.hasDetraction,
+//                    perceptionType = operation.perceptionType,
+//                    perceptionPercentage = operation.perceptionPercentage,
+//                    retentionType = operation.retentionType,
+//                    totalRetention = operation.totalRetention,
+//                    retentionPercentage = operation.retentionPercentage,
+//                    detractionType = operation.detractionType,
+//                    detractionPaymentMethod = operation.detractionPaymentMethod,
+//                    totalDetraction = operation.totalDetraction,
+//                    detractionPercentage = operation.detractionPercentage
+//                )
+//            ).execute()
+//
+//            if (response.hasErrors()) {
+//                val errorMessage = response.errors?.joinToString { it.message } ?: "Error desconocido"
+//                Result.failure(Exception(errorMessage))
+//            } else {
+//                val data = response.data?.createPurchase
+//                if (data?.error.isNullOrEmpty()) {
+//                    Result.success(data?.message ?: "Compra registrada exitosamente")
+//                } else {
+//                    Result.failure(Exception(data?.error ?: "Error al crear la compra"))
+//                }
+//            }
+//        } catch (e: Exception) {
+//            Result.failure(e)
+//        }
+//    }
 }

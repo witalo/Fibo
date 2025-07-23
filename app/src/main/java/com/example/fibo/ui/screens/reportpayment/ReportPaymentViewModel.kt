@@ -198,13 +198,15 @@ class ReportPaymentViewModel @Inject constructor(
                 val endDateStr = _endDate.value.format(dateFormatter)
 
                 // Construir URL para descargar el Excel
-                val baseUrl = "https://ng.tuf4ctur4.net.pe/operations"
-                val downloadUrl = "$baseUrl/export_payment_report/$userId/$subsidiaryId/$startDateStr/$endDateStr/"
+                val baseUrl = "https://ng.tuf4ctur4.net.pe/logistics"
+                val endpoint = "export-sales-payments-excel/"
+
+                val url = "$baseUrl/$endpoint?subsidiary_id=$subsidiaryId&start_date=$startDateStr&end_date=$endDateStr"
 
                 // Nombre del archivo
                 val fileName = "Reporte_Pagos_${LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))}.xlsx"
 
-                _exportState.value = ExportState.Success(downloadUrl, fileName)
+                _exportState.value = ExportState.Success(url, fileName)
 
             } catch (e: Exception) {
                 _exportState.value = ExportState.Error("Error al exportar: ${e.message}")

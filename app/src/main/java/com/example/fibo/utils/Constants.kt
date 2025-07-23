@@ -6,7 +6,7 @@ object Constants {
     const val BASE_API_URL_PRODUCTION = "https://ng.tuf4ctur4.net.pe"
     
     // Configuración del entorno actual (cambiar según necesidad)
-    private const val IS_PRODUCTION = false // Cambiar a true para producción
+    private const val IS_PRODUCTION = true // Cambiar a true para producción
     
     // URL base actual basada en el entorno
     val BASE_API_URL = if (IS_PRODUCTION) BASE_API_URL_PRODUCTION else BASE_API_URL_LOCAL

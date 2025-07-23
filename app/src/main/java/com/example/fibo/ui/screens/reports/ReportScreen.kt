@@ -133,15 +133,17 @@ fun ReportScreen(
         onMenuItemSelected = { option ->
             when (option) {
                 "Inicio" -> navController.navigate(Screen.Home.route)
+                "Perfil" -> navController.navigate(Screen.Profile.route)
                 "Cotizaciones" -> navController.navigate(Screen.Quotation.route)
                 "Nota de salida" -> navController.navigate(Screen.NoteOfSale.route)
-                "Perfil" -> navController.navigate(Screen.Profile.route)
                 "Nueva Factura" -> navController.navigate(Screen.NewInvoice.route)
                 "Nueva Boleta" -> navController.navigate(Screen.NewReceipt.route)
-                "Nueva Cotización" -> navController.navigate(Screen.NewQuotation.route)
                 "Productos" -> navController.navigate(Screen.Product.route)
-                "Nueva Nota de salida" -> navController.navigate(Screen.NewNoteOfSale.route)
-                "Reportes" -> { /* Ya estamos aquí */ }
+                "Compras" -> navController.navigate(Screen.Purchase.route)
+                "Guías" -> navController.navigate(Screen.Guides.route)
+                "Nueva Guía" -> navController.navigate(Screen.NewGuide.route)
+                "Reporte" -> navController.navigate(Screen.Reports.route)
+                "Reporte pagos" -> navController.navigate(Screen.ReportPayment.route)
             }
             isMenuOpen = false
         },

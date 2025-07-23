@@ -109,7 +109,7 @@ fun NewNoteOfSaleScreen(
     val error by viewModel.error.collectAsState()
 
     var clientData by remember { mutableStateOf<IPerson?>(null) }
-    var documentNumber by remember { mutableStateOf("") }
+    var documentNumber by remember { mutableStateOf("00000000") }
     var showAddItemDialog by remember { mutableStateOf(false) }
     var operationDetails by remember { mutableStateOf<List<IOperationDetail>>(emptyList()) }
 
@@ -189,6 +189,20 @@ fun NewNoteOfSaleScreen(
         } else {
             discountGlobalValue = 0.0
             discountGlobalPercentage = 0.0
+        }
+    }
+    LaunchedEffect(Unit) {
+        // Solo si no hay un quotationId (para no sobreescribir los datos de cotización)
+        if (quotationId == null) {
+            viewModel.fetchClientData("00000000") { person ->
+                val modifiedPerson = person?.copy(
+                    names = person.names?.uppercase(),
+                    documentType = "1",
+                    documentNumber = person.documentNumber,
+                    address = person.address?.trim(),
+                )
+                clientData = modifiedPerson
+            }
         }
     }
     // Total de descuentos (global + por ítem)

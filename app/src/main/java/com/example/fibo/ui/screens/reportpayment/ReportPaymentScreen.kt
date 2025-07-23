@@ -94,14 +94,15 @@ fun ReportPaymentScreen(
         onMenuItemSelected = { option ->
             when (option) {
                 "Inicio" -> navController.navigate(Screen.Home.route)
+                "Perfil" -> navController.navigate(Screen.Profile.route)
                 "Cotizaciones" -> navController.navigate(Screen.Quotation.route)
                 "Nota de salida" -> navController.navigate(Screen.NoteOfSale.route)
-                "Perfil" -> navController.navigate(Screen.Profile.route)
                 "Nueva Factura" -> navController.navigate(Screen.NewInvoice.route)
                 "Nueva Boleta" -> navController.navigate(Screen.NewReceipt.route)
-                "Nueva Cotización" -> navController.navigate(Screen.NewQuotation.route)
                 "Productos" -> navController.navigate(Screen.Product.route)
-                "Nueva Nota de salida" -> navController.navigate(Screen.NewNoteOfSale.route)
+                "Compras" -> navController.navigate(Screen.Purchase.route)
+                "Guías" -> navController.navigate(Screen.Guides.route)
+                "Nueva Guía" -> navController.navigate(Screen.NewGuide.route)
                 "Reporte" -> navController.navigate(Screen.Reports.route)
                 "Reporte pagos" -> navController.navigate(Screen.ReportPayment.route)
             }
@@ -152,8 +153,8 @@ fun ReportPaymentScreen(
                     } else {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                            contentPadding = PaddingValues(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             // Sección de filtros
                             item {
@@ -180,7 +181,7 @@ fun ReportPaymentScreen(
                                 item {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                                     ) {
                                         // Gráfico circular
                                         Box(
@@ -208,7 +209,7 @@ fun ReportPaymentScreen(
                                             ) {
                                                 Text(
                                                     "Métodos de Pago",
-                                                    style = MaterialTheme.typography.titleMedium,
+                                                    style = MaterialTheme.typography.bodyMedium,
                                                     fontWeight = FontWeight.Bold
                                                 )
 
@@ -254,12 +255,12 @@ private fun FilterSection(
         )
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 // Selector de fecha inicio
                 DatePickerField(
@@ -341,7 +342,7 @@ private fun TotalSummaryCard(
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onPrimary
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     numberFormat.format(totalAmount),
                     style = MaterialTheme.typography.headlineLarge,
@@ -399,54 +400,68 @@ private fun PaymentPieChart(
 
 @Composable
 private fun PaymentMethodItem(item: PaymentSummaryItem) {
-    val numberFormat = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
+    val numberFormat = remember {
+        NumberFormat.getCurrencyInstance(Locale("es", "PE")).apply {
+            maximumFractionDigits = 2
+        }
+    }
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
     ) {
+        // Primera fila: Icono y método de pago
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.fillMaxWidth()
         ) {
             Text(
-                item.paymentMethod.icon,
-                fontSize = 20.sp,
-                modifier = Modifier.width(30.dp)
+                text = item.paymentMethod.icon,
+                fontSize = 24.sp,
+                modifier = Modifier.width(36.dp)
             )
+            Spacer(modifier = Modifier.width(8.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    item.paymentMethod.name,
-                    style = MaterialTheme.typography.bodyMedium,
+                    text = item.paymentMethod.name,
+                    style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    "${item.transactionCount} transacciones",
+                    text = "Cant: ${item.transactionCount}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
-        Column(
-            horizontalAlignment = Alignment.End
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // Segunda fila: Monto y porcentaje
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                numberFormat.format(item.totalAmount),
-                style = MaterialTheme.typography.bodyMedium,
+                text = numberFormat.format(item.totalAmount),
+                style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Bold
             )
+            Spacer(modifier = Modifier.width(4.dp))
             Text(
-                "${String.format("%.1f", item.percentage)}%",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary
+                text = "${String.format("%.1f", item.percentage)}%",
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = MaterialTheme.colorScheme.primary
+                ),
+                fontWeight = FontWeight.Medium
             )
         }
     }
 }
-
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 private fun PaymentTable(
