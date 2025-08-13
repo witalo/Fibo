@@ -13,3 +13,106 @@ mutation SntPersonMutation($document: String!) {
         }
     }
 }
+mutation CreatePerson(
+    $names: String!
+    $shortName: String!
+    $code: String
+    $phone: String!
+    $email: String!
+    $address: String!
+    $country: String!
+    $districtId: String!
+    $documentType: String!
+    $documentNumber: String!
+    $isEnabled: Boolean!
+    $isSupplier: Boolean!
+    $isClient: Boolean!
+    $economicActivityMain: Int!
+    $driverLicense: String
+    $subsidiaryId: Int
+){
+    createPerson(
+        names: $names
+        shortName: $shortName
+        code: $code
+        phone: $phone
+        email: $email
+        address: $address
+        country: $country
+        districtId: $districtId
+        documentType: $documentType
+        documentNumber: $documentNumber
+        isEnabled: $isEnabled
+        isSupplier: $isSupplier
+        isClient: $isClient
+        economicActivityMain: $economicActivityMain
+        driverLicense: $driverLicense
+        subsidiaryId: $subsidiaryId
+    ) {
+        message
+        success
+        person {
+            id
+            names
+            shortName
+            phone
+            email
+            address
+            country
+            economicActivityMain
+            isEnabled
+            isSupplier
+            isClient
+            documentNumber
+            documentType
+        }
+        personAlreadyRegistered
+    }
+}
+mutation UpdatePerson(
+    $id: ID!
+    $names: String!
+    $code: String
+    $shortName: String!
+    $phone: String!
+    $email: String!
+    $address: String!
+    $country: String!
+    $districtId: String!
+    $documentType: String!
+    $documentNumber: String!
+    $isEnabled: Boolean!
+    $isSupplier: Boolean!
+    $isClient: Boolean!
+    $driverLicense: String
+    $economicActivityMain: Int!
+) {
+    updatePerson(
+        id: $id
+        names: $names
+        code: $code
+        shortName: $shortName
+        phone: $phone
+        email: $email
+        address: $address
+        country: $country
+        districtId: $districtId
+        documentType: $documentType
+        documentNumber: $documentNumber
+        isEnabled: $isEnabled
+        isSupplier: $isSupplier
+        isClient: $isClient
+        economicActivityMain: $economicActivityMain
+        driverLicense: $driverLicense
+    ) {
+        message
+        success
+        person {
+            id
+            names
+            address
+            documentNumber
+            documentType
+        }
+    }
+}
