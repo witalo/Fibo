@@ -136,7 +136,7 @@ fun QuotationScreen(
                     QuotationContent(
                         quotation = quotation,
                         onQuotationClick = { q ->
-                            navController.navigate("quotation_detail/${q.id}")
+                            navController.navigate("quotation/${q.id}")
                         },
                         onNewQuotation = { navController.navigate(Screen.NewQuotation.route) },
                         navController = navController,
@@ -256,104 +256,221 @@ fun QuotationList(
 fun QuotationItem(
     quotation: IOperation,
     onClick: () -> Unit,
-    navController: NavController
+    navController: NavController,
 ) {
-    val isDarkTheme = isSystemInDarkTheme()
-    var showPdfDialog by remember { mutableStateOf(false) }
-    
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(horizontal = 4.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isDarkTheme) Color(0xFF2C2C2C) else Color.White
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = BorderStroke(
-            width = 1.dp,
-            color = if (isDarkTheme) Color(0xFF444444) else Color(0xFFE0E0E0)
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Icono de la izquierda
-            Surface(
-                modifier = Modifier.size(48.dp),
-                shape = RoundedCornerShape(8.dp),
-                color = Color(0xFF4CAF50).copy(alpha = 0.1f)
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    Icon(
-                        Icons.Default.ReceiptLong,
-                        contentDescription = null,
-                        tint = Color(0xFF4CAF50),
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
 
-            // Contenido principal
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 12.dp)
-            ) {
+    var showConvertDialog by remember { mutableStateOf(false) }
+    var selectedDocumentType by remember { mutableStateOf("FACTURA") } // Default to Factura
+
+
+    val isAnulado = quotation.operationStatus.replace("A_", "") == "06" || quotation.operationStatus.replace("A_", "") == "04"
+    var showPdfDialog by remember { mutableStateOf(false) }
+    // Show PDF Dialog if needed
+    if (showPdfDialog) {
+        QuotationPdfDialog(
+            isVisible = true,
+            quotation = quotation,
+            onDismiss = { showPdfDialog = false }
+        )
+    }
+    // Show Convert Dialog
+    if (showConvertDialog) {
+        AlertDialog(
+            onDismissRequest = { showConvertDialog = false },
+            title = {
                 Text(
                     text = "${quotation.serial}-${quotation.correlative}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = if (isDarkTheme) Color.White else Color(0xFF1976D2)
+                    color = MaterialTheme.colorScheme.primary
                 )
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                ) {
+                    Text(
+                        text = "Convertir a documento",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
 
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Document type selector
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        DocumentTypeChip(
+                            label = "FACTURA",
+                            isSelected = selectedDocumentType == "FACTURA",
+                            onClick = { selectedDocumentType = "FACTURA" }
+                        )
+                        DocumentTypeChip(
+                            label = "BOLETA",
+                            isSelected = selectedDocumentType == "BOLETA",
+                            onClick = { selectedDocumentType = "BOLETA" }
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showConvertDialog = false
+                        // Lógica condicional para navegar según el tipo de documento
+                        if (selectedDocumentType == "FACTURA") {
+                            navController.navigate(Screen.NewInvoice.createRoute(quotation.id)) {
+                                popUpTo(Screen.Quotation.route)
+                            }
+                        } else {
+                            navController.navigate(Screen.NewReceipt.createRoute(quotation.id)) {
+                                popUpTo(Screen.Quotation.route)
+                            }
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF2196F3) // Azul más vibrante
+                    )
+                ) {
+                    Text(
+                        "Generar",
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 16.sp
+                    )
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { showConvertDialog = false },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, Color(0xFF2196F3)),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Color(0xFF2196F3)
+                    )
+                ) {
+                    Text(
+                        "Cancelar",
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 16.sp
+                    )
+                }
+            },
+            shape = RoundedCornerShape(16.dp),
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp
+        )
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                shape = RoundedCornerShape(8.dp)
+            ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isAnulado)
+//                Color.Red.copy(alpha = 0.1f)
+                when (isSystemInDarkTheme()) {
+                    true -> Color(0xFF7C1D1D)
+                    false -> Color(0xFFFDCFCF)
+                }
+            else
+                MaterialTheme.colorScheme.surfaceVariant
+        ),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
                 Text(
-                    text = quotation.client.names?:"-",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (isDarkTheme) Color(0xFFCCCCCC) else Color(0xFF666666),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 2.dp)
+                    text = "${quotation.serial}-${quotation.correlative}",
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        brush = ColorGradients.orangeFire
+                    ),
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
                 )
-
                 Text(
                     text = quotation.emitDate,
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (isDarkTheme) Color(0xFF999999) else Color(0xFF888888),
-                    modifier = Modifier.padding(top = 4.dp)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                 )
             }
 
-            // Información de precio y botones
-            Column(
-                horizontalAlignment = Alignment.End
+            Spacer(modifier = Modifier.height(8.dp))
+
+            quotation.client.names?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                // Modified Chip to be clickable
+                Box(
+                    modifier = Modifier.clickable { showConvertDialog = true }
+                ) {
+                    Chip(
+                        label = "COTIZACIÓN",
+                        gradient = when (quotation.documentTypeReadable) {
+                            "COTIZACIÓN" -> ColorGradients.blueOcean
+                            else -> ColorGradients.greenNature
+                        }
+                    )
+                }
+
+                IconButton(
+                    onClick = {
+                        showPdfDialog = true
+                    },
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_pdf),
+                        contentDescription = "PDF",
+                        modifier = Modifier.size(25.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                }
+
                 Text(
                     text = "S/. ${String.format("%.2f", quotation.totalToPay)}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = when (isDarkTheme) {
+                    color = when (isSystemInDarkTheme()) {
                         true -> Color(0xFFFF9800)
                         false -> Color(0xF5097BD9)
                     }
                 )
             }
         }
-    }
-
-    if (showPdfDialog) {
-        QuotationPdfDialog(
-            isVisible = showPdfDialog,
-            quotation = quotation,
-            onDismiss = { showPdfDialog = false }
-        )
     }
 }
 

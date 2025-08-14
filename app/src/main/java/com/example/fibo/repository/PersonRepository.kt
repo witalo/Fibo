@@ -7,9 +7,11 @@ import com.apollographql.apollo3.exception.ApolloException
 import com.example.fibo.AllSalesPaymentsQuery
 import com.example.fibo.GetOperationByIdQuery
 import com.example.fibo.GetPersonByIdQuery
+import com.example.fibo.SearchProductsQuery
 import com.example.fibo.model.IOperation
 import com.example.fibo.model.IOperationDetail
 import com.example.fibo.model.IPerson
+import com.example.fibo.model.IProduct
 import com.example.fibo.model.ITariff
 import com.example.fibo.ui.screens.reportpayment.SaleWithPayments
 import kotlinx.coroutines.flow.Flow
@@ -51,4 +53,30 @@ class PersonRepository @Inject constructor(
         )
         return person
     }
+//    suspend fun getAllPersonBySubsidiaryId(subsidiaryId: Int, type: String): List<IPerson> {
+//        return try {
+//            val response = apolloClient.query(
+//                SearchProductsQuery(query = query, subsidiaryId = subsidiaryId)
+//            ).execute()
+//
+//            if (response.hasErrors()) {
+//                val errorMessage =
+//                    response.errors?.joinToString { it.message } ?: "Error desconocido"
+//                throw Exception("Error al buscar productos: $errorMessage")
+//            }
+//
+//            response.data?.searchProduct?.filterNotNull()?.map { product ->
+//                IProduct(
+//                    id = product.id!!,
+//                    code = product.code.orEmpty(),
+//                    name = product.name.orEmpty(),
+//                    stock = product.stock ?: 0.0
+//                )
+//            } ?: emptyList()
+//        } catch (e: Exception) {
+//            // Log del error si es necesario
+//            println("Error en searchProducts: ${e.message}")
+//            emptyList()
+//        }
+//    }
 }
