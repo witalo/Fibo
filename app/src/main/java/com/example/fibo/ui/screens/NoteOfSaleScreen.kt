@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,7 +36,9 @@ import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -57,6 +60,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -166,6 +170,7 @@ fun NoteOfSaleScreen(
                         },
                         onNewInvoice = { navController.navigate(Screen.NewNoteOfSale.route) },
                         onNewReceipt = { navController.navigate(Screen.NewNoteOfSale.route) },
+                        navController = navController,
                         selectedClient = selectedClient,
                         onClearClientFilter = { viewModel.clearClientSearch() }
                     )
@@ -201,6 +206,7 @@ fun NoteOfSaleContent(
     onInvoiceClick: (IOperation) -> Unit,
     onNewInvoice: () -> Unit,
     onNewReceipt: () -> Unit,
+    navController: NavController,
     selectedClient: IPerson?,
     onClearClientFilter: () -> Unit
 ) {
@@ -237,7 +243,8 @@ fun NoteOfSaleContent(
                 // Wrap the InvoiceList in a Box to ensure scrolling works
                 NoteOfSaleList(
                     invoices = invoices,
-                    onInvoiceClick = onInvoiceClick
+                    onInvoiceClick = onInvoiceClick,
+                    navController = navController
                 )
             }
         }
@@ -263,7 +270,8 @@ fun NoteOfSaleContent(
 @Composable
 fun NoteOfSaleList(
     invoices: List<IOperation>,
-    onInvoiceClick: (IOperation) -> Unit
+    onInvoiceClick: (IOperation) -> Unit,
+    navController: NavController
 ) {
     // Removed fillMaxSize to allow proper scrolling
     LazyColumn(
@@ -273,7 +281,8 @@ fun NoteOfSaleList(
         items(invoices) { invoice ->
             NoteOfSaleItem(
                 invoice = invoice,
-                onClick = { onInvoiceClick(invoice) }
+                onClick = { onInvoiceClick(invoice) },
+                navController = navController
             )
         }
     }
@@ -284,10 +293,12 @@ fun NoteOfSaleItem(
     invoice: IOperation,
     onClick: () -> Unit,
     viewModel: NoteOfSaleViewModel = hiltViewModel(),
-    pdfViewModel: PdfDialogViewModel = hiltViewModel()
+    pdfViewModel: PdfDialogViewModel = hiltViewModel(),
+    navController: NavController
 ) {
     val context = LocalContext.current
-
+    var showConvertDialog by remember { mutableStateOf(false) }
+    var selectedDocumentType by remember { mutableStateOf("FACTURA") } // Default to Factura
     // Observar el estado del diálogo
     val showPdfDialog by viewModel.showPdfDialog.collectAsState()
     val currentInvoiceId by viewModel.currentInvoiceId.collectAsState()
@@ -355,15 +366,17 @@ fun NoteOfSaleItem(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                NoteOfSaleChip(
-                    label = invoice.documentTypeReadable,
-                    gradient = when (invoice.documentTypeReadable) {
-                        "FACTURA" -> ColorGradients.blueOcean
-                        "BOLETA" -> ColorGradients.greenNature
-                        "NOTA DE SALIDA" -> ColorGradients.greenNature
-                        else -> ColorGradients.greenNature
-                    }
-                )
+                Box(
+                    modifier = Modifier.clickable { showConvertDialog = true }
+                ) {
+                    Chip(
+                        label = "NOTA DE SALIDA",
+                        gradient = when (invoice.documentTypeReadable) {
+                            "NOTA DE SALIDA" -> ColorGradients.blueOcean
+                            else -> ColorGradients.greenNature
+                        }
+                    )
+                }
 
                 IconButton(
                     onClick = {
@@ -450,7 +463,7 @@ fun NoteOfSaleItem(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Anular Comprobante",
+                        text = "Anular Venta",
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -463,7 +476,7 @@ fun NoteOfSaleItem(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Emitido el: ${invoice.emitDate}",
+                        text = "Realizado el: ${invoice.emitDate}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
@@ -478,7 +491,7 @@ fun NoteOfSaleItem(
                         text = when (invoice.documentType.cleanNoteOfSaleDocumentType()) {
                             "01" -> "Facturas solo pueden anularse dentro de los 3 días de emisión"
                             "03" -> "Boletas solo pueden anularse dentro de los 5 días de emisión"
-                            "NS" -> "Notas de venta solo pueden anularse dentro de los 90 días de emisión"
+                            "NS" -> "Esta seguro de anular la Nota de Venta?"
                             else -> "Este comprobante no puede ser anulado"
                         },
                         style = MaterialTheme.typography.bodyMedium,
@@ -558,6 +571,108 @@ fun NoteOfSaleItem(
             isVisible = showPdfDialog,
             operationId = currentInvoiceId,
             onDismiss = { viewModel.closePdfDialog() }
+        )
+    }
+    // Show Convert Dialog
+    if (showConvertDialog) {
+        AlertDialog(
+            onDismissRequest = { showConvertDialog = false },
+            title = {
+                Text(
+                    text = "${invoice.serial}-${invoice.correlative}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                ) {
+                    Text(
+                        text = "Convertir a comprobante",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Document type selector
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        DocumentNoteTypeChip(
+                            label = "FACTURA",
+                            isSelected = selectedDocumentType == "FACTURA",
+                            onClick = { selectedDocumentType = "FACTURA" },
+                            modifier = Modifier.weight(1f)
+                        )
+                        DocumentNoteTypeChip(
+                            label = "BOLETA",
+                            isSelected = selectedDocumentType == "BOLETA",
+                            onClick = { selectedDocumentType = "BOLETA" },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showConvertDialog = false
+                        // Lógica condicional para navegar según el tipo de documento
+                        if (selectedDocumentType == "FACTURA") {
+                            navController.navigate(Screen.NewInvoice.createRoute(invoice.id)) {
+                                popUpTo(Screen.Quotation.route)
+                            }
+                        } else {
+                            navController.navigate(Screen.NewReceipt.createRoute(invoice.id)) {
+                                popUpTo(Screen.Quotation.route)
+                            }
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF2196F3) // Azul más vibrante
+                    )
+                ) {
+                    Text(
+                        "Generar",
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 16.sp
+                    )
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { showConvertDialog = false },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, Color(0xFF2196F3)),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Color(0xFF2196F3)
+                    )
+                ) {
+                    Text(
+                        "Cancelar",
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 16.sp
+                    )
+                }
+            },
+            shape = RoundedCornerShape(16.dp),
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp
         )
     }
 }
@@ -695,7 +810,38 @@ fun NoteOfSaleChip(
         )
     }
 }
-
+@Composable
+fun DocumentNoteTypeChip(
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .height(48.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) Color(0xFF2196F3) else MaterialTheme.colorScheme.surfaceVariant
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isSelected) 4.dp else 0.dp
+        )
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = label,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
 
 @Composable
 fun NoteOfSaleCenterLoadingIndicator() {

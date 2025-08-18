@@ -14,6 +14,7 @@ query GetPersonById($clientId: ID!) {
         isEnabled
         isClient
         isSupplier
+        isDriver
     }
 }
 query GetAllPersonBySubsidiary($subsidiaryId: Int!) {
@@ -27,5 +28,25 @@ query GetAllPersonBySubsidiary($subsidiaryId: Int!) {
         email
         phone
         observation
+    }
+}
+query GetAllPersonsBySubsidiaryAndType($subsidiaryId: Int!, $type: String!) {
+    allPersonsBySubsidiaryAndType(subsidiaryId: $subsidiaryId, type: $type) {
+        id
+        names
+        shortName
+        code
+        documentType
+        documentTypeReadable
+        documentNumber
+        driverLicense
+        address
+        email
+        phone
+        observation
+        isEnabled
+        isClient
+        isDriver
+        isSupplier
     }
 }

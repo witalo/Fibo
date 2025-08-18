@@ -292,7 +292,7 @@ fun QuotationItem(
                         .padding(vertical = 8.dp)
                 ) {
                     Text(
-                        text = "Convertir a documento",
+                        text = "Convertir a comprobante",
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(bottom = 16.dp)
@@ -309,12 +309,14 @@ fun QuotationItem(
                         DocumentTypeChip(
                             label = "FACTURA",
                             isSelected = selectedDocumentType == "FACTURA",
-                            onClick = { selectedDocumentType = "FACTURA" }
+                            onClick = { selectedDocumentType = "FACTURA" },
+                            modifier = Modifier.weight(1f)
                         )
                         DocumentTypeChip(
                             label = "BOLETA",
                             isSelected = selectedDocumentType == "BOLETA",
-                            onClick = { selectedDocumentType = "BOLETA" }
+                            onClick = { selectedDocumentType = "BOLETA" },
+                            modifier = Modifier.weight(1f)
                         )
                     }
                 }
@@ -561,24 +563,23 @@ fun ActionButtonsQuotation(
 fun DocumentTypeChip(
     label: String,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Surface(
-        onClick = onClick,
-        modifier = Modifier
-            .height(32.dp)
-            .border(
-                width = 1.dp,
-                color = if (isSelected) Color.Transparent else MaterialTheme.colorScheme.outline,
-                shape = RoundedCornerShape(16.dp)
-            ),
-        shape = RoundedCornerShape(16.dp),
-        color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
+    Card(
+        modifier = modifier
+            .height(48.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) Color(0xFF2196F3) else MaterialTheme.colorScheme.surfaceVariant
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isSelected) 4.dp else 0.dp
+        )
     ) {
         Box(
-            modifier = Modifier
-                .padding(horizontal = 16.dp)
-                .fillMaxSize(),
+            modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
             Text(

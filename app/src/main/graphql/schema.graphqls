@@ -1,9 +1,17 @@
 type Query {
+  activeAnnouncements: [AnnouncementType]
+
+  allAnnouncements: [AnnouncementType]
+
   cashesByAccountType(accountType: String): [CashType]
 
   allWayPays: [ChoiceWithNumericCodeType]
 
   allSalesPayments(startDate: Date, endDate: Date, subsidiaryId: Int): SalesWithPaymentSummaryType
+
+  balancePayment(subsidiaryId: Int!): BalancePaymentType
+
+  pendingPayments(subsidiaryId: Int!, status: String, startDate: Date, endDate: Date): [CashFlowType]
 
   operations(date: Date): [OperationType]
 
@@ -42,6 +50,8 @@ type Query {
   allClients: [PersonType]
 
   allCustomers(subsidiaryId: Int): [PersonType]
+
+  allPersonsBySubsidiaryAndType(subsidiaryId: Int, type: String): [PersonType]
 
   allSuppliers: [PersonType]
 
@@ -140,6 +150,62 @@ type Query {
   devicesBySubsidiaryId(pk: ID): [UserType]
 }
 
+type AnnouncementType {
+  id: Int
+
+  message: String!
+
+  messageType: AnnouncementsAnnouncementMessageTypeChoices!
+
+  startDate: DateTime!
+
+  endDate: DateTime!
+
+  isActive: Boolean!
+}
+
+"""
+The `Int` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1.
+"""
+scalar Int
+
+"""
+The `String` scalar type represents textual data, represented as UTF-8 character sequences. The String type is most often used by GraphQL to represent free-form human-readable text.
+"""
+scalar String
+
+"""
+An enumeration.
+"""
+enum AnnouncementsAnnouncementMessageTypeChoices {
+  """
+  Información
+  """
+  INFO
+
+  """
+  Advertencia
+  """
+  WARNING
+
+  """
+  Urgente
+  """
+  URGENT
+}
+
+"""
+The `DateTime` scalar type represents a DateTime
+value as specified by
+[iso8601](https://en.wikipedia.org/wiki/ISO_8601).
+"""
+scalar DateTime
+
+"""
+The `Boolean` scalar type represents `true` or `false`.
+"""
+scalar Boolean
+
 type CashType {
   id: Int
 
@@ -167,11 +233,6 @@ type CashType {
 
   currencyTypeReadable: String
 }
-
-"""
-The `Int` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1.
-"""
-scalar Int
 
 type SubsidiaryType {
   id: ID!
@@ -235,11 +296,6 @@ type SubsidiaryType {
 The `ID` scalar type represents a unique identifier, often used to refetch an object or as key for a cache. The ID type appears in a JSON response as a String; however, it is not intended to be human-readable. When expected as an input type, any string (such as `"4"`) or integer (such as `4`) input value will be accepted as an ID.
 """
 scalar ID
-
-"""
-The `String` scalar type represents textual data, represented as UTF-8 character sequences. The String type is most often used by GraphQL to represent free-form human-readable text.
-"""
-scalar String
 
 type CompanyType {
   id: Int
@@ -328,6 +384,8 @@ type CompanyType {
 
   isAgentPerception: Boolean!
 
+  showUser: Boolean!
+
   subsidiarySet: [SubsidiaryType!]!
 
   stoppointSet: [StopPointType!]!
@@ -336,23 +394,11 @@ type CompanyType {
 }
 
 """
-The `Boolean` scalar type represents `true` or `false`.
-"""
-scalar Boolean
-
-"""
 The `Date` scalar type represents a Date
 value as specified by
 [iso8601](https://en.wikipedia.org/wiki/ISO_8601).
 """
 scalar Date
-
-"""
-The `DateTime` scalar type represents a DateTime
-value as specified by
-[iso8601](https://en.wikipedia.org/wiki/ISO_8601).
-"""
-scalar DateTime
 
 type StopPointType {
   id: ID!
@@ -438,8 +484,6 @@ type PersonType {
   supplierAccount: [CashType!]!
 
   clientAccount: [CashType!]!
-
-  cashflowSet: [CashFlowType!]!
 
   documentTypeReadable: String
 }
@@ -1886,6 +1930,8 @@ type OperationType {
 
   cashflowSet: [CashFlowType!]!
 
+  paymentlogSet: [PaymentLogType!]!
+
   documentPerson: String
 
   namesPerson: String
@@ -2790,11 +2836,29 @@ type CashFlowType {
 
   cash: CashType
 
+  """
+  Usuario
+  """
   user: UserType
 
+  """
+  Operación
+  """
   operation: OperationType
 
-  supplier: PersonType
+  total: Decimal!
+
+  currency: String!
+
+  """
+  Descripción del pago
+  """
+  description: String
+
+  """
+  Estado del pago
+  """
+  status: String
 
   transactionDate: Date
 
@@ -2802,23 +2866,65 @@ type CashFlowType {
 
   wayPay: AccountingCashFlowWayPayChoices!
 
-  bankOperationCode: String
+  attachment: String
 
-  documentTypeAttached: AccountingCashFlowDocumentTypeAttachedChoices!
+  attachmentType: AccountingCashFlowAttachmentTypeChoices!
 
-  description: String
+  attachmentDescription: String
 
-  subtotal: Decimal!
+  cardBrand: String
 
-  igv: Decimal!
+  cardLastFour: String
 
-  total: Decimal!
+  installmentNumber: Int
 
-  remainingTotal: Decimal!
-
-  createdAt: DateTime
+  """
+  Fecha de creación
+  """
+  createdAt: String
 
   isValidated: Boolean!
+
+  rawResponse: JSONString
+
+  paymentlogSet: [PaymentLogType!]!
+
+  """
+  Monto del pago
+  """
+  amount: Float
+
+  """
+  Método de pago
+  """
+  paymentMethod: Int
+
+  """
+  Nombre del método de pago
+  """
+  paymentMethodName: String
+
+  """
+  Nombre del estado
+  """
+  statusName: String
+
+  """
+  Fecha de última actualización
+  """
+  updatedAt: String
+
+  """
+  Referencia del pago
+  """
+  reference: String
+
+  """
+  Sucursal
+  """
+  subsidiary: SubsidiaryType
+
+  attachmentTypeName: String
 }
 
 """
@@ -2826,52 +2932,22 @@ An enumeration.
 """
 enum AccountingCashFlowTransactionTypeChoices {
   """
-  Apertura
-  """
-  A
-
-  """
-  Cierre
-  """
-  C
-
-  """
-  Entrada
+  ENTRADA
   """
   E
 
   """
-  Salida
+  SALIDA
   """
   S
 
   """
-  Transferencia de Caja a Caja
-  """
-  TCC
-
-  """
-  Transferencia de Caja a Banco
-  """
-  TCB
-
-  """
-  Transferencia de Banco a Banco
-  """
-  TBB
-
-  """
-  Transferencia de Banco a Caja
-  """
-  TBC
-
-  """
-  Deposito
+  DEPOSITO
   """
   D
 
   """
-  Retiro
+  RETIRO
   """
   R
 
@@ -2944,32 +3020,216 @@ enum AccountingCashFlowWayPayChoices {
 """
 An enumeration.
 """
-enum AccountingCashFlowDocumentTypeAttachedChoices {
+enum AccountingCashFlowAttachmentTypeChoices {
   """
-  Factura
+  FACTURA
   """
   F
 
   """
-  Boleta
+  BOLETA
   """
   B
 
   """
-  Ticket
-  """
-  T
-
-  """
-  Vale
+  VOUCHER DE PAGO
   """
   V
 
   """
-  Otro
+  CONTRATO FIRMADO
+  """
+  C
+
+  """
+  OTRO
   """
   O
 }
+
+"""
+Allows use of a JSON String for input / output from the GraphQL schema.
+
+Use of this type is *not recommended* as you lose the benefits of having a defined, static
+schema (one of the key benefits of GraphQL).
+"""
+scalar JSONString
+
+type PaymentLogType {
+  id: Int
+
+  operation: OperationType
+
+  cashFlow: CashFlowType
+
+  eventType: AccountingPaymentLogEventTypeChoices!
+
+  """
+  Estado interno del evento (SUCCESS, FAILED, PENDING)
+  """
+  status: String!
+
+  """
+  Datos enviados en la solicitud
+  """
+  requestData: JSONString
+
+  """
+  Respuesta recibida del servidor
+  """
+  responseData: JSONString
+
+  ipAddress: String
+
+  userAgent: String
+
+  createdAt: DateTime!
+
+  """
+  Fecha de procesamiento real del evento
+  """
+  processedAt: DateTime
+}
+
+"""
+An enumeration.
+"""
+enum AccountingPaymentLogEventTypeChoices {
+  """
+  Pago iniciado por el usuario
+  """
+  USER_INITIATED_PAYMENT
+
+  """
+  Solicitud de pago creada
+  """
+  CREATE_PAYMENT_REQUEST
+
+  """
+  FormToken generado exitosamente
+  """
+  CREATE_PAYMENT_SUCCESS
+
+  """
+  Falló la creación del pago
+  """
+  CREATE_PAYMENT_FAILED
+
+  """
+  Formulario de pago mostrado
+  """
+  PAYMENT_FORM_DISPLAYED
+
+  """
+  Pago enviado por el cliente
+  """
+  PAYMENT_SUBMITTED
+
+  """
+  Pago autorizado
+  """
+  PAYMENT_AUTHORIZED
+
+  """
+  Fondos capturados
+  """
+  PAYMENT_CAPTURED
+
+  """
+  Pago completado
+  """
+  PAYMENT_SUCCESS
+
+  """
+  Pago fallido
+  """
+  PAYMENT_FAILED
+
+  """
+  Pago pendiente de revisión
+  """
+  PAYMENT_PENDING
+
+  """
+  Reembolso solicitado
+  """
+  REFUND_REQUESTED
+
+  """
+  Reembolso procesado
+  """
+  REFUND_PROCESSED
+
+  """
+  Reembolso fallido
+  """
+  REFUND_FAILED
+
+  """
+  Webhook recibido
+  """
+  WEBHOOK_RECEIVED
+
+  """
+  Webhook procesado
+  """
+  WEBHOOK_PROCESSED
+
+  """
+  Error al procesar webhook
+  """
+  WEBHOOK_ERROR
+
+  """
+  Revisión por fraude
+  """
+  FRAUD_REVIEW
+
+  """
+  Contracargo solicitado
+  """
+  CHARGEBACK_REQUESTED
+
+  """
+  Contracargo resuelto
+  """
+  CHARGEBACK_RESOLVED
+
+  """
+  Conciliación programada
+  """
+  SCHEDULED_RECONCILIATION
+
+  """
+  Token expirado
+  """
+  TOKEN_EXPIRED
+
+  """
+  Cliente subió constancia
+  """
+  PAYMENT_PROOF_UPLOADED
+
+  """
+  Constancia rechazada (ej: imagen inválida)
+  """
+  PAYMENT_PROOF_REJECTED
+
+  """
+  Pago validado manualmente
+  """
+  PAYMENT_APPROVED
+
+  """
+  Constancia no fue validada a tiempo
+  """
+  PAYMENT_EXPIRED
+}
+
+"""
+The `Float` scalar type represents signed double-precision fractional values as specified by [IEEE 754](https://en.wikipedia.org/wiki/IEEE_floating_point).
+"""
+scalar Float
 
 type WarehouseType {
   id: ID!
@@ -3431,11 +3691,6 @@ enum LogisticsProductActiveTypeChoices {
   NA
 }
 
-"""
-The `Float` scalar type represents signed double-precision fractional values as specified by [IEEE 754](https://en.wikipedia.org/wiki/IEEE_floating_point).
-"""
-scalar Float
-
 type TypeAffectationType {
   id: Int
 
@@ -3774,6 +4029,100 @@ type SalesWithPaymentSummaryType {
   totalOther: Float
 }
 
+"""
+Tipo para el balance de pagos
+"""
+type BalancePaymentType {
+  """
+  Total pendiente por pagar
+  """
+  totalPending: Float
+
+  """
+  Última actualización
+  """
+  lastUpdate: String
+
+  """
+  Documentos pendientes de pago
+  """
+  documents: [OperationDocumentType]
+
+  """
+  Pagos realizados
+  """
+  payments: [CashFlowPaymentType]
+}
+
+"""
+Tipo para documentos pendientes
+"""
+type OperationDocumentType {
+  id: Int
+
+  """
+  Fecha del documento
+  """
+  date: String
+
+  """
+  Descripción del documento
+  """
+  description: String
+
+  """
+  Total del documento
+  """
+  total: Float
+
+  """
+  Estado del documento (PAGAR/PAGADO)
+  """
+  status: String
+
+  """
+  Tipo de documento
+  """
+  documentType: String
+
+  """
+  Serie del documento
+  """
+  serial: String
+
+  """
+  Correlativo del documento
+  """
+  correlative: Int
+}
+
+"""
+Tipo para pagos realizados
+"""
+type CashFlowPaymentType {
+  id: Int
+
+  """
+  Fecha del pago
+  """
+  date: String
+
+  """
+  Descripción del pago
+  """
+  description: String
+
+  """
+  Total del pago
+  """
+  total: Float
+
+  """
+  Forma de pago
+  """
+  wayPay: String
+}
+
 type LocationType {
   districtId: String
 
@@ -3971,9 +4320,30 @@ type TariffType {
 }
 
 type Mutation {
-  createCashFlow(description: String, subsidiaryId: Int, total: Float, transactionDate: String, transactionType: String, userId: Int): CreateCashFlowMutation
+  createAnnouncement(endDate: DateTime!, message: String!, messageType: String!): CreateAnnouncement
 
-  deleteCashFlow(id: ID!): DeleteCashFlowMutation
+  updateAnnouncement(endDate: DateTime, id: ID!, isActive: Boolean, message: String, messageType: String): UpdateAnnouncement
+
+  createCashFlow(cashId: Int!, currency: String, description: String, operationId: Int, status: String, total: Float!, transactionDate: String, transactionType: String, userId: Int!, wayPay: Int!): CreateCashFlowMutation
+
+  deleteCashFlow(cashFlowId: Int!): DeleteCashFlowMutation
+
+  """
+  Mutación para aprobar pagos pendientes
+  """
+  approvePayment(approvalNotes: String, approvedBy: Int!, paymentId: ID!): ApprovePaymentMutation
+
+  """
+  Mutación para rechazar pagos pendientes
+  """
+  rejectPayment(paymentId: ID!, rejectedBy: Int!, rejectionReason: String!): RejectPaymentMutation
+
+  """
+  Mutación para actualizar estado de pagos
+  """
+  updatePaymentStatus(notes: String, paymentId: ID!, status: String!, updatedBy: Int!): UpdatePaymentStatusMutation
+
+  paymentStatus(amount: Float, cardBrand: String, cardLastFour: String, cardType: String, currency: String, eventType: String!, formToken: String, installmentNumber: Int, ipAddress: String, operationId: Int!, requestData: JSONString, responseData: JSONString, status: String!, userAgent: String): PaymentStatusMutation
 
   createPerson(address: String, code: String, country: String, districtId: String, documentNumber: String, documentType: String, driverLicense: String, economicActivityMain: Int, email: String, isClient: Boolean, isEnabled: Boolean, isSupplier: Boolean, names: String, phone: String, shortName: String, subsidiaryId: Int): CreatePersonMutation
 
@@ -4053,9 +4423,9 @@ type Mutation {
 
   accountCompany(document: String, email: String, firstName: String, lastName: String, password: String, phone: String, ruc: String): AccountCompanyMutation
 
-  createCompany(accountNumber: String, address: String!, app: Boolean = false, businessName: String!, catalog: Boolean = false, certification: String, certificationExpirationDate: String, certificationKey: String, comment: String, deductionAccount: String, disableContinuePay: Boolean = false, doc: String!, email: String!, emissionInvoiceWithPreviousDate: Int = 0, emissionReceiptWithPreviousDate: Int = 0, guide: Boolean = false, guideClientId: String, guideClientSecret: String, includeIgv: Boolean = false, invoiceB: Boolean = false, invoiceF: Boolean = false, isAgentPerception: Boolean, isAgentRetention: Boolean, isEnabled: Boolean = false, isProduction: Boolean = false, isRus: Boolean, keySol: String, limit: Int = 500, logo: String, ose: Boolean = false, percentageIgv: Int = 18, phone: String, registerDate: String, shortName: String!, typeDoc: String!, userSol: String, withStock: Boolean = false): CompanyMutationResult
+  createCompany(accountNumber: String, address: String!, app: Boolean = false, businessName: String!, catalog: Boolean = false, certification: String, certificationExpirationDate: String, certificationKey: String, comment: String, deductionAccount: String, disableContinuePay: Boolean = false, doc: String!, email: String!, emissionInvoiceWithPreviousDate: Int = 0, emissionReceiptWithPreviousDate: Int = 0, guide: Boolean = false, guideClientId: String, guideClientSecret: String, includeIgv: Boolean = false, invoiceB: Boolean = false, invoiceF: Boolean = false, isAgentPerception: Boolean, isAgentRetention: Boolean, isEnabled: Boolean = false, isProduction: Boolean = false, isRus: Boolean, keySol: String, limit: Int = 500, logo: String, ose: Boolean = false, percentageIgv: Int = 18, phone: String, registerDate: String, shortName: String!, showUser: Boolean, typeDoc: String!, userSol: String, withStock: Boolean = false): CompanyMutationResult
 
-  updateCompany(accountNumber: String, address: String, app: Boolean, businessName: String, catalog: Boolean, certification: String, certificationExpirationDate: String, certificationKey: String, comment: String, deductionAccount: String, disableContinuePay: Boolean, doc: String, email: String, emissionInvoiceWithPreviousDate: Int, emissionReceiptWithPreviousDate: Int, guide: Boolean, guideClientId: String, guideClientSecret: String, id: ID!, includeIgv: Boolean, invoiceB: Boolean, invoiceF: Boolean, isAgentPerception: Boolean, isAgentRetention: Boolean, isEnabled: Boolean, isProduction: Boolean, isRus: Boolean, keySol: String, limit: Int, logo: String, ose: Boolean, percentageIgv: Int, phone: String, registerDate: String, shortName: String, typeDoc: String, userSol: String, withStock: Boolean): CompanyMutationResult
+  updateCompany(accountNumber: String, address: String, app: Boolean, businessName: String, catalog: Boolean, certification: String, certificationExpirationDate: String, certificationKey: String, comment: String, deductionAccount: String, disableContinuePay: Boolean, doc: String, email: String, emissionInvoiceWithPreviousDate: Int, emissionReceiptWithPreviousDate: Int, guide: Boolean, guideClientId: String, guideClientSecret: String, id: ID!, includeIgv: Boolean, invoiceB: Boolean, invoiceF: Boolean, isAgentPerception: Boolean, isAgentRetention: Boolean, isEnabled: Boolean, isProduction: Boolean, isRus: Boolean, keySol: String, limit: Int, logo: String, ose: Boolean, percentageIgv: Int, phone: String, registerDate: String, shortName: String, showUser: Boolean, typeDoc: String, userSol: String, withStock: Boolean): CompanyMutationResult
 
   createSubsidiary(address: String, companyId: Int, districtId: String, fillColor: String, name: String, pdfFormatForGuides: Int, pdfFormatForInvoices: Int, pdfFormatForReceiptInvoices: Int, phone: String, serial: String): CreateSubsidiaryMutation
 
@@ -4064,12 +4434,67 @@ type Mutation {
   deleteDevice(id: ID!): CancelDeviceMutation
 }
 
+type CreateAnnouncement {
+  announcement: AnnouncementType
+}
+
+type UpdateAnnouncement {
+  announcement: AnnouncementType
+}
+
 type CreateCashFlowMutation {
+  success: Boolean
+
   message: String
+
+  cashFlow: CashFlowType
 }
 
 type DeleteCashFlowMutation {
+  success: Boolean
+
   message: String
+}
+
+"""
+Mutación para aprobar pagos pendientes
+"""
+type ApprovePaymentMutation {
+  success: Boolean
+
+  message: String
+
+  payment: CashFlowType
+}
+
+"""
+Mutación para rechazar pagos pendientes
+"""
+type RejectPaymentMutation {
+  success: Boolean
+
+  message: String
+
+  payment: CashFlowType
+}
+
+"""
+Mutación para actualizar estado de pagos
+"""
+type UpdatePaymentStatusMutation {
+  success: Boolean
+
+  message: String
+
+  payment: CashFlowType
+}
+
+type PaymentStatusMutation {
+  cashFlow: CashFlowType
+
+  paymentLog: PaymentLogType
+
+  success: Boolean
 }
 
 type CreatePersonMutation {

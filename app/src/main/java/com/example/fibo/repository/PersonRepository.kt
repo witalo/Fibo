@@ -5,6 +5,8 @@ import com.apollographql.apollo3.ApolloClient
 import com.apollographql.apollo3.api.ApolloResponse
 import com.apollographql.apollo3.exception.ApolloException
 import com.example.fibo.AllSalesPaymentsQuery
+import com.example.fibo.GetAllPersonBySubsidiaryQuery
+import com.example.fibo.GetAllPersonsBySubsidiaryAndTypeQuery
 import com.example.fibo.GetOperationByIdQuery
 import com.example.fibo.GetPersonByIdQuery
 import com.example.fibo.SearchProductsQuery
@@ -53,30 +55,40 @@ class PersonRepository @Inject constructor(
         )
         return person
     }
-//    suspend fun getAllPersonBySubsidiaryId(subsidiaryId: Int, type: String): List<IPerson> {
-//        return try {
-//            val response = apolloClient.query(
-//                SearchProductsQuery(query = query, subsidiaryId = subsidiaryId)
-//            ).execute()
-//
-//            if (response.hasErrors()) {
-//                val errorMessage =
-//                    response.errors?.joinToString { it.message } ?: "Error desconocido"
-//                throw Exception("Error al buscar productos: $errorMessage")
-//            }
-//
-//            response.data?.searchProduct?.filterNotNull()?.map { product ->
-//                IProduct(
-//                    id = product.id!!,
-//                    code = product.code.orEmpty(),
-//                    name = product.name.orEmpty(),
-//                    stock = product.stock ?: 0.0
-//                )
-//            } ?: emptyList()
-//        } catch (e: Exception) {
-//            // Log del error si es necesario
-//            println("Error en searchProducts: ${e.message}")
-//            emptyList()
-//        }
-//    }
+    suspend fun getAllPersonsBySubsidiaryAndType(subsidiaryId: Int, type: String): List<IPerson> {
+        return try {
+            val response = apolloClient.query(
+                GetAllPersonsBySubsidiaryAndTypeQuery(subsidiaryId = subsidiaryId, type = type)
+            ).execute()
+
+            if (response.hasErrors()) {
+                val errorMessage =
+                    response.errors?.joinToString { it.message } ?: "Error desconocido"
+                throw Exception("Error al mostrar los datos: $errorMessage")
+            }
+
+            response.data?.allPersonsBySubsidiaryAndType?.filterNotNull()?.map { person ->
+                IPerson(
+                    id = person.id.toInt(),
+                    names = person.names,
+                    code = person.code,
+                    shortName = person.shortName,
+                    documentType = person.documentType,
+                    documentNumber = person.documentNumber,
+                    email = person.email,
+                    phone = person.phone,
+                    address = person.address,
+                    country = "",
+                    economicActivityMain = 0,
+                    isEnabled = person.isEnabled,
+                    isSupplier = person.isSupplier,
+                    isClient = person.isClient
+                )
+            } ?: emptyList()
+        } catch (e: Exception) {
+            // Log del error si es necesario
+            println("Error en la consulta GraphQL: ${e.message}")
+            emptyList()
+        }
+    }
 }

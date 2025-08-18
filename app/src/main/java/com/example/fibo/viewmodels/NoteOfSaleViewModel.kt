@@ -232,7 +232,16 @@ class NoteOfSaleViewModel @Inject constructor(
                             return@launch
                         }
                     }
-
+                    "NS" -> { // Venta
+                        if (diffInDays > 360) {
+                            Toast.makeText(
+                                context,
+                                "No se puede anular boletas con más de a año de emisión",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            return@launch
+                        }
+                    }
                     else -> {
                         Toast.makeText(
                             context,
