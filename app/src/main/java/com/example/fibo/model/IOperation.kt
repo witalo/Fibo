@@ -29,5 +29,6 @@ data class IOperation(
     val totalAmount: Double = 0.0, // Suma de bases imponibles + IGV
     val totalToPay: Double = 0.0, // Total a pagar (debe ser igual a totalAmount)
     val totalPayed: Double = 0.0, // Total pagado
+    val parentOperation: Int = 0,
     val operationDetailSet: List<IOperationDetail> = emptyList()
 )

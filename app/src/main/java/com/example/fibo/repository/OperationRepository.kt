@@ -385,6 +385,7 @@ class OperationRepository @Inject constructor(
                     totalAmount = Optional.present(operation.totalAmount),
                     totalToPay = Optional.present(operation.totalToPay),
                     totalPayed = Optional.present(operation.totalPayed),
+                    parentOperation = Optional.present((operation.parentOperation)),
                     operationDetailSet = operationDetailInputs,
                     payments = Optional.present(paymentInputs) // NUEVO: Agregar pagos
                 )

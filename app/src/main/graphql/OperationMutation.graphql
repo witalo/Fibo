@@ -38,6 +38,7 @@ mutation CreateOperation(
     $totalAmount: Float = 0.0,
     $totalToPay: Float = 0.0,
     $totalPayed: Float = 0.0,
+    $parentOperation: Int = 0,
     $operationDetailSet: [OperationDetailInput!]!,
     $payments: [PaymentInput!]  # NUEVO PARÁMETRO
 ) {
@@ -68,6 +69,7 @@ mutation CreateOperation(
         totalAmount: $totalAmount
         totalToPay: $totalToPay
         totalPayed: $totalPayed
+        parentOperation: $parentOperation
         operationDetailSet: $operationDetailSet
         payments: $payments  # NUEVO PARÁMETRO
     ) {

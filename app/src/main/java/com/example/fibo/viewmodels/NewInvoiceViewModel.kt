@@ -34,6 +34,10 @@ class NewInvoiceViewModel @Inject constructor(
     private val preferencesManager: PreferencesManager
 ) : ViewModel() {
 
+    // Esto es para la cotización cuando la cotizacion se convierte en factura
+    private val _quotationID = MutableStateFlow<Int?>(null)
+    val quotationID: StateFlow<Int?> = _quotationID.asStateFlow()
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
@@ -268,6 +272,7 @@ class NewInvoiceViewModel @Inject constructor(
         _selectedProduct.value = null
     }
     fun loadQuotationData(quotationId: Int, callback: (IOperation?) -> Unit) {
+        _quotationID.value = quotationId // Guardar el ID
         viewModelScope.launch {
             try {
                 val result = operationRepository.getOperationById(quotationId)
@@ -277,6 +282,10 @@ class NewInvoiceViewModel @Inject constructor(
                 callback(null)
             }
         }
+        // Función para limpiar el quotationId si es necesario
+//        fun clearQuotationId() {
+//            _quotationID.value = null
+//        }
     }
     // NUEVAS FUNCIONES PARA MANEJAR PAGOS
 

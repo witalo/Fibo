@@ -628,11 +628,11 @@ fun NoteOfSaleItem(
                         // Lógica condicional para navegar según el tipo de documento
                         if (selectedDocumentType == "FACTURA") {
                             navController.navigate(Screen.NewInvoice.createRoute(invoice.id)) {
-                                popUpTo(Screen.Quotation.route)
+                                popUpTo(Screen.NoteOfSale.route)
                             }
                         } else {
                             navController.navigate(Screen.NewReceipt.createRoute(invoice.id)) {
-                                popUpTo(Screen.Quotation.route)
+                                popUpTo(Screen.NoteOfSale.route)
                             }
                         }
                     },

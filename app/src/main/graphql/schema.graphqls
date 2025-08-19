@@ -4353,7 +4353,7 @@ type Mutation {
 
   cancelInvoice(lowDate: Date, operationId: Int): CancelInvoiceMutation
 
-  createOperation(client: PersonInput!, correlative: Int = 0, currencyType: String!, discountForItem: Float = 0, discountGlobal: Float = 0, discountPercentageGlobal: Float = 0, documentType: String!, emitDate: String!, emitTime: String!, id: Int = 0, operationAction: String!, operationDate: String!, operationDetailSet: [OperationDetailInput]!, operationStatus: String!, operationType: String!, payments: [PaymentInput], serial: String, subsidiaryId: Int!, totalAmount: Float = 0, totalDiscount: Float = 0, totalExonerated: Float = 0, totalFree: Float = 0, totalIgv: Float = 0, totalPayed: Float = 0, totalTaxed: Float = 0, totalToPay: Float = 0, totalUnaffected: Float = 0, userId: Int!): CreateOperationMutation
+  createOperation(client: PersonInput!, correlative: Int = 0, currencyType: String!, discountForItem: Float = 0, discountGlobal: Float = 0, discountPercentageGlobal: Float = 0, documentType: String!, emitDate: String!, emitTime: String!, id: Int = 0, operationAction: String!, operationDate: String!, operationDetailSet: [OperationDetailInput]!, operationStatus: String!, operationType: String!, parentOperation: Int = 0, payments: [PaymentInput], serial: String, subsidiaryId: Int!, totalAmount: Float = 0, totalDiscount: Float = 0, totalExonerated: Float = 0, totalFree: Float = 0, totalIgv: Float = 0, totalPayed: Float = 0, totalTaxed: Float = 0, totalToPay: Float = 0, totalUnaffected: Float = 0, userId: Int!): CreateOperationMutation
 
   sntPerson(document: String): SntMutation
 
