@@ -22,6 +22,7 @@ sealed class Screen(
 //    object NewNoteOfSale : Screen("new_note_of_sale")
     object Product : Screen("product")
     object Guide : Screen("guide")
+    object Person : Screen("person")
     object Purchase : Screen("purchase")
     object NewPurchase : Screen("new_purchase")
     object Reports : Screen("reports")
@@ -63,6 +64,8 @@ sealed class Screen(
         fun createRoute(quotationId: Int) = "new_note_of_sale/$quotationId"
         const val quotationIdArg = "quotationId"
     }
+
+    object NewPerson : Screen("new_person")
 
     object NewGuide : Screen("new_guide")
     object Guides : Screen("guides")

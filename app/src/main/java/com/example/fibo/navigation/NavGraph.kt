@@ -31,6 +31,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import android.widget.Toast
+import com.example.fibo.ui.screens.person.NewPersonScreen
+import com.example.fibo.ui.screens.person.PersonScreen
 
 @Composable
 @RequiresApi(Build.VERSION_CODES.O)
@@ -241,6 +243,12 @@ fun NavGraph(
         composable(Screen.NewGuide.route) {
             NewGuideScreen(navController = navController)
         }
+        composable(Screen.NewPerson.route) {
+            NewPersonScreen(
+                navController = navController,
+                subsidiaryData = subsidiaryData,
+            )
+        }
         // Guías
         composable(Screen.Guide.route) {
             GuideScreen(
@@ -295,6 +303,18 @@ fun NavGraph(
         composable(Screen.ReportPayment.route) {
             ReportPaymentScreen(
                 navController = navController,
+                onLogout = {
+                    authViewModel.logout()
+                    navController.navigate(Screen.QrScanner.route) {
+                        popUpTo(navController.graph.id) { inclusive = true }
+                    }
+                }
+            )
+        }
+        composable(Screen.Person.route) {
+            PersonScreen(
+                navController = navController,
+                subsidiaryData = subsidiaryData,
                 onLogout = {
                     authViewModel.logout()
                     navController.navigate(Screen.QrScanner.route) {

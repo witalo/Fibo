@@ -157,6 +157,11 @@ fun SideMenu(
                             onClick = { onMenuItemSelected("Productos") }
                         )
                         MenuItem(
+                            icon = Icons.Default.AddCircleOutline,
+                            text = "Cliente/Proveedor",
+                            onClick = { onMenuItemSelected("Cliente/Proveedor") }
+                        )
+                        MenuItem(
                             icon = Icons.Default.ShoppingCart,
                             text = "Compras",
                             onClick = { onMenuItemSelected("Compras") }

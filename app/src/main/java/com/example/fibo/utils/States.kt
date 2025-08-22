@@ -3,6 +3,7 @@ package com.example.fibo.utils
 import android.bluetooth.BluetoothDevice
 import android.content.Context
 import com.example.fibo.model.IOperation
+import com.example.fibo.model.IPerson
 import com.example.fibo.model.IProduct
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -48,7 +49,12 @@ sealed class PdfGenerationState {
     object Success : PdfGenerationState()
     class Error(val message: String) : PdfGenerationState()
 }
-
+sealed class PersonState {
+    object WaitingForUser : PersonState()
+    object Loading : PersonState()
+    data class Success(val data: List<IPerson>) : PersonState()
+    data class Error(val message: String) : PersonState()
+}
 sealed class QuotationState {
     object WaitingForUser : QuotationState()
     object Loading : QuotationState()

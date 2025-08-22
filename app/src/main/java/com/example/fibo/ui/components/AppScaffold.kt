@@ -34,6 +34,7 @@ fun AppScaffold(
                 "Nueva Boleta" -> navController.navigate(Screen.NewReceipt.route)
                 "Nueva Cotización" -> navController.navigate(Screen.NewQuotation.route)
                 "Productos" -> navController.navigate(Screen.Product.route)
+                "Cliente/Proveedor" -> navController.navigate(Screen.Person.route)
                 "Compras" -> navController.navigate(Screen.Purchase.route)
                 "Nueva Nota de salida" -> navController.navigate(Screen.NewNoteOfSale.route)
                 "Nueva Guía" -> {
