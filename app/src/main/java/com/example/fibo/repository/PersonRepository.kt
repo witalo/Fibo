@@ -6,6 +6,7 @@ import com.apollographql.apollo3.exception.ApolloException
 import com.example.fibo.CreatePersonMutation
 import com.example.fibo.GetAllPersonsBySubsidiaryAndTypeQuery
 import com.example.fibo.GetPersonByIdQuery
+import com.example.fibo.SntPersonMutation
 import com.example.fibo.model.IPerson
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -81,6 +82,37 @@ class PersonRepository @Inject constructor(
             emptyList()
         }
     }
+    suspend fun getSntPerson(document: String): Result<IPerson> {
+        return runCatching {
+            val mutation = SntPersonMutation(document = document)
+            val response = apolloClient.mutation(mutation).execute()
+
+            if (response.hasErrors()) {
+                val errorMessages =
+                    response.errors?.joinToString { it.message } ?: "Error desconocido"
+                throw RuntimeException("Error en la mutación: $errorMessages")
+            }
+
+            val personData = response.data?.sntPerson?.person
+            val message = response.data?.sntPerson?.message ?: ""
+
+            // Si no hay datos de persona, lanzar error
+            if (personData == null) {
+                throw RuntimeException(message.ifEmpty { "No se encontraron datos del cliente" })
+            }
+
+            // Aunque el success sea false (cliente ya registrado), si hay datos de persona, los devolvemos
+            IPerson(
+                id = 0,
+                names = personData.sntNames.orEmpty(),
+                documentNumber = document,
+                phone = "",
+                email = "",
+                address = personData.sntAddress.orEmpty(),
+                driverLicense = personData.sntDriverLicense.orEmpty()
+            )
+        }
+    }
     suspend fun createPerson(
         names: String,
         shortName: String,
@@ -95,6 +127,7 @@ class PersonRepository @Inject constructor(
         isEnabled: Boolean,
         isSupplier: Boolean,
         isClient: Boolean,
+        isDriver: Boolean,
         economicActivityMain: Int,
         driverLicense: String,
         subsidiaryId: Int
@@ -115,6 +148,7 @@ class PersonRepository @Inject constructor(
                     isEnabled = isEnabled,
                     isSupplier = isSupplier,
                     isClient = isClient,
+                    isDriver = isDriver,
                     economicActivityMain = economicActivityMain,
                     driverLicense = Optional.present(driverLicense),
                     subsidiaryId = Optional.present(subsidiaryId)

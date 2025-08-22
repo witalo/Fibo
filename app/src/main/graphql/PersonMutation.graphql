@@ -12,6 +12,7 @@ mutation CreatePerson(
     $isEnabled: Boolean!
     $isSupplier: Boolean!
     $isClient: Boolean!
+    $isDriver: Boolean!
     $economicActivityMain: Int!
     $driverLicense: String
     $subsidiaryId: Int
@@ -30,6 +31,7 @@ mutation CreatePerson(
         isEnabled: $isEnabled
         isSupplier: $isSupplier
         isClient: $isClient
+        isDriver: $isDriver
         economicActivityMain: $economicActivityMain
         driverLicense: $driverLicense
         subsidiaryId: $subsidiaryId
@@ -70,6 +72,7 @@ mutation UpdatePerson(
     $isEnabled: Boolean!
     $isSupplier: Boolean!
     $isClient: Boolean!
+    $isDriver: Boolean!
     $driverLicense: String
     $economicActivityMain: Int!
 ) {
@@ -88,6 +91,7 @@ mutation UpdatePerson(
         isEnabled: $isEnabled
         isSupplier: $isSupplier
         isClient: $isClient
+        isDriver: $isDriver
         economicActivityMain: $economicActivityMain
         driverLicense: $driverLicense
     ) {

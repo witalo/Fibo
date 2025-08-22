@@ -1,8 +1,6 @@
 package com.example.fibo.ui.screens.person
-
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.fibo.model.IPerson
 import com.example.fibo.repository.PersonRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,7 +29,7 @@ class NewPersonViewModel @Inject constructor(
     fun onShortNameChanged(shortName: String) {
         _uiState.value = _uiState.value.copy(
             shortName = shortName,
-            shortNameError = if (shortName.isBlank()) "El nombre corto es obligatorio" else ""
+            shortNameError = if (shortName.isBlank()) "La razón comercial es obligatoria" else ""
         )
         validateForm()
     }
@@ -49,9 +47,29 @@ class NewPersonViewModel @Inject constructor(
     }
 
     fun onDocumentNumberChanged(documentNumber: String) {
+        val currentState = _uiState.value
+        val documentType = currentState.documentType
+
+        // Validar longitud según tipo de documento
+        val isValidLength = when (documentType) {
+            "1" -> documentNumber.length == 8  // DNI: 8 dígitos
+            "6" -> documentNumber.length == 11 // RUC: 11 dígitos
+            else -> documentNumber.isNotBlank() // Otros documentos
+        }
+
+        val errorMessage = when {
+            documentNumber.isBlank() -> "El número de documento es obligatorio"
+            !isValidLength -> when (documentType) {
+                "1" -> "El DNI debe tener 8 dígitos"
+                "6" -> "El RUC debe tener 11 dígitos"
+                else -> "Número de documento inválido"
+            }
+            else -> ""
+        }
+
         _uiState.value = _uiState.value.copy(
             documentNumber = documentNumber,
-            documentNumberError = if (documentNumber.isBlank()) "El número de documento es obligatorio" else ""
+            documentNumberError = errorMessage
         )
         validateForm()
     }
@@ -59,7 +77,7 @@ class NewPersonViewModel @Inject constructor(
     fun onPhoneChanged(phone: String) {
         _uiState.value = _uiState.value.copy(
             phone = phone,
-            phoneError = if (phone.isBlank()) "El teléfono es obligatorio" else ""
+            phoneError = "" // Ya no es obligatorio
         )
         validateForm()
     }
@@ -67,7 +85,7 @@ class NewPersonViewModel @Inject constructor(
     fun onEmailChanged(email: String) {
         _uiState.value = _uiState.value.copy(
             email = email,
-            emailError = if (email.isBlank()) "El email es obligatorio" else ""
+            emailError = "" // Ya no es obligatorio
         )
         validateForm()
     }
@@ -90,12 +108,51 @@ class NewPersonViewModel @Inject constructor(
         validateForm()
     }
 
-    fun onEconomicActivityMainChanged(economicActivityMain: Int) {
-        _uiState.value = _uiState.value.copy(economicActivityMain = economicActivityMain)
+    fun onIsDriverChanged(isDriver: Boolean) {
+        _uiState.value = _uiState.value.copy(isDriver = isDriver)
+        validateForm()
+    }
+
+    fun onIsEnabledChanged(isEnabled: Boolean) {
+        _uiState.value = _uiState.value.copy(isEnabled = isEnabled)
     }
 
     fun onDriverLicenseChanged(driverLicense: String) {
-        _uiState.value = _uiState.value.copy(driverLicense = driverLicense)
+        _uiState.value = _uiState.value.copy(
+            driverLicense = driverLicense,
+            driverLicenseError = if (uiState.value.isDriver && driverLicense.isBlank()) {
+                "La licencia de conducir es obligatoria para conductores"
+            } else ""
+        )
+        validateForm()
+    }
+
+
+    fun extractPersonData() {
+        val documentNumber = uiState.value.documentNumber
+        if (documentNumber.isBlank()) return
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isExtracting = true)
+
+            try {
+                val result = personRepository.getSntPerson(documentNumber)
+                result.onSuccess { personData ->
+                    _uiState.value = _uiState.value.copy(
+                        names = personData.names ?: "",
+                        address = personData.address ?: "",
+                        driverLicense = personData.driverLicense ?: ""
+                    )
+                }.onFailure { error ->
+                    // Mostrar error en snackbar o manejar como prefieras
+                    println("Error al extraer datos: ${error.message}")
+                }
+            } catch (e: Exception) {
+                println("Error al extraer datos: ${e.message}")
+            } finally {
+                _uiState.value = _uiState.value.copy(isExtracting = false)
+            }
+        }
     }
 
     fun createPerson(subsidiaryId: Int?) {
@@ -105,30 +162,34 @@ class NewPersonViewModel @Inject constructor(
             )
             return
         }
-
+        // Evitar múltiples llamadas si ya está cargando
+        if (uiState.value.isLoading) {
+            return
+        }
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
-            
+
             try {
                 val result = personRepository.createPerson(
                     names = uiState.value.names,
                     shortName = uiState.value.shortName,
                     code = uiState.value.code,
-                    phone = uiState.value.phone,
-                    email = uiState.value.email,
+                    phone = uiState.value.phone.ifBlank { "" }, // Ahora opcional
+                    email = uiState.value.email.ifBlank { "" }, // Ahora opcional
                     address = uiState.value.address,
-                    country = "Perú", // Por defecto
-                    districtId = "1", // Por defecto
+                    country = "PE",
+                    districtId = "040601", // Por defecto como solicitaste
                     documentType = uiState.value.documentType,
                     documentNumber = uiState.value.documentNumber,
-                    isEnabled = true,
+                    isEnabled = uiState.value.isEnabled,
                     isSupplier = uiState.value.isSupplier,
                     isClient = uiState.value.isClient,
-                    economicActivityMain = uiState.value.economicActivityMain,
+                    isDriver = uiState.value.isDriver,
                     driverLicense = uiState.value.driverLicense,
-                    subsidiaryId = subsidiaryId
+                    subsidiaryId = subsidiaryId,
+                    economicActivityMain = 0
                 )
-                
+
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     personResult = result
@@ -149,13 +210,14 @@ class NewPersonViewModel @Inject constructor(
     private fun validateForm() {
         val currentState = _uiState.value
         val isValid = currentState.names.isNotBlank() &&
-                currentState.shortName.isNotBlank() &&
                 currentState.documentType.isNotBlank() &&
                 currentState.documentNumber.isNotBlank() &&
-                currentState.phone.isNotBlank() &&
-                currentState.email.isNotBlank() &&
+//                currentState.phone.isNotBlank() &&
+//                currentState.email.isNotBlank() &&
                 currentState.address.isNotBlank() &&
-                (currentState.isClient || currentState.isSupplier)
+                (currentState.isClient || currentState.isSupplier || currentState.isDriver) &&
+                // Validar licencia de conducir solo si es conductor
+                (!currentState.isDriver || currentState.driverLicense.isNotBlank())
 
         _uiState.value = currentState.copy(isFormValid = isValid)
     }
@@ -172,9 +234,11 @@ data class NewPersonUiState(
     val address: String = "",
     val isClient: Boolean = false,
     val isSupplier: Boolean = false,
-    val economicActivityMain: Int = 0,
+    val isDriver: Boolean = false,
+    val isEnabled: Boolean = true,
     val driverLicense: String = "",
     val isLoading: Boolean = false,
+    val isExtracting: Boolean = false,
     val isFormValid: Boolean = false,
     val personResult: Result<String>? = null,
     // Errores de validación
@@ -184,5 +248,6 @@ data class NewPersonUiState(
     val documentNumberError: String = "",
     val phoneError: String = "",
     val emailError: String = "",
-    val addressError: String = ""
+    val addressError: String = "",
+    val driverLicenseError: String = "" // Agregar este campo
 )

@@ -56,6 +56,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -99,6 +100,20 @@ fun PersonScreen(
 
     // Estado para el diálogo de filtros
     var isFilterDialogOpen by remember { mutableStateOf(false) }
+    // Escuchar cuando se crea una nueva persona
+    LaunchedEffect(Unit) {
+        navController.currentBackStackEntry?.savedStateHandle?.get<Boolean>("person_created")?.let { wasCreated ->
+            if (wasCreated) {
+                // Limpiar el flag
+                navController.currentBackStackEntry?.savedStateHandle?.remove<Boolean>("person_created")
+                // Recargar la lista de personas con los parámetros correctos
+                subsidiaryData?.id?.let { subsidiaryId ->
+                    val currentTypes = viewModel.getCurrentTypes()
+                    viewModel.loadPersons(subsidiaryId, currentTypes)
+                }
+            }
+        }
+    }
 
     AppScaffold(
         navController = navController,

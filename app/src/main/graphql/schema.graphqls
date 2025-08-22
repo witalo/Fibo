@@ -162,6 +162,8 @@ type AnnouncementType {
   endDate: DateTime!
 
   isActive: Boolean!
+
+  company: CompanyType
 }
 
 """
@@ -205,97 +207,6 @@ scalar DateTime
 The `Boolean` scalar type represents `true` or `false`.
 """
 scalar Boolean
-
-type CashType {
-  id: Int
-
-  subsidiary: SubsidiaryType
-
-  employee: UserType
-
-  supplier: PersonType
-
-  client: PersonType
-
-  name: String
-
-  accountNumber: String
-
-  accountType: AccountingCashAccountTypeChoices!
-
-  currencyType: AccountingCashCurrencyTypeChoices!
-
-  createdAt: DateTime
-
-  isEnabled: Boolean!
-
-  cashflowSet: [CashFlowType!]!
-
-  currencyTypeReadable: String
-}
-
-type SubsidiaryType {
-  id: ID!
-
-  serial: String
-
-  name: String
-
-  address: String
-
-  phone: String
-
-  company: CompanyType
-
-  district: DistrictType
-
-  createdAt: DateTime!
-
-  updatedAt: DateTime!
-
-  token: String
-
-  pdfFormatForInvoices: Int
-
-  pdfFormatForReceiptInvoices: Int
-
-  pdfFormatForGuides: Int
-
-  pdfFormatForQuotation: UsersSubsidiaryPdfFormatForQuotationChoices!
-
-  pdfFormatForExitNotes: UsersSubsidiaryPdfFormatForExitNotesChoices!
-
-  fillColor: String
-
-  userSet: [UserType!]!
-
-  warehouseSet: [WarehouseType!]!
-
-  productSet: [ProductType!]!
-
-  documentemittedSet: [DocumentEmittedType!]!
-
-  serialassignedSet: [SerialAssignedType!]!
-
-  operationSet: [OperationType!]!
-
-  cashSet: [CashType!]!
-
-  companyId: Int
-
-  companyName: String
-
-  districtId: String
-
-  districtName: String
-
-  geographicLocationByDistrict: String
-}
-
-"""
-The `ID` scalar type represents a unique identifier, often used to refetch an object or as key for a cache. The ID type appears in a JSON response as a String; however, it is not intended to be human-readable. When expected as an input type, any string (such as `"4"`) or integer (such as `4`) input value will be accepted as an ID.
-"""
-scalar ID
 
 type CompanyType {
   id: Int
@@ -391,6 +302,8 @@ type CompanyType {
   stoppointSet: [StopPointType!]!
 
   vehicleSet: [VehicleType!]!
+
+  announcementSet: [AnnouncementType!]!
 }
 
 """
@@ -399,6 +312,81 @@ value as specified by
 [iso8601](https://en.wikipedia.org/wiki/ISO_8601).
 """
 scalar Date
+
+type SubsidiaryType {
+  id: ID!
+
+  serial: String
+
+  name: String
+
+  address: String
+
+  phone: String
+
+  company: CompanyType
+
+  district: DistrictType
+
+  createdAt: DateTime!
+
+  updatedAt: DateTime!
+
+  token: String
+
+  pdfFormatForInvoices: Int
+
+  pdfFormatForReceiptInvoices: Int
+
+  pdfFormatForGuides: Int
+
+  pdfFormatForQuotation: UsersSubsidiaryPdfFormatForQuotationChoices!
+
+  pdfFormatForExitNotes: UsersSubsidiaryPdfFormatForExitNotesChoices!
+
+  fillColor: String
+
+  userSet: [UserType!]!
+
+  warehouseSet: [WarehouseType!]!
+
+  productSet: [ProductType!]!
+
+  documentemittedSet: [DocumentEmittedType!]!
+
+  serialassignedSet: [SerialAssignedType!]!
+
+  operationSet: [OperationType!]!
+
+  cashSet: [CashType!]!
+
+  companyId: Int
+
+  companyName: String
+
+  districtId: String
+
+  districtName: String
+
+  geographicLocationByDistrict: String
+}
+
+"""
+The `ID` scalar type represents a unique identifier, often used to refetch an object or as key for a cache. The ID type appears in a JSON response as a String; however, it is not intended to be human-readable. When expected as an input type, any string (such as `"4"`) or integer (such as `4`) input value will be accepted as an ID.
+"""
+scalar ID
+
+type DistrictType {
+  id: String!
+
+  description: String
+
+  subsidiarySet: [SubsidiaryType!]!
+
+  stoppointSet: [StopPointType!]!
+
+  personSet: [PersonType!]!
+}
 
 type StopPointType {
   id: ID!
@@ -416,16 +404,1120 @@ type StopPointType {
   arrivals: [OperationType!]!
 }
 
-type DistrictType {
-  id: String!
+type OperationType {
+  id: ID!
 
-  description: String
+  documentType: OperationsOperationDocumentTypeChoices!
 
-  subsidiarySet: [SubsidiaryType!]!
+  operationType: OperationsOperationOperationTypeChoices!
 
-  stoppointSet: [StopPointType!]!
+  operationStatus: OperationsOperationOperationStatusChoices!
 
-  personSet: [PersonType!]!
+  operationAction: OperationsOperationOperationActionChoices!
+
+  creditNoteType: OperationsOperationCreditNoteTypeChoices!
+
+  debitNoteType: OperationsOperationDebitNoteTypeChoices!
+
+  perceptionType: OperationsOperationPerceptionTypeChoices!
+
+  retentionType: OperationsOperationRetentionTypeChoices!
+
+  detractionType: OperationsOperationDetractionTypeChoices!
+
+  detractionPaymentMethod: OperationsOperationDetractionPaymentMethodChoices!
+
+  serial: String
+
+  correlative: Int
+
+  currencyType: OperationsOperationCurrencyTypeChoices!
+
+  saleExchangeRate: Decimal!
+
+  purchaseExchangeRate: Decimal!
+
+  operationDate: Date
+
+  emitDate: Date
+
+  emitTime: Time
+
+  dueDate: Date
+
+  lowDate: Date
+
+  createAt: DateTime!
+
+  updateAt: DateTime!
+
+  user: UserType
+
+  client: PersonType
+
+  supplier: PersonType
+
+  subsidiary: SubsidiaryType
+
+  warehouse: WarehouseType
+
+  guideOrigin: StopPointType
+
+  guideArrival: StopPointType
+
+  discountForItem: Decimal!
+
+  discountGlobal: Decimal!
+
+  discountPercentageGlobal: Decimal!
+
+  igvType: OperationsOperationIgvTypeChoices!
+
+  igvPercentage: Decimal!
+
+  perceptionPercentage: Decimal!
+
+  retentionPercentage: Decimal!
+
+  detractionPercentage: Decimal!
+
+  totalDiscount: Decimal!
+
+  totalAnticipation: Decimal!
+
+  totalTaxed: Decimal!
+
+  totalUnaffected: Decimal!
+
+  totalExonerated: Decimal!
+
+  totalIgv: Decimal!
+
+  totalFree: Decimal!
+
+  totalAmount: Decimal!
+
+  totalPerception: Decimal!
+
+  totalRetention: Decimal!
+
+  totalDetraction: Decimal!
+
+  totalToPay: Decimal!
+
+  totalPayed: Decimal!
+
+  totalTurned: Decimal!
+
+  observation: String
+
+  sendWhatsapp: Boolean!
+
+  sendSunat: Boolean!
+
+  sendClient: Boolean!
+
+  sunatDescription: String
+
+  sunatDescriptionLow: String
+
+  sunatStatus: Boolean!
+
+  parentOperation: OperationType
+
+  relatedSeries: String
+
+  relatedNumber: Int
+
+  relatedDocType: String
+
+  relatedReasonCode: String
+
+  linkXml: String
+
+  linkCdr: String
+
+  lowCorrelative: Int
+
+  summaryCorrelative: Int
+
+  lowTicket: String
+
+  linkXmlLow: String
+
+  linkCdrLow: String
+
+  codeHash: String
+
+  transferDate: Date
+
+  guideReasonTransfer: OperationsOperationGuideReasonTransferChoices!
+
+  guideModeTransfer: OperationsOperationGuideModeTransferChoices!
+
+  othersDrivers: [PersonType!]!
+
+  othersVehicles: [VehicleType!]!
+
+  relatedDocuments: [DocumentEmittedType!]!
+
+  guideTicket: String
+
+  guideToken: String
+
+  totalWeight: Decimal!
+
+  quantityPackages: Decimal!
+
+  weightMeasurementUnit: UnitType
+
+  transportationCompany: PersonType
+
+  mainVehicle: VehicleType
+
+  mainDriver: PersonType
+
+  receiver: PersonType
+
+  hasPerception: Boolean!
+
+  hasRetention: Boolean!
+
+  hasDetraction: Boolean!
+
+  operationSet: [OperationType!]!
+
+  operationdetailSet: [OperationDetailType!]!
+
+  cashflowSet: [CashFlowType!]!
+
+  paymentlogSet: [PaymentLogType!]!
+
+  documentPerson: String
+
+  namesPerson: String
+
+  operationStatusReadable: String
+
+  documentTypeReadable: String
+
+  creditNoteReferences: String
+
+  subsidiaryId: Int
+
+  userId: Int
+
+  totalCash: Float
+
+  totalDebitCard: Float
+
+  totalCreditCard: Float
+
+  totalTransfer: Float
+
+  totalMonue: Float
+
+  totalCheck: Float
+
+  totalCoupon: Float
+
+  totalYape: Float
+
+  totalDue: Float
+
+  totalOther: Float
+
+  guideReasonTransferReadable: String
+
+  guideModeTransferReadable: String
+}
+
+"""
+An enumeration.
+"""
+enum OperationsOperationDocumentTypeChoices {
+  """
+  FACTURA
+  """
+  A_01
+
+  """
+  BOLETA
+  """
+  A_03
+
+  """
+  NOTA DE CREDITO
+  """
+  A_07
+
+  """
+  NOTA DE DEBITO
+  """
+  A_08
+
+  """
+  GUIA DE REMISION REMITENTE
+  """
+  A_09
+
+  """
+  GUÍA DE REMISIÓN TRANSPORTISTA
+  """
+  A_31
+
+  """
+  COMPROBANTE DE RETENCIÓN
+  """
+  A_20
+
+  """
+  COMPROBANTE DE PERCEPCIÓN
+  """
+  A_40
+
+  """
+  COMPROBANTE DE OPERACIONES
+  """
+  A_48
+
+  """
+  NOTA DE AJUSTE DE OPERACIONES
+  """
+  A_89
+
+  """
+  NOTA DE ENTRADA
+  """
+  NE
+
+  """
+  NOTA DE SALIDA
+  """
+  NS
+
+  """
+  NO APLICA
+  """
+  NA
+}
+
+"""
+An enumeration.
+"""
+enum OperationsOperationOperationTypeChoices {
+  """
+  Venta interna
+  """
+  A_0101
+
+  """
+  Venta Interna - Sustenta Gastos Deducibles Persona Natural
+  """
+  A_0112
+
+  """
+  Venta Interna-NRUS
+  """
+  A_0113
+
+  """
+  Exportación de Bienes
+  """
+  A_0200
+
+  """
+  Exportación de Servicios – Prestación servicios realizados íntegramente en el país
+  """
+  A_0201
+
+  """
+  Exportación de Servicios – Prestación de servicios de hospedaje No Domiciliado
+  """
+  A_0202
+
+  """
+  Exportación de Servicios – Transporte de navieras
+  """
+  A_0203
+
+  """
+  Exportación de Servicios – Servicios a naves y aeronaves de bandera extranjera
+  """
+  A_0204
+
+  """
+  Exportación de Servicios - Servicios que conformen un Paquete Turístico
+  """
+  A_0205
+
+  """
+  Exportación de Servicios – Servicios complementarios al transporte de carga
+  """
+  A_0206
+
+  """
+  Exportación de Servicios – Suministro de energía eléctrica a favor de sujetos domiciliados en ZED
+  """
+  A_0207
+
+  """
+  Exportación de Servicios – Prestación servicios realizados parcialmente en el extranjero
+  """
+  A_0208
+
+  """
+  Operaciones con Carta de porte aéreo (emitidas en el ámbito nacional)
+  """
+  A_0301
+
+  """
+  Operaciones de Transporte ferroviario de pasajeros
+  """
+  A_0302
+
+  """
+  Ventas no domiciliados que no califican como exportación
+  """
+  A_0401
+
+  """
+  Compra interna
+  """
+  A_0501
+
+  """
+  Anticipos
+  """
+  A_0502
+
+  """
+  Compra de oro
+  """
+  A_0503
+
+  """
+  Operación Sujeta a Detracción
+  """
+  A_1001
+
+  """
+  Operación Sujeta a Detracción- Recursos Hidrobiológicos
+  """
+  A_1002
+
+  """
+  Operación Sujeta a Detracción- Servicios de Transporte Pasajeros
+  """
+  A_1003
+
+  """
+  Operación Sujeta a Detracción- Servicios de Transporte Carga
+  """
+  A_1004
+
+  """
+  Operación Sujeta a Percepción
+  """
+  A_2001
+
+  """
+  Créditos a empresas
+  """
+  A_2100
+
+  """
+  Créditos de consumo revolvente
+  """
+  A_2101
+
+  """
+  Créditos de consumo no revolvente
+  """
+  A_2102
+
+  """
+  Otras operaciones no gravadas - Empresas del sistema financiero y cooperativas de ahorro y crédito no autorizadas a captar recursos del público
+  """
+  A_2103
+
+  """
+  Otras operaciones no gravadas - Empresas del sistema de seguros
+  """
+  A_2104
+
+  """
+  NO APLICA
+  """
+  NA
+}
+
+"""
+An enumeration.
+"""
+enum OperationsOperationOperationStatusChoices {
+  """
+  REGISTRADO
+  """
+  A_01
+
+  """
+  AUTORIZADO
+  """
+  A_02
+
+  """
+  PENDIENTE
+  """
+  A_03
+
+  """
+  PENDIENTE DE BAJA
+  """
+  A_04
+
+  """
+  EN PROCESO DE BAJA
+  """
+  A_05
+
+  """
+  DADO DE BAJA
+  """
+  A_06
+
+  """
+  RECHAZADO
+  """
+  A_07
+
+  """
+  NO APLICA
+  """
+  NA
+}
+
+"""
+An enumeration.
+"""
+enum OperationsOperationOperationActionChoices {
+  """
+  ENTRADA
+  """
+  E
+
+  """
+  SALIDA
+  """
+  S
+
+  """
+  NO APLICA
+  """
+  NA
+}
+
+"""
+An enumeration.
+"""
+enum OperationsOperationCreditNoteTypeChoices {
+  """
+  Anulación de la operación
+  """
+  A_01
+
+  """
+  Anulación por error en el RUC
+  """
+  A_02
+
+  """
+  Corrección por error en la descripción o atención de reclamo respecto de bienes adquiridos o servicios prestados
+  """
+  A_03
+
+  """
+  Descuento global
+  """
+  A_04
+
+  """
+  Descuento por ítem
+  """
+  A_05
+
+  """
+  Devolución total
+  """
+  A_06
+
+  """
+  Devolución por ítem
+  """
+  A_07
+
+  """
+  Bonificación
+  """
+  A_08
+
+  """
+  Disminución en el valor
+  """
+  A_09
+
+  """
+  Otros Conceptos
+  """
+  A_10
+
+  """
+  Ajustes de operaciones de exportación
+  """
+  A_11
+
+  """
+  Ajustes afectos al IVAP
+  """
+  A_12
+
+  """
+  Corrección o modificación del monto neto pendiente de pago y/o la(s) fechas(s) de vencimiento del pago único o de las cuotas y/o los montos correspondientes a cada cuota, de ser el caso
+  """
+  A_13
+
+  """
+  NO APLICA
+  """
+  NA
+}
+
+"""
+An enumeration.
+"""
+enum OperationsOperationDebitNoteTypeChoices {
+  """
+  Intereses por mora
+  """
+  A_01
+
+  """
+  Aumento en el valor
+  """
+  A_02
+
+  """
+  Penalidades/ otros conceptos
+  """
+  A_03
+
+  """
+  Ajustes de operaciones de exportación
+  """
+  A_10
+
+  """
+  Ajustes afectos al IVAP
+  """
+  A_11
+
+  """
+  NO APLICA
+  """
+  NA
+}
+
+"""
+An enumeration.
+"""
+enum OperationsOperationPerceptionTypeChoices {
+  """
+  2.0% PERCEPCIÓN VENTA INTERNA - TASA 2%
+  """
+  A_1
+
+  """
+  1.0% PERCEPCIÓN A LA ADQUISICIÓN DE COMBUSTIBLE - TASA 1%
+  """
+  A_2
+
+  """
+  0.5% PERCEPCIÓN REALIZADA AL AGENTE DE PERCEPCIÓN CON TASA ESPECIAL - TASA 0.5%
+  """
+  A_3
+
+  """
+  NO APLICA
+  """
+  A_0
+}
+
+"""
+An enumeration.
+"""
+enum OperationsOperationRetentionTypeChoices {
+  """
+  TASA 3%
+  """
+  A_1
+
+  """
+  TASA 6%
+  """
+  A_2
+
+  """
+  NO APLICA
+  """
+  A_0
+}
+
+"""
+An enumeration.
+"""
+enum OperationsOperationDetractionTypeChoices {
+  """
+  [001] AZÚCAR
+  """
+  A_1
+
+  """
+  [002] ARROZ PILADO
+  """
+  A_2
+
+  """
+  [003] ALCOHOL ETÍLICO
+  """
+  A_3
+
+  """
+  [004] RECURSOS HIDROBIOLÓGICOS
+  """
+  A_4
+
+  """
+  [005] MAÍZ AMARILLO DURO
+  """
+  A_5
+
+  """
+  [007] CAÑA DE AZÚCAR
+  """
+  A_7
+
+  """
+  [008] MADERA
+  """
+  A_8
+
+  """
+  [009] ARENA Y PIEDRA
+  """
+  A_9
+
+  """
+  [010] RESIDUOS, SUBPRODUCTOS, DESECHOS, RECORTES, DESPERDICIOS Y FORMAS PRIMARIAS DERIVADAS DE LOS MISMOS
+  """
+  A_10
+
+  """
+  [011] BIENES GRAVADOS CON EL IGV, POR RENUNCIA A LA EXONERACIÓN
+  """
+  A_11
+
+  """
+  [012] INTERMEDIACIÓN LABORAL Y TERCERIZACIÓN
+  """
+  A_12
+
+  """
+  [014] CARNES Y DESPOJOS COMESTIBLES
+  """
+  A_13
+
+  """
+  [016] ACEITE DE PESCADO
+  """
+  A_14
+
+  """
+  [017] HARINA, POLVO Y PELLETS DE PESCADO, CRUSTÁCEOS, MOLUSCOS Y DEMÁS INVERTEBRADOS ACUÁTICOS
+  """
+  A_15
+
+  """
+  [019] ARRENDAMIENTO DE BIENES
+  """
+  A_17
+
+  """
+  [020] MANTENIMIENTO Y REPARACIÓN DE BIENES MUEBLES
+  """
+  A_18
+
+  """
+  [021] MOVIMIENTO DE CARGA
+  """
+  A_19
+
+  """
+  [022] OTROS SERVICIOS EMPRESARIALES
+  """
+  A_20
+
+  """
+  [023] LECHE
+  """
+  A_21
+
+  """
+  [024] COMISIÓN MERCANTIL
+  """
+  A_22
+
+  """
+  [025] FABRICACIÓN DE BIENES POR ENCARGO
+  """
+  A_23
+
+  """
+  [026] SERVICIO DE TRANSPORTE PERSONAS
+  """
+  A_24
+
+  """
+  [027] TRANSPORTE DE CARGA
+  """
+  A_25
+
+  """
+  [028] TRANSPORTE PÚBLICO DE PASAJEROS REALIZADO POR VÍA TERRESTRE
+  """
+  A_26
+
+  """
+  [030] CONTRATOS DE CONSTRUCCIÓN
+  """
+  A_28
+
+  """
+  [031] ORO GRAVADO CON EL IGV
+  """
+  A_29
+
+  """
+  [032] PAPRIKA Y OTROS FRUTOS DE LOS GÉNEROS CAPSICUM O PIMIENTA
+  """
+  A_30
+
+  """
+  [034] MINERALES METÁLICOS NO AURÍFEROS
+  """
+  A_32
+
+  """
+  [035] BIENES EXONERADOS DEL IGV
+  """
+  A_33
+
+  """
+  [036] ORO Y DEMÁS MINERALES METÁLICOS EXONERADOS DEL IGV
+  """
+  A_34
+
+  """
+  [037] DEMÁS SERVICIOS GRAVADOS CON EL IGV
+  """
+  A_35
+
+  """
+  [039] MINERALES NO METÁLICOS
+  """
+  A_37
+
+  """
+  [040] BIEN INMUEBLE GRAVADO CON EL IGV
+  """
+  A_38
+
+  """
+  [041] PLOMO
+  """
+  A_39
+
+  """
+  NO APLICA
+  """
+  A_0
+}
+
+"""
+An enumeration.
+"""
+enum OperationsOperationDetractionPaymentMethodChoices {
+  """
+  [001] Depósito en cuenta
+  """
+  A_1
+
+  """
+  [002] Giro
+  """
+  A_2
+
+  """
+  [003] Transferencia de fondos
+  """
+  A_3
+
+  """
+  [004] Orden de pago
+  """
+  A_4
+
+  """
+  [005] Tarjeta de débito
+  """
+  A_5
+
+  """
+  [006] Tarjeta de crédito emitida en el país por una empresa del sistema financiero 
+  """
+  A_6
+
+  """
+  [007] Cheques con la cláusula de NO NEGOCIABLE, INTRANSFERIBLES, NO A LA ORDEN u otra equivalente, a que se refiere el inciso g) del artículo 5 de la ley
+  """
+  A_7
+
+  """
+  [008] Efectivo, por operaciones en las que no existe obligación de utilizar medio de pago
+  """
+  A_8
+
+  """
+  [009] Efectivo, en los demás casos
+  """
+  A_9
+
+  """
+  [010] Medios de pago usados en comercio exterior 
+  """
+  A_10
+
+  """
+  [011] Documentos emitidos por las EDPYMES y las cooperativas de ahorro y crédito no autorizadas a captar depósitos del público
+  """
+  A_11
+
+  """
+  [012] Tarjeta de crédito emitida en el país o en el exterior por una empresa no perteneciente al sistema financiero, cuyo objeto principal sea la emisión y administración de tarjetas de crédito
+  """
+  A_12
+
+  """
+  [013] Tarjetas de crédito emitidas en el exterior por empresas bancarias o financieras no domiciliadas
+  """
+  A_13
+
+  """
+  [101] Transferencias – Comercio exterior
+  """
+  A_14
+
+  """
+  [102] Cheques bancarios - Comercio exterior
+  """
+  A_15
+
+  """
+  [103] Orden de pago simple - Comercio exterior
+  """
+  A_16
+
+  """
+  [104] Orden de pago documentario - Comercio exterior
+  """
+  A_17
+
+  """
+  [105] Remesa simple - Comercio exterior
+  """
+  A_18
+
+  """
+  [106] Remesa documentaria - Comercio exterior
+  """
+  A_19
+
+  """
+  [107] Carta de crédito simple - Comercio exterior
+  """
+  A_20
+
+  """
+  [108] Carta de crédito documentario - Comercio exterior
+  """
+  A_21
+
+  """
+  [999] Otros medios de pago
+  """
+  A_22
+
+  """
+  NO APLICA
+  """
+  A_0
+}
+
+"""
+An enumeration.
+"""
+enum OperationsOperationCurrencyTypeChoices {
+  """
+  SOLES
+  """
+  PEN
+
+  """
+  DÓLARES
+  """
+  USD
+
+  """
+  EUROS
+  """
+  EUR
+
+  """
+  LIBRA ESTERLINA
+  """
+  GBP
+}
+
+"""
+The `Decimal` scalar type represents a python Decimal.
+"""
+scalar Decimal
+
+"""
+The `Time` scalar type represents a Time value as
+specified by
+[iso8601](https://en.wikipedia.org/wiki/ISO_8601).
+"""
+scalar Time
+
+type UserType {
+  id: ID!
+
+  password: String
+
+  lastLogin: DateTime
+
+  """
+  Indica que este usuario tiene todos los permisos sin asignárselos explícitamente.
+  """
+  isSuperuser: Boolean!
+
+  firstName: String!
+
+  lastName: String!
+
+  """
+  Indica si el usuario puede entrar en este sitio de administración.
+  """
+  isStaff: Boolean!
+
+  """
+  Indica si el usuario debe ser tratado como activo. Desmarque esta opción en lugar de borrar la cuenta.
+  """
+  isActive: Boolean!
+
+  dateJoined: DateTime!
+
+  email: String!
+
+  username: String!
+
+  document: String
+
+  phone: String
+
+  avatar: String
+
+  role: UsersUserRoleChoices!
+
+  subsidiary: SubsidiaryType
+
+  mobileDescription: String
+
+  operationSet: [OperationType!]!
+
+  employeeAccount: [CashType!]!
+
+  cashflowSet: [CashFlowType!]!
+
+  roleName: String
+
+  repeatPassword: String
+
+  avatarUrl: String
+
+  fullName: String
+
+  subsidiaryId: Int
+
+  companyId: Int
+}
+
+"""
+An enumeration.
+"""
+enum UsersUserRoleChoices {
+  """
+  EMPRESARIAL
+  """
+  A_01
+
+  """
+  PERSONAL
+  """
+  A_02
+
+  """
+  APP MOVIL
+  """
+  A_03
+}
+
+type CashType {
+  id: Int
+
+  subsidiary: SubsidiaryType
+
+  employee: UserType
+
+  supplier: PersonType
+
+  client: PersonType
+
+  name: String
+
+  accountNumber: String
+
+  accountType: AccountingCashAccountTypeChoices!
+
+  currencyType: AccountingCashCurrencyTypeChoices!
+
+  createdAt: DateTime
+
+  isEnabled: Boolean!
+
+  cashflowSet: [CashFlowType!]!
+
+  currencyTypeReadable: String
 }
 
 type PersonType {
@@ -1743,978 +2835,35 @@ enum OperationsPersonCountryChoices {
   ZW
 }
 
-type OperationType {
-  id: ID!
-
-  documentType: OperationsOperationDocumentTypeChoices!
-
-  operationType: OperationsOperationOperationTypeChoices!
-
-  operationStatus: OperationsOperationOperationStatusChoices!
-
-  operationAction: OperationsOperationOperationActionChoices!
-
-  creditNoteType: OperationsOperationCreditNoteTypeChoices!
-
-  debitNoteType: OperationsOperationDebitNoteTypeChoices!
-
-  perceptionType: OperationsOperationPerceptionTypeChoices!
-
-  retentionType: OperationsOperationRetentionTypeChoices!
-
-  detractionType: OperationsOperationDetractionTypeChoices!
-
-  detractionPaymentMethod: OperationsOperationDetractionPaymentMethodChoices!
-
-  serial: String
-
-  correlative: Int
-
-  currencyType: OperationsOperationCurrencyTypeChoices!
-
-  saleExchangeRate: Decimal!
-
-  purchaseExchangeRate: Decimal!
-
-  operationDate: Date
-
-  emitDate: Date
-
-  emitTime: Time
-
-  dueDate: Date
-
-  lowDate: Date
-
-  createAt: DateTime!
-
-  updateAt: DateTime!
-
-  user: UserType
-
-  client: PersonType
-
-  supplier: PersonType
-
-  subsidiary: SubsidiaryType
-
-  warehouse: WarehouseType
-
-  guideOrigin: StopPointType
-
-  guideArrival: StopPointType
-
-  discountForItem: Decimal!
-
-  discountGlobal: Decimal!
-
-  discountPercentageGlobal: Decimal!
-
-  igvType: OperationsOperationIgvTypeChoices!
-
-  igvPercentage: Decimal!
-
-  perceptionPercentage: Decimal!
-
-  retentionPercentage: Decimal!
-
-  detractionPercentage: Decimal!
-
-  totalDiscount: Decimal!
-
-  totalAdvance: Decimal!
-
-  totalTaxed: Decimal!
-
-  totalUnaffected: Decimal!
-
-  totalExonerated: Decimal!
-
-  totalIgv: Decimal!
-
-  totalFree: Decimal!
-
-  totalAmount: Decimal!
-
-  totalPerception: Decimal!
-
-  totalRetention: Decimal!
-
-  totalDetraction: Decimal!
-
-  totalToPay: Decimal!
-
-  totalPayed: Decimal!
-
-  totalTurned: Decimal!
-
-  observation: String
-
-  sendWhatsapp: Boolean!
-
-  sendSunat: Boolean!
-
-  sendClient: Boolean!
-
-  sunatDescription: String
-
-  sunatDescriptionLow: String
-
-  sunatStatus: Boolean!
-
-  parentOperation: OperationType
-
-  relatedSeries: String
-
-  relatedNumber: Int
-
-  relatedDocType: String
-
-  relatedReasonCode: String
-
-  linkXml: String
-
-  linkCdr: String
-
-  lowCorrelative: Int
-
-  summaryCorrelative: Int
-
-  lowTicket: String
-
-  linkXmlLow: String
-
-  linkCdrLow: String
-
-  codeHash: String
-
-  transferDate: Date
-
-  guideReasonTransfer: OperationsOperationGuideReasonTransferChoices!
-
-  guideModeTransfer: OperationsOperationGuideModeTransferChoices!
-
-  othersDrivers: [PersonType!]!
-
-  othersVehicles: [VehicleType!]!
-
-  relatedDocuments: [DocumentEmittedType!]!
-
-  guideTicket: String
-
-  guideToken: String
-
-  totalWeight: Decimal!
-
-  quantityPackages: Decimal!
-
-  weightMeasurementUnit: UnitType
-
-  transportationCompany: PersonType
-
-  mainVehicle: VehicleType
-
-  mainDriver: PersonType
-
-  receiver: PersonType
-
-  hasPerception: Boolean!
-
-  hasRetention: Boolean!
-
-  hasDetraction: Boolean!
-
-  operationSet: [OperationType!]!
-
-  operationdetailSet: [OperationDetailType!]!
-
-  cashflowSet: [CashFlowType!]!
-
-  paymentlogSet: [PaymentLogType!]!
-
-  documentPerson: String
-
-  namesPerson: String
-
-  operationStatusReadable: String
-
-  documentTypeReadable: String
-
-  creditNoteReferences: String
-
-  subsidiaryId: Int
-
-  userId: Int
-
-  totalCash: Float
-
-  totalDebitCard: Float
-
-  totalCreditCard: Float
-
-  totalTransfer: Float
-
-  totalMonue: Float
-
-  totalCheck: Float
-
-  totalCoupon: Float
-
-  totalYape: Float
-
-  totalDue: Float
-
-  totalOther: Float
-
-  guideReasonTransferReadable: String
-
-  guideModeTransferReadable: String
+"""
+An enumeration.
+"""
+enum AccountingCashAccountTypeChoices {
+  """
+  CAJA
+  """
+  C
+
+  """
+  BANCO
+  """
+  B
+
+  """
+  CUENTA POR COBRAR
+  """
+  CC
+
+  """
+  CUENTA POR PAGAR
+  """
+  CP
 }
 
 """
 An enumeration.
 """
-enum OperationsOperationDocumentTypeChoices {
-  """
-  FACTURA
-  """
-  A_01
-
-  """
-  BOLETA
-  """
-  A_03
-
-  """
-  NOTA DE CREDITO
-  """
-  A_07
-
-  """
-  NOTA DE DEBITO
-  """
-  A_08
-
-  """
-  GUIA DE REMISION REMITENTE
-  """
-  A_09
-
-  """
-  GUÍA DE REMISIÓN TRANSPORTISTA
-  """
-  A_31
-
-  """
-  COMPROBANTE DE RETENCIÓN
-  """
-  A_20
-
-  """
-  COMPROBANTE DE PERCEPCIÓN
-  """
-  A_40
-
-  """
-  COMPROBANTE DE OPERACIONES
-  """
-  A_48
-
-  """
-  NOTA DE AJUSTE DE OPERACIONES
-  """
-  A_89
-
-  """
-  NOTA DE ENTRADA
-  """
-  NE
-
-  """
-  NOTA DE SALIDA
-  """
-  NS
-
-  """
-  NO APLICA
-  """
-  NA
-}
-
-"""
-An enumeration.
-"""
-enum OperationsOperationOperationTypeChoices {
-  """
-  Venta interna
-  """
-  A_0101
-
-  """
-  Venta Interna - Sustenta Gastos Deducibles Persona Natural
-  """
-  A_0112
-
-  """
-  Venta Interna-NRUS
-  """
-  A_0113
-
-  """
-  Exportación de Bienes
-  """
-  A_0200
-
-  """
-  Exportación de Servicios – Prestación servicios realizados íntegramente en el país
-  """
-  A_0201
-
-  """
-  Exportación de Servicios – Prestación de servicios de hospedaje No Domiciliado
-  """
-  A_0202
-
-  """
-  Exportación de Servicios – Transporte de navieras
-  """
-  A_0203
-
-  """
-  Exportación de Servicios – Servicios a naves y aeronaves de bandera extranjera
-  """
-  A_0204
-
-  """
-  Exportación de Servicios - Servicios que conformen un Paquete Turístico
-  """
-  A_0205
-
-  """
-  Exportación de Servicios – Servicios complementarios al transporte de carga
-  """
-  A_0206
-
-  """
-  Exportación de Servicios – Suministro de energía eléctrica a favor de sujetos domiciliados en ZED
-  """
-  A_0207
-
-  """
-  Exportación de Servicios – Prestación servicios realizados parcialmente en el extranjero
-  """
-  A_0208
-
-  """
-  Operaciones con Carta de porte aéreo (emitidas en el ámbito nacional)
-  """
-  A_0301
-
-  """
-  Operaciones de Transporte ferroviario de pasajeros
-  """
-  A_0302
-
-  """
-  Ventas no domiciliados que no califican como exportación
-  """
-  A_0401
-
-  """
-  Compra interna
-  """
-  A_0501
-
-  """
-  Anticipos
-  """
-  A_0502
-
-  """
-  Compra de oro
-  """
-  A_0503
-
-  """
-  Operación Sujeta a Detracción
-  """
-  A_1001
-
-  """
-  Operación Sujeta a Detracción- Recursos Hidrobiológicos
-  """
-  A_1002
-
-  """
-  Operación Sujeta a Detracción- Servicios de Transporte Pasajeros
-  """
-  A_1003
-
-  """
-  Operación Sujeta a Detracción- Servicios de Transporte Carga
-  """
-  A_1004
-
-  """
-  Operación Sujeta a Percepción
-  """
-  A_2001
-
-  """
-  Créditos a empresas
-  """
-  A_2100
-
-  """
-  Créditos de consumo revolvente
-  """
-  A_2101
-
-  """
-  Créditos de consumo no revolvente
-  """
-  A_2102
-
-  """
-  Otras operaciones no gravadas - Empresas del sistema financiero y cooperativas de ahorro y crédito no autorizadas a captar recursos del público
-  """
-  A_2103
-
-  """
-  Otras operaciones no gravadas - Empresas del sistema de seguros
-  """
-  A_2104
-
-  """
-  NO APLICA
-  """
-  NA
-}
-
-"""
-An enumeration.
-"""
-enum OperationsOperationOperationStatusChoices {
-  """
-  REGISTRADO
-  """
-  A_01
-
-  """
-  AUTORIZADO
-  """
-  A_02
-
-  """
-  PENDIENTE
-  """
-  A_03
-
-  """
-  PENDIENTE DE BAJA
-  """
-  A_04
-
-  """
-  EN PROCESO DE BAJA
-  """
-  A_05
-
-  """
-  DADO DE BAJA
-  """
-  A_06
-
-  """
-  RECHAZADO
-  """
-  A_07
-
-  """
-  NO APLICA
-  """
-  NA
-}
-
-"""
-An enumeration.
-"""
-enum OperationsOperationOperationActionChoices {
-  """
-  ENTRADA
-  """
-  E
-
-  """
-  SALIDA
-  """
-  S
-
-  """
-  NO APLICA
-  """
-  NA
-}
-
-"""
-An enumeration.
-"""
-enum OperationsOperationCreditNoteTypeChoices {
-  """
-  Anulación de la operación
-  """
-  A_01
-
-  """
-  Anulación por error en el RUC
-  """
-  A_02
-
-  """
-  Corrección por error en la descripción o atención de reclamo respecto de bienes adquiridos o servicios prestados
-  """
-  A_03
-
-  """
-  Descuento global
-  """
-  A_04
-
-  """
-  Descuento por ítem
-  """
-  A_05
-
-  """
-  Devolución total
-  """
-  A_06
-
-  """
-  Devolución por ítem
-  """
-  A_07
-
-  """
-  Bonificación
-  """
-  A_08
-
-  """
-  Disminución en el valor
-  """
-  A_09
-
-  """
-  Otros Conceptos
-  """
-  A_10
-
-  """
-  Ajustes de operaciones de exportación
-  """
-  A_11
-
-  """
-  Ajustes afectos al IVAP
-  """
-  A_12
-
-  """
-  Corrección o modificación del monto neto pendiente de pago y/o la(s) fechas(s) de vencimiento del pago único o de las cuotas y/o los montos correspondientes a cada cuota, de ser el caso
-  """
-  A_13
-
-  """
-  NO APLICA
-  """
-  NA
-}
-
-"""
-An enumeration.
-"""
-enum OperationsOperationDebitNoteTypeChoices {
-  """
-  Intereses por mora
-  """
-  A_01
-
-  """
-  Aumento en el valor
-  """
-  A_02
-
-  """
-  Penalidades/ otros conceptos
-  """
-  A_03
-
-  """
-  Ajustes de operaciones de exportación
-  """
-  A_10
-
-  """
-  Ajustes afectos al IVAP
-  """
-  A_11
-
-  """
-  NO APLICA
-  """
-  NA
-}
-
-"""
-An enumeration.
-"""
-enum OperationsOperationPerceptionTypeChoices {
-  """
-  2.0% PERCEPCIÓN VENTA INTERNA - TASA 2%
-  """
-  A_1
-
-  """
-  1.0% PERCEPCIÓN A LA ADQUISICIÓN DE COMBUSTIBLE - TASA 1%
-  """
-  A_2
-
-  """
-  0.5% PERCEPCIÓN REALIZADA AL AGENTE DE PERCEPCIÓN CON TASA ESPECIAL - TASA 0.5%
-  """
-  A_3
-
-  """
-  NO APLICA
-  """
-  A_0
-}
-
-"""
-An enumeration.
-"""
-enum OperationsOperationRetentionTypeChoices {
-  """
-  TASA 3%
-  """
-  A_1
-
-  """
-  TASA 6%
-  """
-  A_2
-
-  """
-  NO APLICA
-  """
-  A_0
-}
-
-"""
-An enumeration.
-"""
-enum OperationsOperationDetractionTypeChoices {
-  """
-  [001] AZÚCAR
-  """
-  A_1
-
-  """
-  [002] ARROZ PILADO
-  """
-  A_2
-
-  """
-  [003] ALCOHOL ETÍLICO
-  """
-  A_3
-
-  """
-  [004] RECURSOS HIDROBIOLÓGICOS
-  """
-  A_4
-
-  """
-  [005] MAÍZ AMARILLO DURO
-  """
-  A_5
-
-  """
-  [007] CAÑA DE AZÚCAR
-  """
-  A_7
-
-  """
-  [008] MADERA
-  """
-  A_8
-
-  """
-  [009] ARENA Y PIEDRA
-  """
-  A_9
-
-  """
-  [010] RESIDUOS, SUBPRODUCTOS, DESECHOS, RECORTES, DESPERDICIOS Y FORMAS PRIMARIAS DERIVADAS DE LOS MISMOS
-  """
-  A_10
-
-  """
-  [011] BIENES GRAVADOS CON EL IGV, POR RENUNCIA A LA EXONERACIÓN
-  """
-  A_11
-
-  """
-  [012] INTERMEDIACIÓN LABORAL Y TERCERIZACIÓN
-  """
-  A_12
-
-  """
-  [014] CARNES Y DESPOJOS COMESTIBLES
-  """
-  A_13
-
-  """
-  [016] ACEITE DE PESCADO
-  """
-  A_14
-
-  """
-  [017] HARINA, POLVO Y PELLETS DE PESCADO, CRUSTÁCEOS, MOLUSCOS Y DEMÁS INVERTEBRADOS ACUÁTICOS
-  """
-  A_15
-
-  """
-  [019] ARRENDAMIENTO DE BIENES
-  """
-  A_17
-
-  """
-  [020] MANTENIMIENTO Y REPARACIÓN DE BIENES MUEBLES
-  """
-  A_18
-
-  """
-  [021] MOVIMIENTO DE CARGA
-  """
-  A_19
-
-  """
-  [022] OTROS SERVICIOS EMPRESARIALES
-  """
-  A_20
-
-  """
-  [023] LECHE
-  """
-  A_21
-
-  """
-  [024] COMISIÓN MERCANTIL
-  """
-  A_22
-
-  """
-  [025] FABRICACIÓN DE BIENES POR ENCARGO
-  """
-  A_23
-
-  """
-  [026] SERVICIO DE TRANSPORTE PERSONAS
-  """
-  A_24
-
-  """
-  [027] TRANSPORTE DE CARGA
-  """
-  A_25
-
-  """
-  [028] TRANSPORTE PÚBLICO DE PASAJEROS REALIZADO POR VÍA TERRESTRE
-  """
-  A_26
-
-  """
-  [030] CONTRATOS DE CONSTRUCCIÓN
-  """
-  A_28
-
-  """
-  [031] ORO GRAVADO CON EL IGV
-  """
-  A_29
-
-  """
-  [032] PAPRIKA Y OTROS FRUTOS DE LOS GÉNEROS CAPSICUM O PIMIENTA
-  """
-  A_30
-
-  """
-  [034] MINERALES METÁLICOS NO AURÍFEROS
-  """
-  A_32
-
-  """
-  [035] BIENES EXONERADOS DEL IGV
-  """
-  A_33
-
-  """
-  [036] ORO Y DEMÁS MINERALES METÁLICOS EXONERADOS DEL IGV
-  """
-  A_34
-
-  """
-  [037] DEMÁS SERVICIOS GRAVADOS CON EL IGV
-  """
-  A_35
-
-  """
-  [039] MINERALES NO METÁLICOS
-  """
-  A_37
-
-  """
-  [040] BIEN INMUEBLE GRAVADO CON EL IGV
-  """
-  A_38
-
-  """
-  [041] PLOMO
-  """
-  A_39
-
-  """
-  NO APLICA
-  """
-  A_0
-}
-
-"""
-An enumeration.
-"""
-enum OperationsOperationDetractionPaymentMethodChoices {
-  """
-  [001] Depósito en cuenta
-  """
-  A_1
-
-  """
-  [002] Giro
-  """
-  A_2
-
-  """
-  [003] Transferencia de fondos
-  """
-  A_3
-
-  """
-  [004] Orden de pago
-  """
-  A_4
-
-  """
-  [005] Tarjeta de débito
-  """
-  A_5
-
-  """
-  [006] Tarjeta de crédito emitida en el país por una empresa del sistema financiero 
-  """
-  A_6
-
-  """
-  [007] Cheques con la cláusula de NO NEGOCIABLE, INTRANSFERIBLES, NO A LA ORDEN u otra equivalente, a que se refiere el inciso g) del artículo 5 de la ley
-  """
-  A_7
-
-  """
-  [008] Efectivo, por operaciones en las que no existe obligación de utilizar medio de pago
-  """
-  A_8
-
-  """
-  [009] Efectivo, en los demás casos
-  """
-  A_9
-
-  """
-  [010] Medios de pago usados en comercio exterior 
-  """
-  A_10
-
-  """
-  [011] Documentos emitidos por las EDPYMES y las cooperativas de ahorro y crédito no autorizadas a captar depósitos del público
-  """
-  A_11
-
-  """
-  [012] Tarjeta de crédito emitida en el país o en el exterior por una empresa no perteneciente al sistema financiero, cuyo objeto principal sea la emisión y administración de tarjetas de crédito
-  """
-  A_12
-
-  """
-  [013] Tarjetas de crédito emitidas en el exterior por empresas bancarias o financieras no domiciliadas
-  """
-  A_13
-
-  """
-  [101] Transferencias – Comercio exterior
-  """
-  A_14
-
-  """
-  [102] Cheques bancarios - Comercio exterior
-  """
-  A_15
-
-  """
-  [103] Orden de pago simple - Comercio exterior
-  """
-  A_16
-
-  """
-  [104] Orden de pago documentario - Comercio exterior
-  """
-  A_17
-
-  """
-  [105] Remesa simple - Comercio exterior
-  """
-  A_18
-
-  """
-  [106] Remesa documentaria - Comercio exterior
-  """
-  A_19
-
-  """
-  [107] Carta de crédito simple - Comercio exterior
-  """
-  A_20
-
-  """
-  [108] Carta de crédito documentario - Comercio exterior
-  """
-  A_21
-
-  """
-  [999] Otros medios de pago
-  """
-  A_22
-
-  """
-  NO APLICA
-  """
-  A_0
-}
-
-"""
-An enumeration.
-"""
-enum OperationsOperationCurrencyTypeChoices {
+enum AccountingCashCurrencyTypeChoices {
   """
   SOLES
   """
@@ -2734,101 +2883,6 @@ enum OperationsOperationCurrencyTypeChoices {
   LIBRA ESTERLINA
   """
   GBP
-}
-
-"""
-The `Decimal` scalar type represents a python Decimal.
-"""
-scalar Decimal
-
-"""
-The `Time` scalar type represents a Time value as
-specified by
-[iso8601](https://en.wikipedia.org/wiki/ISO_8601).
-"""
-scalar Time
-
-type UserType {
-  id: ID!
-
-  password: String
-
-  lastLogin: DateTime
-
-  """
-  Indica que este usuario tiene todos los permisos sin asignárselos explícitamente.
-  """
-  isSuperuser: Boolean!
-
-  firstName: String!
-
-  lastName: String!
-
-  """
-  Indica si el usuario puede entrar en este sitio de administración.
-  """
-  isStaff: Boolean!
-
-  """
-  Indica si el usuario debe ser tratado como activo. Desmarque esta opción en lugar de borrar la cuenta.
-  """
-  isActive: Boolean!
-
-  dateJoined: DateTime!
-
-  email: String!
-
-  username: String!
-
-  document: String
-
-  phone: String
-
-  avatar: String
-
-  role: UsersUserRoleChoices!
-
-  subsidiary: SubsidiaryType
-
-  mobileDescription: String
-
-  operationSet: [OperationType!]!
-
-  employeeAccount: [CashType!]!
-
-  cashflowSet: [CashFlowType!]!
-
-  roleName: String
-
-  repeatPassword: String
-
-  avatarUrl: String
-
-  fullName: String
-
-  subsidiaryId: Int
-
-  companyId: Int
-}
-
-"""
-An enumeration.
-"""
-enum UsersUserRoleChoices {
-  """
-  EMPRESARIAL
-  """
-  A_01
-
-  """
-  PERSONAL
-  """
-  A_02
-
-  """
-  APP MOVIL
-  """
-  A_03
 }
 
 type CashFlowType {
@@ -3750,6 +3804,12 @@ type OperationDetailType {
 
   description: String
 
+  isAnticipation: Boolean!
+
+  relatedDocumentSerial: String
+
+  relatedDocumentCorrelative: Int
+
   productId: Int
 
   productName: String
@@ -3947,56 +4007,6 @@ enum OperationsSerialAssignedDocumentTypeChoices {
   NO APLICA
   """
   NA
-}
-
-"""
-An enumeration.
-"""
-enum AccountingCashAccountTypeChoices {
-  """
-  CAJA
-  """
-  C
-
-  """
-  BANCO
-  """
-  B
-
-  """
-  CUENTA POR COBRAR
-  """
-  CC
-
-  """
-  CUENTA POR PAGAR
-  """
-  CP
-}
-
-"""
-An enumeration.
-"""
-enum AccountingCashCurrencyTypeChoices {
-  """
-  SOLES
-  """
-  PEN
-
-  """
-  DÓLARES
-  """
-  USD
-
-  """
-  EUROS
-  """
-  EUR
-
-  """
-  LIBRA ESTERLINA
-  """
-  GBP
 }
 
 type ChoiceWithNumericCodeType {
@@ -4259,6 +4269,8 @@ type ProductDetailType {
   productTariffId3: Int
 
   typeAffectationId: Int
+
+  activeType: String
 }
 
 type ProductStockMovementType {
@@ -4345,9 +4357,9 @@ type Mutation {
 
   paymentStatus(amount: Float, cardBrand: String, cardLastFour: String, cardType: String, currency: String, eventType: String!, formToken: String, installmentNumber: Int, ipAddress: String, operationId: Int!, requestData: JSONString, responseData: JSONString, status: String!, userAgent: String): PaymentStatusMutation
 
-  createPerson(address: String, code: String, country: String, districtId: String, documentNumber: String, documentType: String, driverLicense: String, economicActivityMain: Int, email: String, isClient: Boolean, isEnabled: Boolean, isSupplier: Boolean, names: String, phone: String, shortName: String, subsidiaryId: Int): CreatePersonMutation
+  createPerson(address: String, code: String, country: String, districtId: String, documentNumber: String, documentType: String, driverLicense: String, economicActivityMain: Int, email: String, isClient: Boolean, isDriver: Boolean, isEnabled: Boolean, isSupplier: Boolean, names: String, phone: String, shortName: String, subsidiaryId: Int): CreatePersonMutation
 
-  updatePerson(address: String, code: String, country: String, districtId: String, documentNumber: String, documentType: String, driverLicense: String, economicActivityMain: Int, email: String, id: ID!, isClient: Boolean, isEnabled: Boolean, isSupplier: Boolean, names: String, phone: String, shortName: String): UpdatePersonMutation
+  updatePerson(address: String, code: String, country: String, districtId: String, documentNumber: String, documentType: String, driverLicense: String, economicActivityMain: Int, email: String, id: ID!, isClient: Boolean, isDriver: Boolean, isEnabled: Boolean, isSupplier: Boolean, names: String, phone: String, shortName: String): UpdatePersonMutation
 
   createInvoice(cliente: ClienteType, empresa: EmpresaType, items: [ItemType], sucursal: SucursalType, venta: VentaType): CreateInvoiceMutation
 
@@ -4357,7 +4369,7 @@ type Mutation {
 
   sntPerson(document: String): SntMutation
 
-  createSale(clientId: Int = 0, commentSet: [String!], correlative: Int = 0, creditNoteType: String = "NA", currencyType: String = "PEN", descriptionSet: [String!], detractionPaymentMethod: Int = 0, detractionPercentage: Float = 0, detractionType: Int = 0, discountForItem: Float = 0, discountGlobal: Float = 0, discountPercentageGlobal: Float = 0, discountPercentageSet: [Float!], documentType: String = "NA", dueDate: Date = null, emitDate: Date = null, guideArrivalAddress: String = "", guideArrivalDistrictId: String = "040101", guideArrivalSerial: String = "", guideModeTransfer: String = "NA", guideOriginAddress: String = "", guideOriginDistrictId: String = "040101", guideOriginSerial: String = "", guideReasonTransfer: String = "NA", hasDetraction: Boolean = false, hasPerception: Boolean = false, hasRetention: Boolean = false, igvPercentageSet: [Float!], igvType: Int = 0, mainDriverDocumentNumber: String = "", mainDriverDocumentType: String = "1", mainDriverDriverLicense: String = "", mainDriverNames: String = "", mainVehicleLicensePlate: String = "", observation: String = "", operationType: String = "NA", othersDriversDocumentNumberSet: [String!], othersDriversDocumentTypeSet: [String!], othersDriversDriverLicenseSet: [String!], othersDriversNamesSet: [String!], othersVehiclesLicensePlateSet: [String!], parentOperationId: Int = 0, perceptionPercentage: Float = 0, perceptionPercentageSet: [Float!], perceptionType: Int = 0, productIdSet: [Int!], productTariffIdSet: [Int!], quantityPackages: Float = 0, quantitySet: [Float!], receiverDocumentNumber: String = "", receiverDocumentType: String = "1", receiverNames: String = "", relatedDocumentsCorrelativeSet: [Int!], relatedDocumentsDocumentTypeSet: [String!], relatedDocumentsSerialSet: [String!], retentionPercentage: Float = 0, retentionType: Int = 0, saleExchangeRate: Float = 0, serial: String = "", totalAmount: Float = 0, totalAmountSet: [Float!], totalDetraction: Float = 0, totalDiscount: Float = 0, totalDiscountSet: [Float!], totalExonerated: Float = 0, totalFree: Float = 0, totalIgv: Float = 0, totalIgvSet: [Float!], totalPayed: Float = 0, totalPerception: Float = 0, totalPerceptionSet: [Float!], totalRetention: Float = 0, totalSet: [Float!], totalTaxed: Float = 0, totalToPay: Float = 0, totalToPaySet: [Float!], totalTurned: Float = 0, totalUnaffected: Float = 0, totalValueSet: [Float!], totalWeight: Float = 0, transactionDateSet: [Date!], transferDate: Date = null, transportationCompanyDocumentNumber: String = "", transportationCompanyDocumentType: String = "6", transportationCompanyMtcRegistrationNumber: String = "", transportationCompanyNames: String = "", typeAffectationIdSet: [Int!], unitPriceSet: [Float!], unitValueSet: [Float!], wayPaySet: [Int!], weightMeasurementUnitCode: String = "KGM"): CreateSaleMutation
+  createSale(clientId: Int = 0, commentSet: [String!], correlative: Int = 0, creditNoteType: String = "NA", currencyType: String = "PEN", descriptionSet: [String!], detractionPaymentMethod: Int = 0, detractionPercentage: Float = 0, detractionType: Int = 0, discountForItem: Float = 0, discountGlobal: Float = 0, discountPercentageGlobal: Float = 0, discountPercentageSet: [Float!], documentType: String = "NA", dueDate: Date = null, emitDate: Date = null, guideArrivalAddress: String = "", guideArrivalDistrictId: String = "040101", guideArrivalSerial: String = "", guideModeTransfer: String = "NA", guideOriginAddress: String = "", guideOriginDistrictId: String = "040101", guideOriginSerial: String = "", guideReasonTransfer: String = "NA", hasDetraction: Boolean = false, hasPerception: Boolean = false, hasRetention: Boolean = false, igvPercentageSet: [Float!], igvType: Int = 0, isAnticipationSet: [Boolean!], mainDriverDocumentNumber: String = "", mainDriverDocumentType: String = "1", mainDriverDriverLicense: String = "", mainDriverNames: String = "", mainVehicleLicensePlate: String = "", observation: String = "", operationType: String = "NA", othersDriversDocumentNumberSet: [String!], othersDriversDocumentTypeSet: [String!], othersDriversDriverLicenseSet: [String!], othersDriversNamesSet: [String!], othersVehiclesLicensePlateSet: [String!], parentOperationId: Int = 0, perceptionPercentage: Float = 0, perceptionPercentageSet: [Float!], perceptionType: Int = 0, productIdSet: [Int!], productTariffIdSet: [Int!], quantityPackages: Float = 0, quantitySet: [Float!], receiverDocumentNumber: String = "", receiverDocumentType: String = "1", receiverNames: String = "", relatedDocumentCorrelativeSet: [Int!], relatedDocumentSerialSet: [String!], relatedDocumentsCorrelativeSet: [Int!], relatedDocumentsDocumentTypeSet: [String!], relatedDocumentsSerialSet: [String!], retentionPercentage: Float = 0, retentionType: Int = 0, saleExchangeRate: Float = 0, serial: String = "", totalAmount: Float = 0, totalAmountSet: [Float!], totalAnticipation: Float = 0, totalDetraction: Float = 0, totalDiscount: Float = 0, totalDiscountSet: [Float!], totalExonerated: Float = 0, totalFree: Float = 0, totalIgv: Float = 0, totalIgvSet: [Float!], totalPayed: Float = 0, totalPerception: Float = 0, totalPerceptionSet: [Float!], totalRetention: Float = 0, totalSet: [Float!], totalTaxed: Float = 0, totalToPay: Float = 0, totalToPaySet: [Float!], totalTurned: Float = 0, totalUnaffected: Float = 0, totalValueSet: [Float!], totalWeight: Float = 0, transactionDateSet: [Date!], transferDate: Date = null, transportationCompanyDocumentNumber: String = "", transportationCompanyDocumentType: String = "6", transportationCompanyMtcRegistrationNumber: String = "", transportationCompanyNames: String = "", typeAffectationIdSet: [Int!], unitPriceSet: [Float!], unitValueSet: [Float!], wayPaySet: [Int!], weightMeasurementUnitCode: String = "KGM"): CreateSaleMutation
 
   createRetentionConstance(correlative: Int, emitDate: Date, observation: String, relatedDocuments: [RelatedDocumentInput], retentionType: Int, serial: String, supplierId: Int): CreateRetentionConstanceMutation
 

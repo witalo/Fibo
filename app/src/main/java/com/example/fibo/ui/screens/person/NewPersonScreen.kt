@@ -4,8 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,10 +24,15 @@ fun NewPersonScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+
     LaunchedEffect(uiState.personResult) {
         uiState.personResult?.let { result ->
             result.onSuccess { message ->
                 snackbarHostState.showSnackbar(message)
+                // Enviar resultado de vuelta a PersonScreen
+                navController.previousBackStackEntry?.savedStateHandle?.set(
+                    "person_created", true
+                )
                 navController.popBackStack()
             }.onFailure { error ->
                 snackbarHostState.showSnackbar(
@@ -43,10 +47,10 @@ fun NewPersonScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Nueva Persona") },
+                title = { Text("Registrar Persona") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
+                        Icon(Icons.Default.Close, contentDescription = "Cerrar")
                     }
                 }
             )
@@ -59,21 +63,63 @@ fun NewPersonScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // TIPO DE DOCUMENTO
             item {
                 Text(
-                    text = "Información Personal",
-                    style = MaterialTheme.typography.titleLarge,
+                    text = "Tipo de Documento *",
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
+                Spacer(modifier = Modifier.height(8.dp))
+                DocumentTypeSelector(
+                    selectedType = uiState.documentType,
+                    onTypeSelected = { viewModel.onDocumentTypeChanged(it) },
+                    isError = uiState.documentTypeError.isNotEmpty()
+                )
+                if (uiState.documentTypeError.isNotEmpty()) {
+                    Text(
+                        text = uiState.documentTypeError,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                    )
+                }
             }
 
+            // NÚMERO DE DOCUMENTO CON BOTÓN EXTRAER
+            item {
+                Text(
+                    text = "Número de Documento *",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                DocumentNumberInput(
+                    documentNumber = uiState.documentNumber,
+                    documentType = uiState.documentType,
+                    onDocumentNumberChanged = { viewModel.onDocumentNumberChanged(it) },
+                    onExtractClick = { viewModel.extractPersonData() },
+                    isLoading = uiState.isExtracting,
+                    isError = uiState.documentNumberError.isNotEmpty()
+                )
+                if (uiState.documentNumberError.isNotEmpty()) {
+                    Text(
+                        text = uiState.documentNumberError,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+
+            // NOMBRES O RAZÓN SOCIAL
             item {
                 OutlinedTextField(
                     value = uiState.names,
                     onValueChange = { viewModel.onNamesChanged(it) },
-                    label = { Text("Nombres Completos *") },
+                    label = { Text("Nombres o Razón Social *") },
                     modifier = Modifier.fillMaxWidth(),
-                    isError = uiState.namesError.isNotEmpty()
+                    isError = uiState.namesError.isNotEmpty(),
+                    singleLine = true
                 )
                 if (uiState.namesError.isNotEmpty()) {
                     Text(
@@ -84,111 +130,27 @@ fun NewPersonScreen(
                 }
             }
 
+            // RAZÓN COMERCIAL (OPCIONAL)
             item {
                 OutlinedTextField(
                     value = uiState.shortName,
                     onValueChange = { viewModel.onShortNameChanged(it) },
-                    label = { Text("Nombre Corto *") },
+                    label = { Text("Razón comercial (opcional)") },
+                    placeholder = { Text("Marca o nombre comercial") },
                     modifier = Modifier.fillMaxWidth(),
-                    isError = uiState.shortNameError.isNotEmpty()
-                )
-                if (uiState.shortNameError.isNotEmpty()) {
-                    Text(
-                        text = uiState.shortNameError,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-            }
-
-            item {
-                OutlinedTextField(
-                    value = uiState.code,
-                    onValueChange = { viewModel.onCodeChanged(it) },
-                    label = { Text("Código") },
-                    modifier = Modifier.fillMaxWidth()
+                    singleLine = true
                 )
             }
 
-            item {
-                Text(
-                    text = "Documento de Identidad",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedTextField(
-                        value = uiState.documentType,
-                        onValueChange = { viewModel.onDocumentTypeChanged(it) },
-                        label = { Text("Tipo *") },
-                        modifier = Modifier.weight(1f),
-                        isError = uiState.documentTypeError.isNotEmpty()
-                    )
-                    OutlinedTextField(
-                        value = uiState.documentNumber,
-                        onValueChange = { viewModel.onDocumentNumberChanged(it) },
-                        label = { Text("Número *") },
-                        modifier = Modifier.weight(2f),
-                        isError = uiState.documentNumberError.isNotEmpty()
-                    )
-                }
-            }
-
-            item {
-                Text(
-                    text = "Información de Contacto",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            item {
-                OutlinedTextField(
-                    value = uiState.phone,
-                    onValueChange = { viewModel.onPhoneChanged(it) },
-                    label = { Text("Teléfono *") },
-                    modifier = Modifier.fillMaxWidth(),
-                    isError = uiState.phoneError.isNotEmpty()
-                )
-                if (uiState.phoneError.isNotEmpty()) {
-                    Text(
-                        text = uiState.phoneError,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-            }
-
-            item {
-                OutlinedTextField(
-                    value = uiState.email,
-                    onValueChange = { viewModel.onEmailChanged(it) },
-                    label = { Text("Email *") },
-                    modifier = Modifier.fillMaxWidth(),
-                    isError = uiState.emailError.isNotEmpty()
-                )
-                if (uiState.emailError.isNotEmpty()) {
-                    Text(
-                        text = uiState.emailError,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-            }
-
+            // DIRECCIÓN FISCAL
             item {
                 OutlinedTextField(
                     value = uiState.address,
                     onValueChange = { viewModel.onAddressChanged(it) },
-                    label = { Text("Dirección *") },
+                    label = { Text("Dirección fiscal *") },
                     modifier = Modifier.fillMaxWidth(),
-                    isError = uiState.addressError.isNotEmpty()
+                    isError = uiState.addressError.isNotEmpty(),
+                    singleLine = true
                 )
                 if (uiState.addressError.isNotEmpty()) {
                     Text(
@@ -199,80 +161,292 @@ fun NewPersonScreen(
                 }
             }
 
-            item {
-                Text(
-                    text = "Tipo de Persona",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
+            // EMAIL Y TELÉFONO EN FILA
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Checkbox(
-                            checked = uiState.isClient,
-                            onCheckedChange = { viewModel.onIsClientChanged(it) }
-                        )
-                        Text("Cliente")
-                    }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Checkbox(
-                            checked = uiState.isSupplier,
-                            onCheckedChange = { viewModel.onIsSupplierChanged(it) }
-                        )
-                        Text("Proveedor")
-                    }
-                }
-            }
-
-            item {
-                if (uiState.isClient || uiState.isSupplier) {
                     OutlinedTextField(
-                        value = uiState.economicActivityMain.toString(),
-                        onValueChange = { viewModel.onEconomicActivityMainChanged(it.toIntOrNull() ?: 0) },
-                        label = { Text("Actividad Económica Principal") },
-                        modifier = Modifier.fillMaxWidth()
+                        value = uiState.email,
+                        onValueChange = { viewModel.onEmailChanged(it) },
+                        label = { Text("Email(opcional)") },
+                        placeholder = { Text("ejemplo@email.com") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = uiState.phone,
+                        onValueChange = { viewModel.onPhoneChanged(it) },
+                        label = { Text("Teléfono") },
+                        placeholder = { Text("opcional") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
                     )
                 }
             }
 
+            // CÓDIGO DEL CLIENTE (OPCIONAL)
             item {
-                if (uiState.isClient) {
+                OutlinedTextField(
+                    value = uiState.code,
+                    onValueChange = { viewModel.onCodeChanged(it) },
+                    label = { Text("Código del cliente (opcional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+            }
+
+            // LICENCIA DE CONDUCIR (SOLO SI ES CONDUCTOR)
+            if (uiState.isDriver) {
+                item {
                     OutlinedTextField(
                         value = uiState.driverLicense,
                         onValueChange = { viewModel.onDriverLicenseChanged(it) },
-                        label = { Text("Licencia de Conducir") },
-                        modifier = Modifier.fillMaxWidth()
+                        label = { Text("Licencia de Conducir *") },
+                        modifier = Modifier.fillMaxWidth(),
+                        isError = uiState.driverLicenseError.isNotEmpty(), // Agregar validación de error
+                        singleLine = true
+                    )
+                    if (uiState.driverLicenseError.isNotEmpty()) {
+                        Text(
+                            text = uiState.driverLicenseError,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
+
+            // TIPO DE PERSONA - CHECKBOXES
+            item {
+                Text(
+                    text = "Tipo de Persona *",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                PersonTypeCheckboxes(
+                    isClient = uiState.isClient,
+                    isSupplier = uiState.isSupplier,
+                    isDriver = uiState.isDriver,
+                    onClientChanged = { viewModel.onIsClientChanged(it) },
+                    onSupplierChanged = { viewModel.onIsSupplierChanged(it) },
+                    onDriverChanged = { viewModel.onIsDriverChanged(it) }
+                )
+            }
+
+            // ACTIVO
+            item {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = uiState.isEnabled,
+                        onCheckedChange = { viewModel.onIsEnabledChanged(it) }
+                    )
+                    Text(
+                        text = "Activo",
+                        style = MaterialTheme.typography.bodyMedium
                     )
                 }
             }
 
+            // BOTONES
             item {
-                Button(
-                    onClick = { viewModel.createPerson(subsidiaryData?.id) },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = uiState.isFormValid && !uiState.isLoading
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    if (uiState.isLoading) {
-                        CircularProgressIndicator(
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(20.dp)
+                    Button(
+                        onClick = { viewModel.createPerson(subsidiaryData?.id) },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = uiState.isFormValid && !uiState.isLoading, // Se deshabilita cuando está cargando
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
                         )
-                    } else {
-                        Icon(Icons.Default.Check, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Crear Persona")
+                    ) {
+                        if (uiState.isLoading) {
+                            CircularProgressIndicator(
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Creando...") // Texto que indica que está procesando
+                        } else {
+                            Icon(Icons.Default.PersonAdd, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Crear Persona")
+                        }
+                    }
+
+                    OutlinedButton(
+                        onClick = { navController.popBackStack() },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !uiState.isLoading // También deshabilitar el botón cancelar durante la creación
+                    ) {
+                        Text("Cancelar")
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun DocumentTypeSelector(
+    selectedType: String,
+    onTypeSelected: (String) -> Unit,
+    isError: Boolean
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    val documentTypes = listOf(
+        "1" to "DNI",
+        "6" to "RUC",
+        "4" to "CARNET DE EXTRANJERIA",
+        "7" to "PASAPORTE",
+        "A" to "CED.DIPLOMÁTICA DE IDENTIDAD",
+        "B" to "DOCUMENTO IDENTIDAD PAÍS RESIDENCIA",
+        "C" to "TAX IDENTIFICACIÓN NUMBER - TIN",
+        "D" to "IDENTIFICATION NUMBER - IN",
+        "E" to "TAM - TARJETA ANDINA DE MIGRACIÓN",
+        "F" to "PERMISO TEMPORAL DE PERMANENCIA PTP",
+        "-" to "VARIOS - VENTAS MENORES A S/.700.00"
+    )
+
+    val selectedLabel = documentTypes.find { it.first == selectedType }?.second ?: "Seleccionar tipo"
+
+    OutlinedTextField(
+        value = selectedLabel,
+        onValueChange = {},
+        label = { Text("Tipo de documento") },
+        readOnly = true,
+        trailingIcon = {
+            IconButton(onClick = { expanded = true }) {
+                Icon(Icons.Default.ArrowDropDown, contentDescription = "Desplegar")
+            }
+        },
+        modifier = Modifier.fillMaxWidth(),
+        isError = isError
+    )
+
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = { expanded = false }
+    ) {
+        documentTypes.forEach { (value, label) ->
+            DropdownMenuItem(
+                text = { Text(label) },
+                onClick = {
+                    onTypeSelected(value)
+                    expanded = false
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun DocumentNumberInput(
+    documentNumber: String,
+    documentType: String,
+    onDocumentNumberChanged: (String) -> Unit,
+    onExtractClick: () -> Unit,
+    isLoading: Boolean,
+    isError: Boolean
+) {
+    val isExtractVisible = documentType in listOf("1", "6") // Solo DNI y RUC
+    val maxLength = when (documentType) {
+        "1" -> 8  // DNI: 8 dígitos
+        "6" -> 11 // RUC: 11 dígitos
+        else -> 20 // Otros documentos
+    }
+
+    val placeholder = when (documentType) {
+        "1" -> "8 dígitos"
+        "6" -> "11 dígitos"
+        else -> "Número de documento"
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        OutlinedTextField(
+            value = documentNumber,
+            onValueChange = {
+                if (it.length <= maxLength) {
+                    onDocumentNumberChanged(it)
+                }
+            },
+            label = { Text(placeholder) },
+            placeholder = { Text(placeholder) },
+            modifier = Modifier.weight(1f),
+            isError = isError,
+            singleLine = true
+        )
+
+        if (isExtractVisible) {
+            Button(
+                onClick = onExtractClick,
+                enabled = documentNumber.isNotBlank() && !isLoading,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.secondary
+                )
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.onSecondary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                } else {
+                    Text("EXTRAER")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun PersonTypeCheckboxes(
+    isClient: Boolean,
+    isSupplier: Boolean,
+    isDriver: Boolean,
+    onClientChanged: (Boolean) -> Unit,
+    onSupplierChanged: (Boolean) -> Unit,
+    onDriverChanged: (Boolean) -> Unit
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = isClient,
+                onCheckedChange = onClientChanged
+            )
+            Text("Cliente")
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = isSupplier,
+                onCheckedChange = onSupplierChanged
+            )
+            Text("Proveedor")
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = isDriver,
+                onCheckedChange = onDriverChanged
+            )
+            Text("Conductor")
         }
     }
 }
