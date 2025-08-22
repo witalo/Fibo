@@ -1,0 +1,170 @@
+query GetProductsBySubsidiary($subsidiaryId: Int!) {
+    productsBySubsidiary(subsidiaryId: $subsidiaryId) {
+        id
+        code
+        barcode
+        codeSnt
+        name
+        stockMin
+        stockMax
+        path
+        available
+        activeType
+        ean
+        weightInKilograms
+        maximumFactor
+        minimumFactor
+        minimumUnit {
+            id
+            shortName
+            description
+            code
+        }
+        maximumUnit {
+            id
+            shortName
+            description
+            code
+        }
+        typeAffectation {
+            id
+            code
+            name
+            affectCode
+            affectName
+            affectType
+        }
+        subjectPerception
+        observation
+        productTariffs {
+            id
+            unit {
+                id
+                shortName
+                description
+                code
+            }
+            typeTrade {
+                id
+                name
+                creditSuspension
+                cashAndCreditBlock
+            }
+            typePrice
+            priceWithIgv
+            priceWithoutIgv
+            quantityMinimum
+        }
+        productStores {
+            id
+            warehouse {
+                id
+                name
+                category
+            }
+            stock
+        }
+        subsidiary {
+            id
+            serial
+            name
+            address
+            geographicLocationByDistrict
+            token
+        }
+    }
+}
+query GetProductMovilById($productId: Int!) {
+    productMovilById(productId: $productId) {
+        id
+        code
+        barcode
+        codeSnt
+        name
+        stockMin
+        stockMax
+        path
+        available
+        activeType
+        ean
+        weightInKilograms
+        maximumFactor
+        minimumFactor
+        minimumUnit {
+            id
+            shortName
+            description
+            code
+        }
+        maximumUnit {
+            id
+            shortName
+            description
+            code
+        }
+        typeAffectation {
+            id
+            code
+            name
+            affectCode
+            affectName
+            affectType
+        }
+        subjectPerception
+        observation
+        productTariffs {
+            id
+            unit {
+                id
+                shortName
+                description
+                code
+            }
+            typeTrade {
+                id
+                name
+                creditSuspension
+                cashAndCreditBlock
+            }
+            typePrice
+            priceWithIgv
+            priceWithoutIgv
+            quantityMinimum
+        }
+        productStores {
+            id
+            warehouse {
+                id
+                name
+                category
+            }
+            stock
+        }
+        subsidiary {
+            id
+            serial
+            name
+            address
+            geographicLocationByDistrict
+            token
+        }
+    }
+}
+query GetUnits {
+    allUnits {
+        id
+        shortName
+        description
+        code
+    }
+}
+query GetTypeAffectations {
+    allTypeAffectations {
+        id
+        code
+        name
+        affectCode
+        affectName
+        affectType
+    }
+}

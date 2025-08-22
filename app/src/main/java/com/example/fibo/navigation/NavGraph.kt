@@ -31,8 +31,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import android.widget.Toast
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import com.example.fibo.ui.screens.person.NewPersonScreen
 import com.example.fibo.ui.screens.person.PersonScreen
+import com.example.fibo.ui.screens.product.NewProductScreen
 
 @Composable
 @RequiresApi(Build.VERSION_CODES.O)
@@ -144,23 +147,23 @@ fun NavGraph(
             )
         }
         // Productos
-        composable(Screen.Product.route) {
-            ProductScreen(
-                navController = navController,
-                onBack = { navController.popBackStack() },
-                onAddProduct = {
-                    // TODO: Navegar a pantalla de agregar producto
-                    // navController.navigate(Screen.AddProduct.route)
-                },
-                subsidiaryData = subsidiaryData,
-                onLogout = {
-                    authViewModel.logout()
-                    navController.navigate(Screen.QrScanner.route) {
-                        popUpTo(navController.graph.id) { inclusive = true }
-                    }
-                }
-            )
-        }
+//        composable(Screen.Product.route) {
+//            ProductScreen(
+//                navController = navController,
+//                onBack = { navController.popBackStack() },
+//                onAddProduct = {
+//                    // TODO: Navegar a pantalla de agregar producto
+//                    // navController.navigate(Screen.AddProduct.route)
+//                },
+//                subsidiaryData = subsidiaryData,
+//                onLogout = {
+//                    authViewModel.logout()
+//                    navController.navigate(Screen.QrScanner.route) {
+//                        popUpTo(navController.graph.id) { inclusive = true }
+//                    }
+//                }
+//            )
+//        }
 
         // Pantallas de facturas y recibos
         composable(Screen.NewInvoice.route) {
@@ -264,6 +267,47 @@ fun NavGraph(
         }
         composable(Screen.Guides.route) {
             GuideListScreen(navController = navController)
+        }
+        // Ruta para la lista de productos
+        composable(
+            route = "product"
+        ) {
+            ProductScreen(
+                navController = navController,
+                subsidiaryData = subsidiaryData,
+                onLogout = {
+                    authViewModel.logout()
+                    navController.navigate(Screen.QrScanner.route) {
+                        popUpTo(navController.graph.id) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        // Ruta para crear nuevo producto
+        composable(
+            route = "newProduct"
+        ) {
+            NewProductScreen(
+                navController = navController,
+                subsidiaryData = subsidiaryData,
+                productId = null // null = crear nuevo producto
+            )
+        }
+
+        // Ruta para editar producto existente
+        composable(
+            route = "editProduct/{productId}",
+            arguments = listOf(
+                navArgument("productId") { type = NavType.IntType }
+            )
+        ) { backStackEntry ->
+            val productId = backStackEntry.arguments?.getInt("productId") ?: 0
+            NewProductScreen(
+                navController = navController,
+                subsidiaryData = subsidiaryData,
+                productId = productId // ID del producto a editar
+            )
         }
 
         // Pantallas de compras

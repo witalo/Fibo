@@ -3,6 +3,7 @@ package com.example.fibo.utils
 import android.bluetooth.BluetoothDevice
 import com.example.fibo.model.IOperation
 import com.example.fibo.model.IPerson
+import com.example.fibo.model.IProduct
 import com.example.fibo.model.IProductOperation
 import java.io.File
 
@@ -87,4 +88,36 @@ sealed class PdfState {
     object Loading : PdfState()
     data class Success(val file: File) : PdfState()
     data class Error(val message: String) : PdfState()
+}
+// ... existing code ...
+
+data class ProductUiState(
+    val products: List<IProduct> = emptyList(),
+    val filteredProducts: List<IProduct> = emptyList(),
+    val searchQuery: String = "",
+    val isLoading: Boolean = false,
+    val isSearching: Boolean = false,
+    val isRefreshing: Boolean = false,
+    val error: String? = null,
+    val selectedProduct: IProduct? = null,
+    val showDeleteDialog: Boolean = false,
+    val productToDelete: IProduct? = null,
+    val isDeleting: Boolean = false,
+    val successMessage: String? = null,
+    val currentPage: Int = 1,
+    val hasMoreProducts: Boolean = true,
+    val sortOrder: ProductSortOrder = ProductSortOrder.NAME_ASC,
+    val filterCategory: String? = null,
+    val filterAvailable: Boolean? = null
+)
+
+enum class ProductSortOrder {
+    NAME_ASC,
+    NAME_DESC,
+    CODE_ASC,
+    CODE_DESC,
+    STOCK_ASC,
+    STOCK_DESC,
+    DATE_CREATED_ASC,
+    DATE_CREATED_DESC
 }

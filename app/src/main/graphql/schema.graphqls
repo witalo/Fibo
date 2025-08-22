@@ -121,6 +121,16 @@ type Query {
 
   tariffByProductId(productId: Int): TariffType
 
+  productsBySubsidiary(subsidiaryId: Int!): [ProductType]
+
+  productMovilById(productId: Int!): ProductType
+
+  units: [UnitType]
+
+  typeAffectations: [TypeAffectationType]
+
+  warehouses: [WarehouseType]
+
   myProfile: UserType
 
   userById(pk: ID): UserType
@@ -1527,6 +1537,8 @@ type PersonType {
 
   economicActivityMain: OperationsPersonEconomicActivityMainChoices!
 
+  typeTrade: TypeTradeType
+
   documentType: String
 
   documentNumber: String
@@ -1613,6 +1625,347 @@ enum OperationsPersonEconomicActivityMainChoices {
   TRANSPORTE DE CARGA POR CARRETERA
   """
   A_4923
+}
+
+type TypeTradeType {
+  id: ID!
+
+  name: String
+
+  creditSuspension: Int!
+
+  cashAndCreditBlock: Int!
+
+  producttariffSet: [ProductTariffType!]!
+
+  personSet: [PersonType!]!
+}
+
+type ProductTariffType {
+  id: ID!
+
+  product: ProductType
+
+  unit: UnitType
+
+  typeTrade: TypeTradeType
+
+  typePrice: LogisticsProductTariffTypePriceChoices!
+
+  priceWithIgv: Decimal!
+
+  priceWithoutIgv: Decimal!
+
+  quantityMinimum: Decimal!
+
+  operationdetailSet: [OperationDetailType!]!
+
+  productId: Int
+
+  productCode: String
+
+  productName: String
+
+  unitId: Int
+
+  unitName: String
+
+  unitDescription: String
+
+  quantity: Float
+}
+
+type ProductType {
+  id: Int
+
+  code: String
+
+  barcode: String
+
+  codeSnt: String
+
+  name: String
+
+  stockMin: Int
+
+  stockMax: Int
+
+  path: String
+
+  available: Boolean!
+
+  activeType: LogisticsProductActiveTypeChoices!
+
+  ean: String
+
+  weightInKilograms: Float
+
+  maximumFactor: Int
+
+  minimumFactor: Int
+
+  minimumUnit: UnitType
+
+  maximumUnit: UnitType
+
+  typeAffectation: TypeAffectationType
+
+  subjectPerception: Boolean!
+
+  observation: String
+
+  subsidiary: SubsidiaryType
+
+  producttariffSet: [ProductTariffType!]!
+
+  productstoreSet: [ProductStoreType!]!
+
+  totalProductTariff: Int
+
+  typeAffectationId: Int
+
+  typeAffectationName: String
+
+  minimumUnitId: Int
+
+  minimumUnitName: String
+
+  maximumUnitId: Int
+
+  maximumUnitName: String
+
+  activeTypeReadable: String
+
+  priceWithIgv1: Float
+
+  priceWithoutIgv1: Float
+
+  priceWithIgv2: Float
+
+  priceWithoutIgv2: Float
+
+  priceWithIgv3: Float
+
+  priceWithoutIgv3: Float
+
+  priceWithIgv4: Float
+
+  priceWithoutIgv4: Float
+
+  stock: Float
+
+  productTariffs: [ProductTariffType]
+
+  productStores: [ProductStoreType]
+}
+
+"""
+An enumeration.
+"""
+enum LogisticsProductActiveTypeChoices {
+  """
+  PRODUCTO
+  """
+  A_01
+
+  """
+  REGALO
+  """
+  A_02
+
+  """
+  SERVICIO
+  """
+  A_03
+
+  """
+  NO APLICA
+  """
+  NA
+}
+
+"""
+The `Float` scalar type represents signed double-precision fractional values as specified by [IEEE 754](https://en.wikipedia.org/wiki/IEEE_floating_point).
+"""
+scalar Float
+
+type UnitType {
+  id: ID!
+
+  shortName: String
+
+  description: String
+
+  code: String
+
+  minimumUnits: [ProductType!]!
+
+  maximumUnits: [ProductType!]!
+
+  producttariffSet: [ProductTariffType!]!
+
+  operationSet: [OperationType!]!
+}
+
+type TypeAffectationType {
+  id: Int
+
+  code: String
+
+  name: String
+
+  affectCode: String
+
+  affectName: String
+
+  affectType: String
+
+  productSet: [ProductType!]!
+
+  operationdetailSet: [OperationDetailType!]!
+}
+
+type OperationDetailType {
+  id: Int
+
+  operation: OperationType
+
+  productTariff: ProductTariffType
+
+  typeAffectation: TypeAffectationType
+
+  quantity: Decimal!
+
+  unitValue: Decimal!
+
+  unitPrice: Decimal!
+
+  discountPercentage: Decimal!
+
+  igvPercentage: Decimal!
+
+  perceptionPercentage: Decimal!
+
+  totalDiscount: Decimal!
+
+  totalValue: Decimal!
+
+  totalIgv: Decimal!
+
+  totalAmount: Decimal!
+
+  totalPerception: Decimal!
+
+  totalToPay: Decimal!
+
+  remainingQuantity: Float
+
+  remainingPrice: Decimal!
+
+  remainingPriceTotal: Decimal!
+
+  description: String
+
+  isAnticipation: Boolean!
+
+  relatedDocumentSerial: String
+
+  relatedDocumentCorrelative: Int
+
+  productId: Int
+
+  productName: String
+
+  productTariffId: Int
+
+  typeAffectationId: Int
+
+  quantityReturned: Float
+
+  quantityAvailable: Float
+}
+
+type ProductStoreType {
+  id: ID!
+
+  warehouse: WarehouseType
+
+  stock: Decimal!
+}
+
+type WarehouseType {
+  id: ID!
+
+  name: String
+
+  subsidiary: SubsidiaryType
+
+  category: LogisticsWarehouseCategoryChoices!
+
+  productstoreSet: [ProductStoreType!]!
+
+  operationSet: [OperationType!]!
+
+  subsidiaryId: Int
+
+  subsidiaryName: String
+
+  categoryReadable: String
+}
+
+"""
+An enumeration.
+"""
+enum LogisticsWarehouseCategoryChoices {
+  """
+  VENTA
+  """
+  A_01
+
+  """
+  VEHICULO
+  """
+  A_02
+
+  """
+  RESERVA
+  """
+  A_03
+
+  """
+  NO APLICA
+  """
+  NA
+}
+
+"""
+An enumeration.
+"""
+enum LogisticsProductTariffTypePriceChoices {
+  """
+  NO APLICA
+  """
+  A_0
+
+  """
+  COSTO DE COMPRA UNITARIO
+  """
+  A_1
+
+  """
+  COSTO DE COMPRA AL POR MAYOR
+  """
+  A_2
+
+  """
+  PRECIO UNITARIO DE VENTA
+  """
+  A_3
+
+  """
+  PRECIO AL POR MAYOR DE VENTA
+  """
+  A_4
 }
 
 """
@@ -3281,54 +3634,6 @@ enum AccountingPaymentLogEventTypeChoices {
 }
 
 """
-The `Float` scalar type represents signed double-precision fractional values as specified by [IEEE 754](https://en.wikipedia.org/wiki/IEEE_floating_point).
-"""
-scalar Float
-
-type WarehouseType {
-  id: ID!
-
-  name: String
-
-  subsidiary: SubsidiaryType
-
-  category: LogisticsWarehouseCategoryChoices!
-
-  operationSet: [OperationType!]!
-
-  subsidiaryId: Int
-
-  subsidiaryName: String
-
-  categoryReadable: String
-}
-
-"""
-An enumeration.
-"""
-enum LogisticsWarehouseCategoryChoices {
-  """
-  VENTA
-  """
-  A_01
-
-  """
-  VEHICULO
-  """
-  A_02
-
-  """
-  RESERVA
-  """
-  A_03
-
-  """
-  NO APLICA
-  """
-  NA
-}
-
-"""
 An enumeration.
 """
 enum OperationsOperationIgvTypeChoices {
@@ -3622,267 +3927,6 @@ enum OperationsDocumentEmittedRetentionTypeChoices {
   NO APLICA
   """
   A_0
-}
-
-type UnitType {
-  id: ID!
-
-  shortName: String
-
-  description: String
-
-  code: String
-
-  minimumUnits: [ProductType!]!
-
-  maximumUnits: [ProductType!]!
-
-  producttariffSet: [ProductTariffType!]!
-
-  operationSet: [OperationType!]!
-}
-
-type ProductType {
-  id: Int
-
-  code: String
-
-  barcode: String
-
-  codeSnt: String
-
-  name: String
-
-  stockMin: Int
-
-  stockMax: Int
-
-  path: String
-
-  available: Boolean!
-
-  activeType: LogisticsProductActiveTypeChoices!
-
-  ean: String
-
-  weightInKilograms: Float
-
-  maximumFactor: Int
-
-  minimumFactor: Int
-
-  minimumUnit: UnitType
-
-  maximumUnit: UnitType
-
-  typeAffectation: TypeAffectationType
-
-  subjectPerception: Boolean!
-
-  observation: String
-
-  subsidiary: SubsidiaryType
-
-  producttariffSet: [ProductTariffType!]!
-
-  totalProductTariff: Int
-
-  typeAffectationId: Int
-
-  typeAffectationName: String
-
-  minimumUnitId: Int
-
-  minimumUnitName: String
-
-  maximumUnitId: Int
-
-  maximumUnitName: String
-
-  activeTypeReadable: String
-
-  priceWithIgv1: Float
-
-  priceWithoutIgv1: Float
-
-  priceWithIgv2: Float
-
-  priceWithoutIgv2: Float
-
-  priceWithIgv3: Float
-
-  priceWithoutIgv3: Float
-
-  priceWithIgv4: Float
-
-  priceWithoutIgv4: Float
-
-  stock: Float
-}
-
-"""
-An enumeration.
-"""
-enum LogisticsProductActiveTypeChoices {
-  """
-  PRODUCTO
-  """
-  A_01
-
-  """
-  REGALO
-  """
-  A_02
-
-  """
-  SERVICIO
-  """
-  A_03
-
-  """
-  NO APLICA
-  """
-  NA
-}
-
-type TypeAffectationType {
-  id: Int
-
-  code: String
-
-  name: String
-
-  affectCode: String
-
-  affectName: String
-
-  affectType: String
-
-  productSet: [ProductType!]!
-
-  operationdetailSet: [OperationDetailType!]!
-}
-
-type OperationDetailType {
-  id: Int
-
-  operation: OperationType
-
-  productTariff: ProductTariffType
-
-  typeAffectation: TypeAffectationType
-
-  quantity: Decimal!
-
-  unitValue: Decimal!
-
-  unitPrice: Decimal!
-
-  discountPercentage: Decimal!
-
-  igvPercentage: Decimal!
-
-  perceptionPercentage: Decimal!
-
-  totalDiscount: Decimal!
-
-  totalValue: Decimal!
-
-  totalIgv: Decimal!
-
-  totalAmount: Decimal!
-
-  totalPerception: Decimal!
-
-  totalToPay: Decimal!
-
-  remainingQuantity: Float
-
-  remainingPrice: Decimal!
-
-  remainingPriceTotal: Decimal!
-
-  description: String
-
-  isAnticipation: Boolean!
-
-  relatedDocumentSerial: String
-
-  relatedDocumentCorrelative: Int
-
-  productId: Int
-
-  productName: String
-
-  productTariffId: Int
-
-  typeAffectationId: Int
-
-  quantityReturned: Float
-
-  quantityAvailable: Float
-}
-
-type ProductTariffType {
-  id: ID!
-
-  product: ProductType
-
-  unit: UnitType
-
-  typePrice: LogisticsProductTariffTypePriceChoices!
-
-  priceWithIgv: Decimal!
-
-  priceWithoutIgv: Decimal!
-
-  quantityMinimum: Decimal!
-
-  operationdetailSet: [OperationDetailType!]!
-
-  productId: Int
-
-  productCode: String
-
-  productName: String
-
-  unitId: Int
-
-  unitName: String
-
-  unitDescription: String
-
-  quantity: Float
-}
-
-"""
-An enumeration.
-"""
-enum LogisticsProductTariffTypePriceChoices {
-  """
-  NO APLICA
-  """
-  A_0
-
-  """
-  COSTO DE COMPRA UNITARIO
-  """
-  A_1
-
-  """
-  COSTO DE COMPRA AL POR MAYOR
-  """
-  A_2
-
-  """
-  PRECIO UNITARIO DE VENTA
-  """
-  A_3
-
-  """
-  PRECIO AL POR MAYOR DE VENTA
-  """
-  A_4
 }
 
 """
@@ -4412,6 +4456,10 @@ type Mutation {
   createPurchase(commentSet: [String!], correlative: Int, currencyType: String, descriptionSet: [String!], detractionPaymentMethod: Int = 0, detractionPercentage: Float = 0, detractionType: Int = 0, discountForItem: Float, discountGlobal: Float, discountPercentageGlobal: Float, discountPercentageSet: [Float!], documentType: String, dueDate: String, emitDate: String, hasDetraction: Boolean = false, hasPerception: Boolean = false, hasRetention: Boolean = false, igvPercentageSet: [Float!], igvType: Int, observation: String, operationType: String, perceptionPercentage: Float = 0, perceptionPercentageSet: [Float!], perceptionType: Int = 0, productTariffIdSet: [Int!], quantitySet: [Float!], retentionPercentage: Float = 0, retentionType: Int = 0, saleExchangeRate: Float, serial: String, supplierId: Int, totalAmount: Float, totalAmountSet: [Float!], totalDetraction: Float = 0, totalDiscount: Float, totalDiscountSet: [Float!], totalExonerated: Float, totalFree: Float, totalIgv: Float, totalIgvSet: [Float!], totalPayed: Float, totalPerception: Float, totalPerceptionSet: [Float!], totalRetention: Float = 0, totalSet: [Float!], totalTaxed: Float, totalToPay: Float, totalToPaySet: [Float!], totalTurned: Float, totalUnaffected: Float, totalValueSet: [Float!], transactionDateSet: [Date!], typeAffectationIdSet: [Int!], unitPriceSet: [Float!], unitValueSet: [Float!], wayPaySet: [Int!]): CreatePurchaseMutation
 
   updatePrice(id: ID!, priceWithIgv: Float, priceWithoutIgv: Float): UpdatePriceMutation
+
+  createProductMovil(input: CreateProductInput!): CreateProductMovilMutation
+
+  updateProductMovil(input: UpdateProductInput!): UpdateProductMovilMutation
 
   tokenAuth(email: String!, password: String!): ObtainJSONWebToken
 
@@ -5025,6 +5073,84 @@ type UpdatePriceMutation {
   message: String
 
   error: Boolean
+}
+
+type CreateProductMovilMutation {
+  success: Boolean
+
+  message: String
+
+  product: ProductType
+}
+
+input CreateProductInput {
+  name: String!
+
+  code: String
+
+  barcode: String
+
+  observation: String
+
+  stockMin: Int
+
+  stockMax: Int
+
+  minimumUnitId: Int
+
+  maximumUnitId: Int
+
+  typeAffectationId: Int
+
+  subjectPerception: Boolean
+
+  subsidiaryId: Int!
+
+  productTariffs: [ProductTariffInput]
+}
+
+input ProductTariffInput {
+  unitId: Int
+
+  typePrice: Int!
+
+  priceWithIgv: Decimal!
+
+  priceWithoutIgv: Decimal!
+
+  quantityMinimum: Decimal!
+}
+
+type UpdateProductMovilMutation {
+  success: Boolean
+
+  message: String
+}
+
+input UpdateProductInput {
+  productId: Int!
+
+  name: String!
+
+  code: String
+
+  barcode: String
+
+  observation: String
+
+  stockMin: Int
+
+  stockMax: Int
+
+  minimumUnitId: Int
+
+  maximumUnitId: Int
+
+  typeAffectationId: Int
+
+  subjectPerception: Boolean
+
+  productTariffs: [ProductTariffInput]
 }
 
 type ObtainJSONWebToken {

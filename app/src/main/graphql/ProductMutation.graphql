@@ -1,0 +1,19 @@
+# CreateProduct.graphql
+mutation CreateProductMovil($input: CreateProductInput!) {
+    createProductMovil(input: $input) {
+        success
+        message
+        product {
+            id
+            code
+            name
+        }
+    }
+}
+# UpdateProduct.graphql
+mutation UpdateProductMovil($input: UpdateProductInput!) {
+    updateProductMovil(input: $input) {
+        success
+        message
+    }
+}

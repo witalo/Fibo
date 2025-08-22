@@ -158,6 +158,19 @@ class PreferencesManager(context: Context) {
     suspend fun getRawPreferences(): Preferences {
         return dataStore.data.first()
     }
+    // ✅ Agregar función para obtener el porcentaje de IGV
+    suspend fun getIgvPercentageOrDefault(): Double {
+        return dataStore.data.first().let { preferences ->
+            preferences[COMPANY_IGV] ?: 18.0
+        }
+    }
+
+    // ✅ Función alternativa que devuelve un valor por defecto
+    suspend fun getIgvPercentage(): Double? {
+        return dataStore.data.first().let { preferences ->
+            preferences[COMPANY_IGV]
+        }
+    }
 
     // Función para obtener todos los datos como IUserData
     val currentUserData: StateFlow<IUserData?> = dataStore.data
