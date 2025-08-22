@@ -8,7 +8,7 @@ import com.example.fibo.model.ICompany
 import com.example.fibo.model.IOperation
 import com.example.fibo.model.IPayment
 import com.example.fibo.model.IPerson
-import com.example.fibo.model.IProduct
+import com.example.fibo.model.IProductOperation
 import com.example.fibo.model.ISerialAssigned
 import com.example.fibo.model.ISubsidiary
 import com.example.fibo.model.ITariff
@@ -54,8 +54,8 @@ class NewInvoiceViewModel @Inject constructor(
     private val _selectedProduct = MutableStateFlow<ITariff?>(null)
     val selectedProduct: StateFlow<ITariff?> = _selectedProduct.asStateFlow()
 
-    private val _searchResults = MutableStateFlow<List<IProduct>>(emptyList())
-    val searchResults: StateFlow<List<IProduct>> = _searchResults.asStateFlow()
+    private val _searchResults = MutableStateFlow<List<IProductOperation>>(emptyList())
+    val searchResults: StateFlow<List<IProductOperation>> = _searchResults.asStateFlow()
     // Estado para las series
     private val _serials = MutableStateFlow<List<ISerialAssigned>>(emptyList())
     val serials: StateFlow<List<ISerialAssigned>> = _serials.asStateFlow()

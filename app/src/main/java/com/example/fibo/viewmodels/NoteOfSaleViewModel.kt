@@ -6,35 +6,22 @@ import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fibo.datastore.PreferencesManager
-import com.example.fibo.model.ICompany
 import com.example.fibo.model.IOperation
-import com.example.fibo.model.IPayment
 import com.example.fibo.model.IPerson
-import com.example.fibo.model.IProduct
-import com.example.fibo.model.ISerialAssigned
 import com.example.fibo.model.ISubsidiary
-import com.example.fibo.model.ITariff
-import com.example.fibo.model.IUser
-import com.example.fibo.model.PaymentSummary
 import com.example.fibo.repository.OperationRepository
-import com.example.fibo.utils.NoteOfSaleState
-import com.example.fibo.utils.ProductSearchState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
-import kotlin.random.Random
 
 @HiltViewModel
 class NoteOfSaleViewModel @Inject constructor(

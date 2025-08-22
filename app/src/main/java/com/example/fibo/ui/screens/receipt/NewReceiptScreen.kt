@@ -71,10 +71,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.fibo.model.IOperation
 import com.example.fibo.model.IOperationDetail
 import com.example.fibo.model.IPerson
-import com.example.fibo.model.IProduct
+import com.example.fibo.model.IProductOperation
 import com.example.fibo.model.ITariff
 import com.example.fibo.ui.components.BarcodeScannerDialog
-import com.example.fibo.ui.components.DateSelector
 import com.example.fibo.ui.components.DateSelectorLimit
 import com.example.fibo.ui.components.PaymentDialog
 import com.example.fibo.ui.components.QRCodeIcon
@@ -2129,7 +2128,7 @@ fun AddReceiptProductDialog(
 
 @Composable
 private fun ReceiptProductListItem(
-    product: IProduct,
+    product: IProductOperation,
     onClick: () -> Unit,
     withStock: Boolean
 ) {

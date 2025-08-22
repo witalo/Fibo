@@ -1,6 +1,6 @@
 package com.example.fibo.model
 
-data class IProduct(
+data class IProductOperation(
     val id: Int = 0,
     val code: String = "",
     val name: String = "",

@@ -1,7 +1,6 @@
 package com.example.fibo.ui.screens.invoice
 
 import android.content.Context
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -27,7 +26,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -69,20 +67,14 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.fibo.model.IOperation
 import com.example.fibo.model.IOperationDetail
 import com.example.fibo.model.IPerson
-import com.example.fibo.model.IProduct
-import com.example.fibo.model.IProductTariff
-import com.example.fibo.model.ISerialAssigned
+import com.example.fibo.model.IProductOperation
 import com.example.fibo.model.ITariff
-import com.example.fibo.navigation.Screen
-import com.example.fibo.ui.components.BarcodeIcon
 import com.example.fibo.ui.components.BarcodeScannerDialog
-import com.example.fibo.ui.components.DateSelector
 import com.example.fibo.ui.components.DateSelectorLimit
 import com.example.fibo.ui.components.PaymentDialog
 import com.example.fibo.ui.components.QRCodeIcon
@@ -94,7 +86,6 @@ import com.example.fibo.utils.getCurrentFormattedDate
 import com.example.fibo.utils.getCurrentFormattedTime
 import com.example.fibo.viewmodels.HomeViewModel
 import kotlinx.coroutines.delay
-import java.util.Calendar
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.random.Random
@@ -2422,7 +2413,7 @@ fun AddProductDialog(
 
 @Composable
 private fun ProductListItem(
-    product: IProduct,
+    product: IProductOperation,
     onClick: () -> Unit,
     withStock: Boolean
 ) {

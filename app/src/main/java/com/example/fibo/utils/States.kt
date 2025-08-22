@@ -1,23 +1,17 @@
 package com.example.fibo.utils
 
 import android.bluetooth.BluetoothDevice
-import android.content.Context
 import com.example.fibo.model.IOperation
 import com.example.fibo.model.IPerson
-import com.example.fibo.model.IProduct
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
+import com.example.fibo.model.IProductOperation
 import java.io.File
-import java.io.IOException
 
 sealed class ProductSearchState {
     object Idle : ProductSearchState()
     data class Loading(val query: String) : ProductSearchState()
     data class Empty(val query: String) : ProductSearchState()
     data class Error(val message: String, val query: String) : ProductSearchState()
-    data class Success(val products: List<IProduct>, val query: String) : ProductSearchState()
+    data class Success(val products: List<IProductOperation>, val query: String) : ProductSearchState()
 
     val currentQuery: String? get() = when (this) {
         is Idle -> null

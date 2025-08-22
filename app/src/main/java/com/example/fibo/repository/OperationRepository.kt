@@ -15,7 +15,7 @@ import com.example.fibo.SntPersonMutation
 import com.example.fibo.GetOperationByIdQuery
 import com.example.fibo.model.IOperationDetail
 import com.example.fibo.model.IPerson
-import com.example.fibo.model.IProduct
+import com.example.fibo.model.IProductOperation
 import com.example.fibo.model.ISerialAssigned
 import com.example.fibo.model.ITariff
 import com.example.fibo.type.OperationDetailInput
@@ -40,7 +40,6 @@ import com.example.fibo.SearchGeographicLocationQuery
 import com.example.fibo.DocumentTypesQuery
 import com.example.fibo.datastore.PreferencesManager
 import com.example.fibo.model.IGeographicLocation
-import com.example.fibo.model.IDocumentType
 import com.example.fibo.AllGuidesQuery
 import com.example.fibo.CustomRefreshTokenMutation
 import com.example.fibo.model.IGuide
@@ -59,7 +58,6 @@ import com.example.fibo.model.ISupplier
 import com.example.fibo.GetPurchasesQuery
 import com.example.fibo.GetSuppliersQuery
 import com.example.fibo.SearchSupplierByParameterQuery
-import com.example.fibo.CreatePurchaseMutation
 import com.example.fibo.CancelPurchaseMutation
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -237,7 +235,7 @@ class OperationRepository @Inject constructor(
         }
     }
 
-    suspend fun searchProducts(query: String, subsidiaryId: Int): List<IProduct> {
+    suspend fun searchProducts(query: String, subsidiaryId: Int): List<IProductOperation> {
         return try {
             val response = apolloClient.query(
                 SearchProductsQuery(query = query, subsidiaryId = subsidiaryId)
@@ -250,7 +248,7 @@ class OperationRepository @Inject constructor(
             }
 
             response.data?.searchProduct?.filterNotNull()?.map { product ->
-                IProduct(
+                IProductOperation(
                     id = product.id!!,
                     code = product.code.orEmpty(),
                     name = product.name.orEmpty(),
@@ -295,7 +293,7 @@ class OperationRepository @Inject constructor(
             )
         } catch (e: Exception) {
             println("Error en GetTariffByProductIdQuery: ${e.message}")
-            throw e // o puedes retornar un IProduct default si lo prefieres
+            throw e // o puedes retornar un IProductOperation default si lo prefieres
         }
     }
 
@@ -693,7 +691,7 @@ class OperationRepository @Inject constructor(
     suspend fun getAllProductsBySubsidiaryId(
         subsidiaryId: Int,
         available: Boolean
-    ): List<IProduct> {
+    ): List<IProductOperation> {
         return try {
             Log.d("OperationRepository", "Ejecutando getAllProductsBySubsidiaryId - subsidiaryId: $subsidiaryId, available: $available")
             
@@ -731,7 +729,7 @@ class OperationRepository @Inject constructor(
 
             val mappedProducts = rawProducts?.filterNotNull()?.map { product ->
                 Log.d("OperationRepository", "Mapeando producto - ID: ${product.id}, code: ${product.code}, name: ${product.name}")
-                IProduct(
+                IProductOperation(
                     id = product.id!!,
                     code = product.code.orEmpty(),
                     name = product.name.orEmpty(),

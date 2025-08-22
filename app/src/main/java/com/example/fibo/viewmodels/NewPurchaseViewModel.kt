@@ -1,13 +1,7 @@
 package com.example.fibo.ui.screens.purchase.viewmodel
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import com.example.fibo.model.IOperation
-import com.example.fibo.model.IOperationDetail
-import com.example.fibo.model.IProduct
+import com.example.fibo.model.IProductOperation
 import com.example.fibo.model.ISupplier
 import com.example.fibo.model.PaymentMethod
 import com.example.fibo.repository.OperationRepository
@@ -15,9 +9,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.*
 import javax.inject.Inject
 import kotlin.Result
 
@@ -34,7 +25,7 @@ data class NewPurchaseUiState(
     val supplier: ISupplier? = null,
     val documentType: String = "",
     val emitDate: String = "",
-    val products: List<IProduct> = emptyList(),
+    val products: List<IProductOperation> = emptyList(),
     val paymentMethod: PaymentMethod? = null,
     val isLoading: Boolean = false,
     val isFormValid: Boolean = false,

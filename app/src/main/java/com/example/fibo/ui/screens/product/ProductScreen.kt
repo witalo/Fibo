@@ -29,7 +29,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.fibo.model.IProduct
+import com.example.fibo.model.IProductOperation
 import com.example.fibo.utils.ColorGradients
 import com.example.fibo.utils.applyTextGradient
 import com.example.fibo.viewmodels.ProductUiState
@@ -431,7 +431,7 @@ private fun CompactEmptyContent() {
 // Lista de productos compacta con scroll horizontal
 @Composable
 private fun CompactProductList(
-    products: List<IProduct>,
+    products: List<IProductOperation>,
     hasMorePages: Boolean,
     hasPreviousPages: Boolean,
     currentPage: Int,
@@ -493,7 +493,7 @@ private fun CompactProductList(
     }
 }
 @Composable
-private fun CompactProductItem(product: IProduct, scrollState: ScrollState) {
+private fun CompactProductItem(product: IProductOperation, scrollState: ScrollState) {
     var showDetailsDialog by remember { mutableStateOf(false) }
 
     Surface(
@@ -581,7 +581,7 @@ private fun CompactProductItem(product: IProduct, scrollState: ScrollState) {
 
 @Composable
 private fun ProductDetailsDialog(
-    product: IProduct,
+    product: IProductOperation,
     onDismiss: () -> Unit
 ) {
     Dialog(onDismissRequest = onDismiss) {
@@ -1264,7 +1264,7 @@ private fun ModernEmptyContent(isDarkTheme: Boolean) {
 
 @Composable
 private fun ModernProductList(
-    products: List<IProduct>,
+    products: List<IProductOperation>,
     hasMorePages: Boolean,
     hasPreviousPages: Boolean,
     currentPage: Int,
@@ -1328,7 +1328,7 @@ private fun ModernProductList(
 }
 
 @Composable
-private fun ModernProductItem(product: IProduct, scrollState: ScrollState, isDarkTheme: Boolean) {
+private fun ModernProductItem(product: IProductOperation, scrollState: ScrollState, isDarkTheme: Boolean) {
     var showDetailsDialog by remember { mutableStateOf(false) }
 
     Surface(
@@ -1405,7 +1405,7 @@ private fun ModernProductItem(product: IProduct, scrollState: ScrollState, isDar
 
 @Composable
 private fun ModernProductDetailsDialog(
-    product: IProduct,
+    product: IProductOperation,
     onDismiss: () -> Unit,
     isDarkTheme: Boolean
 ) {

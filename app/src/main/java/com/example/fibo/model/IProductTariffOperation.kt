@@ -1,6 +1,6 @@
 package com.example.fibo.model
 
-data class IProductTariff(
+data class IProductTariffOperation(
     val id: Int,
 //    val unitId: Int,
 //    val unitName: String,

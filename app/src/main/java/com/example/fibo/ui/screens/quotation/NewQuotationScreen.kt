@@ -1,6 +1,5 @@
 package com.example.fibo.ui.screens.quotation
 
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -48,32 +47,26 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.input.TransformedText
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.fibo.model.IOperation
 import com.example.fibo.model.IOperationDetail
 import com.example.fibo.model.IPerson
-import com.example.fibo.model.IProduct
+import com.example.fibo.model.IProductOperation
 import com.example.fibo.model.ITariff
 import com.example.fibo.ui.components.DateSelector
 import com.example.fibo.utils.ColorGradients
@@ -82,7 +75,6 @@ import com.example.fibo.utils.getAffectationColor
 import com.example.fibo.utils.getAffectationTypeShort
 import com.example.fibo.utils.getCurrentFormattedDate
 import com.example.fibo.utils.getCurrentFormattedTime
-import com.example.fibo.viewmodels.HomeViewModel
 import com.example.fibo.viewmodels.NewQuotationViewModel
 import kotlinx.coroutines.delay
 import kotlin.math.max
@@ -1950,7 +1942,7 @@ fun AddProductQuotationDialog(
 
 @Composable
 private fun ProductQuotationListItem(
-    product: IProduct,
+    product: IProductOperation,
     onClick: () -> Unit
 ) {
     Surface(

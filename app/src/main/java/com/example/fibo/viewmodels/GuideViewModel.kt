@@ -2,22 +2,16 @@ package com.example.fibo.viewmodels
 
 import android.content.Context
 import android.util.Log
-import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fibo.CreateSaleMutation
-import com.example.fibo.GuideModesQuery
-import com.example.fibo.GuideReasonsQuery
-import com.example.fibo.SerialsQuery
 import com.example.fibo.datastore.PreferencesManager
 import com.example.fibo.model.*
 import com.example.fibo.repository.OperationRepository
-import com.example.fibo.type.Date
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
@@ -71,8 +65,8 @@ class GuideViewModel @Inject constructor(
     val searchError: StateFlow<String?> = _searchError.asStateFlow()
 
     // Estado para los productos
-    private val _products = MutableStateFlow<List<IProduct>>(emptyList())
-    val products: StateFlow<List<IProduct>> = _products.asStateFlow()
+    private val _products = MutableStateFlow<List<IProductOperation>>(emptyList())
+    val products: StateFlow<List<IProductOperation>> = _products.asStateFlow()
 
     private val _isLoadingProducts = MutableStateFlow(false)
     val isLoadingProducts: StateFlow<Boolean> = _isLoadingProducts.asStateFlow()

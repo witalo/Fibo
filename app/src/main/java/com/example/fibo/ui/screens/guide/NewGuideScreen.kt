@@ -33,24 +33,18 @@ import com.example.fibo.model.IGuideReasonType
 import com.example.fibo.model.ISerialAssigned
 import com.example.fibo.ui.components.ClientSearchDialog
 import android.util.Log
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.ui.focus.onFocusChanged
 import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
 import java.util.Calendar
 import java.util.TimeZone
 import com.example.fibo.model.IRelatedDocument
-import com.example.fibo.model.IProduct
-import com.example.fibo.model.IVehicle
+import com.example.fibo.model.IProductOperation
 import com.example.fibo.model.IGeographicLocation
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.runtime.saveable.rememberSaveable
 import com.example.fibo.model.IPerson
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
@@ -767,7 +761,7 @@ private fun ProductItem(
     detail: IOperationDetail,
     onRemove: () -> Unit,
     onUpdate: (String, Any) -> Unit,
-    products: List<IProduct>
+    products: List<IProductOperation>
 ) {
     // Estados locales para mantener el foco
     var productSearchText by remember { mutableStateOf(detail.tariff.productName) }

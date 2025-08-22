@@ -4,7 +4,6 @@ import android.content.Context
 import android.os.Build
 import android.widget.Toast
 import androidx.compose.ui.graphics.Color
-import com.example.fibo.model.IProduct
 import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.LocalTime

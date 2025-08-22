@@ -1,11 +1,7 @@
 package com.example.fibo.viewmodels
 
 import android.util.Log
-import com.example.fibo.model.IProduct
-import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import com.example.fibo.model.IProductOperation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fibo.datastore.PreferencesManager
@@ -14,7 +10,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import kotlin.math.*
 
 @HiltViewModel
 class ProductViewModel @Inject constructor(
@@ -28,7 +23,7 @@ class ProductViewModel @Inject constructor(
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
-    private var allProducts = listOf<IProduct>()
+    private var allProducts = listOf<IProductOperation>()
     private val currentPage = MutableStateFlow(0)
     private val pageSize = 50
 
@@ -140,7 +135,7 @@ class ProductViewModel @Inject constructor(
         Log.d("ProductViewModel", "Estado UI actualizado - products.size: ${_uiState.value.products.size}")
     }
 
-    private fun filterProducts(products: List<IProduct>, query: String): List<IProduct> {
+    private fun filterProducts(products: List<IProductOperation>, query: String): List<IProductOperation> {
         val queryWords = query.lowercase().split(" ").filter { it.isNotBlank() }
 
         return products.filter { product ->
@@ -210,7 +205,7 @@ class ProductViewModel @Inject constructor(
 // UI State
 data class ProductUiState(
     val isLoading: Boolean = false,
-    val products: List<IProduct> = emptyList(),
+    val products: List<IProductOperation> = emptyList(),
     val totalProducts: Int = 0,
     val filteredTotal: Int = 0,
     val error: String? = null,
