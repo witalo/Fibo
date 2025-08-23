@@ -243,7 +243,9 @@ class ProductRepository @Inject constructor(
         minimumUnit: IUnit? = null, // ✅ OPCIONAL
         maximumUnit: IUnit? = null, // ✅ OPCIONAL
         typeAffectation: ITypeAffectation? = null, // ✅ OPCIONAL
+        activeType: String? = "01", // ✅ OPCIONAL
         subjectPerception: Boolean? = null, // ✅ OPCIONAL
+        available: Boolean? = null, // ✅ OPCIONAL
         productTariffs: List<IProductTariff> = emptyList(), // ✅ OPCIONAL
         subsidiaryId: Int // ✅ REQUERIDO
     ): Result<String> {
@@ -271,7 +273,9 @@ class ProductRepository @Inject constructor(
                         minimumUnitId = Optional.present(minimumUnit?.id), // ✅ OPCIONAL
                         maximumUnitId = Optional.present(maximumUnit?.id), // ✅ OPCIONAL
                         typeAffectationId = Optional.present(typeAffectation?.id), // ✅ OPCIONAL
+                        activeType = Optional.present(activeType), // ✅ OPCIONAL
                         subjectPerception = Optional.present(subjectPerception), // ✅ OPCIONAL
+                        available = Optional.present(available), // ✅ OPCIONAL
                         productTariffs = Optional.present(tariffInputs), // ✅ OPCIONAL
                         subsidiaryId = subsidiaryId // ✅ REQUERIDO
                     )
@@ -307,7 +311,9 @@ class ProductRepository @Inject constructor(
         minimumUnit: IUnit? = null, // ✅ OPCIONAL
         maximumUnit: IUnit? = null, // ✅ OPCIONAL
         typeAffectation: ITypeAffectation? = null, // ✅ OPCIONAL
+        activeType: String? = "01", // ✅ OPCIONAL
         subjectPerception: Boolean? = null, // ✅ OPCIONAL
+        available: Boolean? = null, // ✅ OPCIONAL
         productTariffs: List<IProductTariff>? = null // ✅ OPCIONAL
     ): Result<String> {
         return try {
@@ -335,7 +341,9 @@ class ProductRepository @Inject constructor(
                         minimumUnitId = Optional.present(minimumUnit?.id), // ✅ OPCIONAL
                         maximumUnitId = Optional.present(maximumUnit?.id), // ✅ OPCIONAL
                         typeAffectationId = Optional.present(typeAffectation?.id), // ✅ OPCIONAL
+                        activeType = Optional.present(activeType), // ✅ OPCIONAL
                         subjectPerception = Optional.present(subjectPerception), // ✅ OPCIONAL
+                        available = Optional.present(available), // ✅ OPCIONAL
                         productTariffs = Optional.present(tariffInputs) // ✅ OPCIONAL
                     )
                 )

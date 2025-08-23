@@ -5102,7 +5102,11 @@ input CreateProductInput {
 
   typeAffectationId: Int
 
+  activeType: String
+
   subjectPerception: Boolean
+
+  available: Boolean
 
   subsidiaryId: Int!
 
@@ -5148,7 +5152,11 @@ input UpdateProductInput {
 
   typeAffectationId: Int
 
+  activeType: String
+
   subjectPerception: Boolean
+
+  available: Boolean
 
   productTariffs: [ProductTariffInput]
 }
