@@ -250,7 +250,34 @@ fun NavGraph(
             NewPersonScreen(
                 navController = navController,
                 subsidiaryData = subsidiaryData,
+                personId = null // null = crear nueva persona
             )
+        }
+
+        // ✅ Ruta para editar persona existente
+        composable(
+            route = Screen.EditPerson.route,
+            arguments = listOf(
+                navArgument("personId") { type = NavType.IntType }
+            )
+        ) { backStackEntry ->
+            val personId = backStackEntry.arguments?.getInt("personId")
+            NewPersonScreen(
+                navController = navController,
+                subsidiaryData = subsidiaryData,
+                personId = personId
+            )
+        }
+
+        // ✅ Ruta para detalle de persona (opcional)
+        composable(
+            route = Screen.PersonDetail.route,
+            arguments = listOf(
+                navArgument("personId") { type = NavType.IntType }
+            )
+        ) { backStackEntry ->
+            val personId = backStackEntry.arguments?.getInt("personId")
+            // PersonDetailScreen(personId = personId, navController = navController)
         }
         // Guías
         composable(Screen.Guide.route) {

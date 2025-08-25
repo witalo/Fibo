@@ -67,6 +67,15 @@ sealed class Screen(
 
     object NewPerson : Screen("new_person")
 
+    // ✅ Agregar ruta para editar persona
+    object EditPerson : Screen("new_person/{personId}") {
+        fun createRoute(personId: Int) = "new_person/$personId"
+    }
+
+    object PersonDetail : Screen("person_detail/{personId}") {
+        fun createRoute(personId: Int) = "person_detail/$personId"
+    }
+
     object NewGuide : Screen("new_guide")
     object Guides : Screen("guides")
 

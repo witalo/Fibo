@@ -17,6 +17,34 @@ class NewPersonViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(NewPersonUiState())
     val uiState: StateFlow<NewPersonUiState> = _uiState.asStateFlow()
+    // ✅ Función para cargar persona para editar
+    fun loadPersonForEdit(personId: Int) {
+        viewModelScope.launch {
+            try {
+                val person = personRepository.getPersonById(personId)
+                _uiState.value = _uiState.value.copy(
+                    id = person.id,
+                    names = person.names ?: "",
+                    shortName = person.shortName ?: "",
+                    code = person.code ?: "",
+                    documentType = person.documentType ?: "",
+                    documentNumber = person.documentNumber ?: "",
+                    phone = person.phone ?: "",
+                    email = person.email ?: "",
+                    address = person.address ?: "",
+                    isClient = person.isClient ?: false,
+                    isSupplier = person.isSupplier ?: false,
+                    isDriver = !(person.isClient ?: false) && !(person.isSupplier ?: false),
+                    isEnabled = person.isEnabled ?: true,
+                    driverLicense = person.driverLicense ?: "",
+                    isEditing = true
+                )
+                validateForm()
+            } catch (e: Exception) {
+                println("Error al cargar persona: ${e.message}")
+            }
+        }
+    }
 
     fun onNamesChanged(names: String) {
         _uiState.value = _uiState.value.copy(
@@ -156,6 +184,11 @@ class NewPersonViewModel @Inject constructor(
     }
 
     fun createPerson(subsidiaryId: Int?) {
+        // ✅ Si está editando, llamar a updatePerson
+        if (uiState.value.isEditing) {
+            updatePerson(subsidiaryId)
+            return
+        }
         if (subsidiaryId == null) {
             _uiState.value = _uiState.value.copy(
                 personResult = Result.failure(Exception("ID de subsidiaria no válido"))
@@ -202,7 +235,53 @@ class NewPersonViewModel @Inject constructor(
             }
         }
     }
+    // ✅ Función para actualizar persona
+    fun updatePerson(subsidiaryId: Int?) {
+        if (subsidiaryId == null) {
+            _uiState.value = _uiState.value.copy(
+                personResult = Result.failure(Exception("ID de subsidiaria no válido"))
+            )
+            return
+        }
 
+        if (uiState.value.isLoading) return
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true)
+
+            try {
+                val result = personRepository.updatePerson(
+                    id = uiState.value.id,
+                    names = uiState.value.names,
+                    shortName = uiState.value.shortName,
+                    code = uiState.value.code,
+                    phone = uiState.value.phone.ifBlank { "" },
+                    email = uiState.value.email.ifBlank { "" },
+                    address = uiState.value.address,
+                    country = "PE",
+                    districtId = "040601",
+                    documentType = uiState.value.documentType,
+                    documentNumber = uiState.value.documentNumber,
+                    isEnabled = uiState.value.isEnabled,
+                    isSupplier = uiState.value.isSupplier,
+                    isClient = uiState.value.isClient,
+                    isDriver = uiState.value.isDriver,
+                    driverLicense = uiState.value.driverLicense,
+                    economicActivityMain = 0
+                )
+
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    personResult = result
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    personResult = Result.failure(e)
+                )
+            }
+        }
+    }
     fun resetPersonResult() {
         _uiState.value = _uiState.value.copy(personResult = null)
     }
@@ -224,6 +303,7 @@ class NewPersonViewModel @Inject constructor(
 }
 
 data class NewPersonUiState(
+    val id: Int = 0, // ✅ Agregar ID para edición
     val names: String = "",
     val shortName: String = "",
     val code: String = "",
@@ -241,6 +321,7 @@ data class NewPersonUiState(
     val isExtracting: Boolean = false,
     val isFormValid: Boolean = false,
     val personResult: Result<String>? = null,
+    val isEditing: Boolean = false, // ✅ Agregar flag para edición
     // Errores de validación
     val namesError: String = "",
     val shortNameError: String = "",

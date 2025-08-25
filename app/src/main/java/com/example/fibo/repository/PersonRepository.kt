@@ -7,6 +7,7 @@ import com.example.fibo.CreatePersonMutation
 import com.example.fibo.GetAllPersonsBySubsidiaryAndTypeQuery
 import com.example.fibo.GetPersonByIdQuery
 import com.example.fibo.SntPersonMutation
+import com.example.fibo.UpdatePersonMutation
 import com.example.fibo.model.IPerson
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -164,6 +165,64 @@ class PersonRepository @Inject constructor(
                     Result.success(data.message ?: "Persona creada exitosamente")
                 } else {
                     Result.failure(Exception(data?.message ?: "Error al crear la persona"))
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updatePerson(
+        id: Int,
+        names: String,
+        shortName: String,
+        code: String,
+        phone: String,
+        email: String,
+        address: String,
+        country: String,
+        districtId: String,
+        documentType: String,
+        documentNumber: String,
+        isEnabled: Boolean,
+        isSupplier: Boolean,
+        isClient: Boolean,
+        isDriver: Boolean,
+        driverLicense: String,
+        economicActivityMain: Int
+    ): Result<String> {
+        return try {
+            val response = apolloClient.mutation(
+                UpdatePersonMutation(
+                    id = id.toString(),
+                    names = names,
+                    code = Optional.present(code),
+                    shortName = shortName,
+                    phone = phone,
+                    email = email,
+                    address = address,
+                    country = country,
+                    districtId = districtId,
+                    documentType = documentType,
+                    documentNumber = documentNumber,
+                    isEnabled = isEnabled,
+                    isSupplier = isSupplier,
+                    isClient = isClient,
+                    isDriver = isDriver,
+                    driverLicense = Optional.present(driverLicense),
+                    economicActivityMain = economicActivityMain
+                )
+            ).execute()
+
+            if (response.hasErrors()) {
+                val errorMessage = response.errors?.joinToString { it.message } ?: "Error desconocido"
+                Result.failure(Exception("Error al actualizar persona: $errorMessage"))
+            } else {
+                val data = response.data?.updatePerson
+                if (data?.success == true) {
+                    Result.success(data.message ?: "Persona actualizada exitosamente")
+                } else {
+                    Result.failure(Exception(data?.message ?: "Error al actualizar la persona"))
                 }
             }
         } catch (e: Exception) {

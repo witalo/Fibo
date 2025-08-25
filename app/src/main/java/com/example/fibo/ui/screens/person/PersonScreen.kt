@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
@@ -74,6 +75,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.fibo.model.IPerson
 import com.example.fibo.model.ISubsidiary
+import com.example.fibo.navigation.Screen
 import com.example.fibo.ui.components.AppScaffold
 import com.example.fibo.ui.components.AppTopBarWithFilter
 import com.example.fibo.ui.components.SideMenu
@@ -101,12 +103,34 @@ fun PersonScreen(
     // Estado para el diálogo de filtros
     var isFilterDialogOpen by remember { mutableStateOf(false) }
     // Escuchar cuando se crea una nueva persona
+//    LaunchedEffect(Unit) {
+//        navController.currentBackStackEntry?.savedStateHandle?.get<Boolean>("person_created")?.let { wasCreated ->
+//            if (wasCreated) {
+//                // Limpiar el flag
+//                navController.currentBackStackEntry?.savedStateHandle?.remove<Boolean>("person_created")
+//                // Recargar la lista de personas con los parámetros correctos
+//                subsidiaryData?.id?.let { subsidiaryId ->
+//                    val currentTypes = viewModel.getCurrentTypes()
+//                    viewModel.loadPersons(subsidiaryId, currentTypes)
+//                }
+//            }
+//        }
+//    }
     LaunchedEffect(Unit) {
         navController.currentBackStackEntry?.savedStateHandle?.get<Boolean>("person_created")?.let { wasCreated ->
             if (wasCreated) {
-                // Limpiar el flag
                 navController.currentBackStackEntry?.savedStateHandle?.remove<Boolean>("person_created")
-                // Recargar la lista de personas con los parámetros correctos
+                subsidiaryData?.id?.let { subsidiaryId ->
+                    val currentTypes = viewModel.getCurrentTypes()
+                    viewModel.loadPersons(subsidiaryId, currentTypes)
+                }
+            }
+        }
+
+        // ✅ Escuchar cuando se actualiza una persona
+        navController.currentBackStackEntry?.savedStateHandle?.get<Boolean>("person_updated")?.let { wasUpdated ->
+            if (wasUpdated) {
+                navController.currentBackStackEntry?.savedStateHandle?.remove<Boolean>("person_updated")
                 subsidiaryData?.id?.let { subsidiaryId ->
                     val currentTypes = viewModel.getCurrentTypes()
                     viewModel.loadPersons(subsidiaryId, currentTypes)
@@ -160,7 +184,10 @@ fun PersonScreen(
                     PersonContent(
                         persons = persons,
                         onPersonClick = { person ->
-                            navController.navigate("person_detail/${person.id}")
+                            navController.navigate(Screen.PersonDetail.createRoute(person.id))
+                        },
+                        onPersonEdit = { person ->
+                            navController.navigate(Screen.EditPerson.createRoute(person.id))
                         },
                         selectedPerson = selectedPerson,
                         onClearPersonFilter = { viewModel.clearPersonSelection() }
@@ -181,7 +208,7 @@ fun PersonScreen(
 
             // Botón flotante para crear nueva persona
             FloatingActionButton(
-                onClick = { navController.navigate("new_person") },
+                onClick = { navController.navigate(Screen.NewPerson.route) },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(16.dp)
@@ -218,6 +245,7 @@ fun PersonScreen(
 fun PersonContent(
     persons: List<IPerson>,
     onPersonClick: (IPerson) -> Unit,
+    onPersonEdit: (IPerson) -> Unit,
     selectedPerson: IPerson?,
     onClearPersonFilter: () -> Unit
 ) {
@@ -246,7 +274,8 @@ fun PersonContent(
             } else {
                 PersonList(
                     persons = persons,
-                    onPersonClick = onPersonClick
+                    onPersonClick = onPersonClick,
+                    onPersonEdit = onPersonEdit
                 )
             }
         }
@@ -256,7 +285,8 @@ fun PersonContent(
 @Composable
 fun PersonList(
     persons: List<IPerson>,
-    onPersonClick: (IPerson) -> Unit
+    onPersonClick: (IPerson) -> Unit,
+    onPersonEdit: (IPerson) -> Unit
 ) {
     LazyColumn(
         contentPadding = PaddingValues(vertical = 8.dp),
@@ -265,7 +295,8 @@ fun PersonList(
         items(persons) { person ->
             PersonItem(
                 person = person,
-                onClick = { onPersonClick(person) }
+                onClick = { onPersonClick(person) },
+                onEdit = { onPersonEdit(person) }
             )
         }
     }
@@ -274,14 +305,14 @@ fun PersonList(
 @Composable
 fun PersonItem(
     person: IPerson,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onEdit: () -> Unit
 ) {
     val isDarkTheme = isSystemInDarkTheme()
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
             .padding(horizontal = 4.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
@@ -336,6 +367,7 @@ fun PersonItem(
                 modifier = Modifier
                     .weight(1f)
                     .padding(horizontal = 12.dp)
+                    .clickable { onClick() }
             ) {
                 Text(
                     text = person.names ?: "Sin nombre",
@@ -370,6 +402,19 @@ fun PersonItem(
                         TypeBadge("Conductor", Color(0xFFFF9800))
                     }
                 }
+            }
+
+            // ✅ Botón de editar
+            IconButton(
+                onClick = onEdit,
+                modifier = Modifier.size(40.dp)
+            ) {
+                Icon(
+                    Icons.Default.Edit,
+                    contentDescription = "Editar persona",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
     }

@@ -20,23 +20,52 @@ import com.example.fibo.model.ISubsidiary
 fun NewPersonScreen(
     navController: NavController,
     subsidiaryData: ISubsidiary?,
+    personId: Int? = null, // ✅ Agregar ID para edición
     viewModel: NewPersonViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-
+    // ✅ Cargar persona si se está editando
+    LaunchedEffect(personId) {
+        personId?.let { id ->
+            viewModel.loadPersonForEdit(id)
+        }
+    }
+//    LaunchedEffect(uiState.personResult) {
+//        uiState.personResult?.let { result ->
+//            result.onSuccess { message ->
+//                snackbarHostState.showSnackbar(message)
+//                // Enviar resultado de vuelta a PersonScreen
+//                navController.previousBackStackEntry?.savedStateHandle?.set(
+//                    "person_created", true
+//                )
+//                navController.popBackStack()
+//            }.onFailure { error ->
+//                snackbarHostState.showSnackbar(
+//                    "Error al crear persona: ${error.message}"
+//                )
+//            }
+//            viewModel.resetPersonResult()
+//        }
+//    }
     LaunchedEffect(uiState.personResult) {
         uiState.personResult?.let { result ->
             result.onSuccess { message ->
                 snackbarHostState.showSnackbar(message)
-                // Enviar resultado de vuelta a PersonScreen
-                navController.previousBackStackEntry?.savedStateHandle?.set(
-                    "person_created", true
-                )
+                // Enviar resultado de vuelta a PersonScreen según el caso
+                if (uiState.isEditing) {
+                    navController.previousBackStackEntry?.savedStateHandle?.set(
+                        "person_updated", true
+                    )
+                } else {
+                    navController.previousBackStackEntry?.savedStateHandle?.set(
+                        "person_created", true
+                    )
+                }
                 navController.popBackStack()
             }.onFailure { error ->
                 snackbarHostState.showSnackbar(
-                    "Error al crear persona: ${error.message}"
+                    "Error al ${if (uiState.isEditing) "actualizar" else "crear"} persona: ${error.message}"
                 )
             }
             viewModel.resetPersonResult()
@@ -47,7 +76,11 @@ fun NewPersonScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Registrar Persona") },
+                title = {
+                    Text(
+                        if (uiState.isEditing) "Editar Persona" else "Registrar Persona"
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.Close, contentDescription = "Cerrar")
