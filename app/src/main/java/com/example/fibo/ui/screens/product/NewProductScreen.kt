@@ -40,8 +40,17 @@ fun NewProductScreen(
     // ✅ Cargar datos del producto si se está editando
     LaunchedEffect(productId) {
         productId?.let { id ->
+            println("🔍 LaunchedEffect: Cargando producto $id")
             viewModel.loadProductForEdit(id)
         }
+    }
+// ✅ Debug: Mostrar estado actual
+    LaunchedEffect(uiState) {
+        println("�� Estado actualizado:")
+        println("   - Nombre: ${uiState.name}")
+        println("   - Tipo: ${uiState.activeType}")
+        println("   - Tarifas: ${uiState.productTariffs.size}")
+        println("   - Tipo de afectación: ${uiState.typeAffectation?.name}")
     }
 
     // ✅ Manejar resultado de crear/actualizar producto
@@ -218,7 +227,7 @@ fun ProductBasicInfoSection(
                 onExpandedChange = { isProductTypeExpanded = it }
             ) {
                 OutlinedTextField(
-                    value = productTypes.find { it.id == uiState.activeType }?.name ?: "",
+                    value = productTypes.find { it.id == uiState.activeType }?.name ?: "Seleccionar tipo",
                     onValueChange = { },
                     label = { Text("Tipo de Producto *") },
                     modifier = Modifier
@@ -236,6 +245,7 @@ fun ProductBasicInfoSection(
                         DropdownMenuItem(
                             text = { Text(productType.name) },
                             onClick = {
+                                println("🔍 Tipo de producto seleccionado: ${productType.id}")
                                 onActiveTypeChanged(productType.id)
                                 isProductTypeExpanded = false
                             }
@@ -900,7 +910,7 @@ fun ProductAffectationSection(
                 onExpandedChange = onTypeAffectationExpandedChange
             ) {
                 OutlinedTextField(
-                    value = uiState.typeAffectation?.name ?: "",
+                    value = uiState.typeAffectation?.name ?: "Seleccionar Tipo",
                     onValueChange = { },
                     label = { Text("Tipo de Afectación *") },
                     modifier = Modifier

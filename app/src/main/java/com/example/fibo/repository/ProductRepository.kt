@@ -124,7 +124,6 @@ class ProductRepository @Inject constructor(
             throw Exception("Error al cargar productos: ${e.message}")
         }
     }
-
     suspend fun getProductById(productId: Int): IProduct? {
         return try {
             val response = apolloClient.query(
@@ -148,7 +147,16 @@ class ProductRepository @Inject constructor(
                 stockMax = product.stockMax ?: 0,
                 path = product.path ?: "",
                 available = product.available ?: true,
-                activeType = (product.activeType ?: "01").toString(),
+                activeType = if (product.activeType != null) {
+                    val typeStr = product.activeType.toString()
+                    if (typeStr.length > 2 && typeStr.get(0) == 'A' && typeStr.get(1) == '_') {
+                        typeStr.get(2).toString() + typeStr.get(3).toString()
+                    } else {
+                        typeStr
+                    }
+                } else {
+                    "01"
+                },
                 ean = product.ean ?: "",
                 weightInKilograms = product.weightInKilograms?.toDouble() ?: 0.0,
                 maximumFactor = product.maximumFactor?.toDouble() ?: 0.0,
@@ -208,10 +216,34 @@ class ProductRepository @Inject constructor(
                                 cashAndCreditBlock = trade.cashAndCreditBlock ?: 0
                             )
                         }.toString(),
-                        typePrice = (tariff.typePrice as? Int) ?: 0, // Convertir a Int de forma segura
-                        priceWithIgv = (tariff.priceWithIgv as? Double) ?: 0.0, // Convertir a Double
-                        priceWithoutIgv = (tariff.priceWithoutIgv as? Double) ?: 0.0, // Convertir a Double
-                        quantityMinimum = (tariff.quantityMinimum as? Double) ?: 0.0 // Convertir a Double
+                        // ✅ Corregir mapeo de typePrice (quitar el "A_" prefix y convertir a Int)
+                        typePrice = try {
+                            val typeStr = tariff.typePrice.toString()
+                            if (typeStr.length > 2 && typeStr[0] == 'A' && typeStr[1] == '_') {
+                                typeStr.substring(2, typeStr.length).toInt()
+                            } else {
+                                typeStr.toInt()
+                            }
+                        } catch (e: NumberFormatException) {
+                            0
+                        },
+                        // ✅ Conversión segura de precios
+                        priceWithIgv = try {
+                            tariff.priceWithIgv.toString().toDouble()
+                        } catch (e: NumberFormatException) {
+                            0.0
+                        },
+                        priceWithoutIgv = try {
+                            tariff.priceWithoutIgv.toString().toDouble()
+                        } catch (e: NumberFormatException) {
+                            0.0
+                        },
+                        // ✅ Conversión segura de cantidad mínima
+                        quantityMinimum = try {
+                            tariff.quantityMinimum.toString().toDouble()
+                        } catch (e: NumberFormatException) {
+                            0.0
+                        }
                     )
                 } ?: emptyList(),
                 productStores = product.productStores?.filterNotNull()?.map { store ->

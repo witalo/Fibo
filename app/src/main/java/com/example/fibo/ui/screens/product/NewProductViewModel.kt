@@ -73,8 +73,15 @@ class NewProductViewModel @Inject constructor(
     fun loadProductForEdit(productId: Int) {
         viewModelScope.launch {
             try {
+                println(" Cargando producto para editar: $productId")
                 val product = productRepository.getProductById(productId)
                 product?.let {
+                    println(" Producto cargado: ${it.name}")
+                    println(" Tarifas: ${it.productTariffs.size}")
+                    it.productTariffs.forEach { tariff ->
+                        println("   - Tipo: ${tariff.typePrice}, Precio: ${tariff.priceWithIgv}")
+                    }
+
                     _uiState.value = _uiState.value.copy(
                         name = it.name,
                         code = it.code,
@@ -88,10 +95,13 @@ class NewProductViewModel @Inject constructor(
                         active = it.available,
                         productTariffs = it.productTariffs
                     )
+
+                    println(" Estado actualizado con datos del producto")
                     validateForm()
                 }
             } catch (e: Exception) {
-                // Manejar errores
+                println(" Error al cargar producto: ${e.message}")
+                e.printStackTrace()
             }
         }
     }
