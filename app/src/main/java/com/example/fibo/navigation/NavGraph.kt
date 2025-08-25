@@ -35,6 +35,7 @@ import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.example.fibo.ui.screens.person.NewPersonScreen
 import com.example.fibo.ui.screens.person.PersonScreen
+import com.example.fibo.ui.screens.person.PersonDetailScreen
 import com.example.fibo.ui.screens.product.NewProductScreen
 
 @Composable
@@ -277,7 +278,7 @@ fun NavGraph(
             )
         ) { backStackEntry ->
             val personId = backStackEntry.arguments?.getInt("personId")
-            // PersonDetailScreen(personId = personId, navController = navController)
+            PersonDetailScreen(personId = personId, navController = navController)
         }
         // Guías
         composable(Screen.Guide.route) {
