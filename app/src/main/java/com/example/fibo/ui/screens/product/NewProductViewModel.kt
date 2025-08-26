@@ -108,37 +108,43 @@ class NewProductViewModel @Inject constructor(
     fun onActiveTypeChanged(activeType: String) {
         _uiState.value = _uiState.value.copy(activeType = activeType)
     }
-    // ✅ Función para calcular precio sin IGV automáticamente
-    fun onPriceWithIgvChanged(index: Int, priceWithIgv: Double) {
+    // ✅ Función para manejar precio con IGV como string
+    fun onPriceWithIgvChanged(index: Int, priceString: String) {
         val currentTariffs = _uiState.value.productTariffs.toMutableList()
         val tariff = currentTariffs[index]
-
-        val igvPercentage = getIgvPercentage()
-        val priceWithoutIgv = priceWithIgv / (1 + igvPercentage)
-
-        val updatedTariff = tariff.copy(
-            priceWithIgv = priceWithIgv,
-            priceWithoutIgv = priceWithoutIgv
-        )
-
+        
+        // ✅ Convertir string a Double solo cuando sea necesario
+        val price = if (priceString.isEmpty()) 0.0 else priceString.toDoubleOrNull() ?: 0.0
+        
+        val updatedTariff = tariff.copy(priceWithIgv = price)
         currentTariffs[index] = updatedTariff
         _uiState.value = _uiState.value.copy(productTariffs = currentTariffs)
         validateForm()
     }
 
-    // ✅ Función para calcular precio con IGV automáticamente
-    fun onPriceWithoutIgvChanged(index: Int, priceWithoutIgv: Double) {
+    // ✅ Función para manejar precio sin IGV como string
+    fun onPriceWithoutIgvChanged(index: Int, priceString: String) {
         val currentTariffs = _uiState.value.productTariffs.toMutableList()
         val tariff = currentTariffs[index]
+        
+        // ✅ Convertir string a Double solo cuando sea necesario
+        val price = if (priceString.isEmpty()) 0.0 else priceString.toDoubleOrNull() ?: 0.0
+        
+        val updatedTariff = tariff.copy(priceWithoutIgv = price)
+        currentTariffs[index] = updatedTariff
+        _uiState.value = _uiState.value.copy(productTariffs = currentTariffs)
+        validateForm()
+    }
 
-        val igvPercentage = getIgvPercentage()
-        val priceWithIgv = priceWithoutIgv * (1 + igvPercentage)
-
-        val updatedTariff = tariff.copy(
-            priceWithoutIgv = priceWithoutIgv,
-            priceWithIgv = priceWithIgv
-        )
-
+    // ✅ Función para manejar cantidad mínima como string
+    fun onQuantityMinimumChanged(index: Int, quantityString: String) {
+        val currentTariffs = _uiState.value.productTariffs.toMutableList()
+        val tariff = currentTariffs[index]
+        
+        // ✅ Convertir string a Double solo cuando sea necesario
+        val quantity = if (quantityString.isEmpty()) 0.0 else quantityString.toDoubleOrNull() ?: 0.0
+        
+        val updatedTariff = tariff.copy(quantityMinimum = quantity)
         currentTariffs[index] = updatedTariff
         _uiState.value = _uiState.value.copy(productTariffs = currentTariffs)
         validateForm()
@@ -168,13 +174,18 @@ class NewProductViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(observation = observation)
     }
 
-    fun onStockMinChanged(stockMin: Int) {
-        _uiState.value = _uiState.value.copy(stockMin = stockMin)
+    fun onStockMinChanged(stockMin: String) {
+        // ✅ Convertir string a Int solo cuando sea necesario
+        val stock = if (stockMin.isEmpty()) 0 else stockMin.toIntOrNull() ?: 0
+        _uiState.value = _uiState.value.copy(stockMin = stock)
     }
 
-    fun onStockMaxChanged(stockMax: Int) {
-        _uiState.value = _uiState.value.copy(stockMax = stockMax)
+    fun onStockMaxChanged(stockMax: String) {
+        // ✅ Convertir string a Int solo cuando sea necesario
+        val stock = if (stockMax.isEmpty()) 0 else stockMax.toIntOrNull() ?: 0
+        _uiState.value = _uiState.value.copy(stockMax = stock)
     }
+
 
     fun onTypeAffectationChanged(typeAffectation: ITypeAffectation?) {
         _uiState.value = _uiState.value.copy(typeAffectation = typeAffectation)
@@ -264,7 +275,11 @@ class NewProductViewModel @Inject constructor(
             return
         }
 
-        if (uiState.value.isLoading) return
+        // ✅ Protección contra múltiples clics
+        if (uiState.value.isLoading) {
+            println("⚠️ Ya se está creando un producto, ignorando clic adicional")
+            return
+        }
 
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
@@ -306,7 +321,11 @@ class NewProductViewModel @Inject constructor(
             return
         }
 
-        if (uiState.value.isLoading) return
+        // ✅ Protección contra múltiples clics
+        if (uiState.value.isLoading) {
+            println("⚠️ Ya se está actualizando un producto, ignorando clic adicional")
+            return
+        }
 
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)

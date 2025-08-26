@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -14,7 +15,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -23,6 +28,28 @@ import com.example.fibo.model.IProductTariff
 import com.example.fibo.model.ISubsidiary
 import com.example.fibo.model.ITypeAffectation
 import com.example.fibo.model.IUnit
+
+// ✅ Función helper simplificada para campos numéricos
+@Composable
+fun createNumericTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    isRequired: Boolean = false,
+    isPrice: Boolean = true
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(if (isRequired) "$label *" else label) },
+        modifier = modifier,
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = if (isPrice) KeyboardType.Decimal else KeyboardType.Number
+        )
+    )
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,17 +84,20 @@ fun NewProductScreen(
     LaunchedEffect(uiState.productResult) {
         uiState.productResult?.let { result ->
             result.onSuccess { message ->
+                // ✅ Mostrar mensaje y navegar inmediatamente
                 snackbarHostState.showSnackbar(message)
-                navController.previousBackStackEntry?.savedStateHandle?.set(
-                    "product_updated", true
-                )
+
+                // ✅ Navegar de vuelta inmediatamente
                 navController.popBackStack()
+
+                // ✅ Limpiar el resultado después de navegar
+                viewModel.resetProductResult()
             }.onFailure { error ->
                 snackbarHostState.showSnackbar(
                     "Error al ${if (productId != null) "actualizar" else "crear"} producto: ${error.message}"
                 )
+                viewModel.resetProductResult()
             }
-            viewModel.resetProductResult()
         }
     }
 
@@ -114,12 +144,22 @@ fun NewProductScreen(
                     onTariffChanged = { index, field, value ->
                         when (field) {
                             "priceWithIgv" -> {
-                                val priceWithIgv = value as Double
-                                viewModel.onPriceWithIgvChanged(index, priceWithIgv)
+                                // ✅ Convertir String a Double antes de enviar
+                                val priceWithIgv = if (value is String) {
+                                    if (value.isEmpty()) 0.0 else value.toDoubleOrNull() ?: 0.0
+                                } else {
+                                    value as Double
+                                }
+                                viewModel.onPriceWithIgvChanged(index, priceWithIgv.toString())
                             }
                             "priceWithoutIgv" -> {
-                                val priceWithoutIgv = value as Double
-                                viewModel.onPriceWithoutIgvChanged(index, priceWithoutIgv)
+                                // ✅ Convertir String a Double antes de enviar
+                                val priceWithoutIgv = if (value is String) {
+                                    if (value.isEmpty()) 0.0 else value.toDoubleOrNull() ?: 0.0
+                                } else {
+                                    value as Double
+                                }
+                                viewModel.onPriceWithoutIgvChanged(index, priceWithoutIgv.toString())
                             }
                             else -> viewModel.updateProductTariff(index, field, value)
                         }
@@ -395,7 +435,17 @@ fun ProductPricingSection(
                             units = units,
                             onRemove = { onRemoveTariff(index) },
                             onChange = { field, value -> onTariffChanged(index, field, value) },
-                            onUnitChanged = { unit -> onTariffUnitChanged(index, unit) }
+                            onUnitChanged = { unit -> onTariffUnitChanged(index, unit) },
+                            // ✅ Usar las funciones existentes en lugar de viewModel
+                            onPriceWithIgvChanged = { priceString ->
+                                onTariffChanged(index, "priceWithIgv", priceString)
+                            },
+                            onPriceWithoutIgvChanged = { priceString ->
+                                onTariffChanged(index, "priceWithoutIgv", priceString)
+                            },
+                            onQuantityMinimumChanged = { quantityString ->
+                                onTariffChanged(index, "quantityMinimum", quantityString)
+                            }
                         )
                     }
                 }
@@ -573,7 +623,11 @@ fun ProductTariffCard(
     units: List<IUnit>,
     onRemove: () -> Unit,
     onChange: (String, Any) -> Unit,
-    onUnitChanged: (IUnit?) -> Unit
+    onUnitChanged: (IUnit?) -> Unit,
+     // ✅ Nuevos parámetros para las funciones del ViewModel
+    onPriceWithIgvChanged: (String) -> Unit,
+    onPriceWithoutIgvChanged: (String) -> Unit,
+    onQuantityMinimumChanged: (String) -> Unit
 ) {
     var isUnitExpanded by remember { mutableStateOf(false) }
 
@@ -681,37 +735,48 @@ fun ProductTariffCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // ✅ Precios más compactos
+            // ✅ Precios más compactos - usar OutlinedTextField normal
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 OutlinedTextField(
-                    value = tariff.priceWithIgv.toString(),
-                    onValueChange = { onChange("priceWithIgv", it.toDoubleOrNull() ?: 0.0) },
+                    value = if (tariff.priceWithIgv == 0.0) "" else tariff.priceWithIgv.toString(),
+                    onValueChange = { 
+                        // ✅ Solo enviar el string tal como está
+                        onChange("priceWithIgv", it)
+                    },
                     label = { Text("Precio con IGV *") },
                     modifier = Modifier.weight(1f),
-                    singleLine = true
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                 )
 
                 OutlinedTextField(
-                    value = tariff.priceWithoutIgv.toString(),
-                    onValueChange = { onChange("priceWithoutIgv", it.toDoubleOrNull() ?: 0.0) },
+                    value = if (tariff.priceWithoutIgv == 0.0) "" else tariff.priceWithoutIgv.toString(),
+                    onValueChange = { 
+                        // ✅ Solo enviar el string tal como está
+                        onChange("priceWithoutIgv", it)
+                    },
                     label = { Text("Precio sin IGV *") },
                     modifier = Modifier.weight(1f),
-                    singleLine = true
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                 )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // ✅ Cantidad mínima más compacta
             OutlinedTextField(
-                value = tariff.quantityMinimum.toString(),
-                onValueChange = { onChange("quantityMinimum", it.toDoubleOrNull() ?: 0.0) },
+                value = if (tariff.quantityMinimum == 0.0) "" else tariff.quantityMinimum.toString(),
+                onValueChange = { 
+                    // ✅ Solo enviar el string tal como está
+                    onChange("quantityMinimum", it)
+                },
                 label = { Text("Cantidad Mínima *") },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
         }
     }
@@ -720,8 +785,8 @@ fun ProductTariffCard(
 @Composable
 fun ProductStockSection(
     uiState: NewProductUiState,
-    onStockMinChanged: (Int) -> Unit,
-    onStockMaxChanged: (Int) -> Unit
+    onStockMinChanged: (String) -> Unit,  // ✅ Cambiar de Int a String
+    onStockMaxChanged: (String) -> Unit   // ✅ Cambiar de Int a String
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -753,20 +818,29 @@ fun ProductStockSection(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // ✅ Stock - usar OutlinedTextField normal
                 OutlinedTextField(
                     value = uiState.stockMin.toString(),
-                    onValueChange = { onStockMinChanged(it.toIntOrNull() ?: 0) },
+                    onValueChange = { 
+                        // ✅ Ahora onStockMinChanged acepta String
+                        onStockMinChanged(it)
+                    },
                     label = { Text("Stock Mínimo (Opcional)") },
                     modifier = Modifier.weight(1f),
-                    singleLine = true
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
 
                 OutlinedTextField(
                     value = uiState.stockMax.toString(),
-                    onValueChange = { onStockMaxChanged(it.toIntOrNull() ?: 0) },
+                    onValueChange = { 
+                        // ✅ Ahora onStockMaxChanged acepta String
+                        onStockMaxChanged(it)
+                    },
                     label = { Text("Stock Máximo (Opcional)") },
                     modifier = Modifier.weight(1f),
-                    singleLine = true
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
             }
         }

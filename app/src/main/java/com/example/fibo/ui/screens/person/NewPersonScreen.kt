@@ -293,7 +293,7 @@ fun NewPersonScreen(
                     Button(
                         onClick = { viewModel.createPerson(subsidiaryData?.id) },
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = uiState.isFormValid && !uiState.isLoading, // Se deshabilita cuando está cargando
+                        enabled = uiState.isFormValid && !uiState.isLoading,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary
                         )
@@ -304,23 +304,31 @@ fun NewPersonScreen(
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Creando...") // Texto que indica que está procesando
+                            Text(
+                                if (uiState.isEditing) "Actualizando..." else "Creando..."
+                            )
                         } else {
-                            Icon(Icons.Default.PersonAdd, contentDescription = null)
+                            Icon(
+                                if (uiState.isEditing) Icons.Default.Edit else Icons.Default.PersonAdd, 
+                                contentDescription = null
+                            )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Crear Persona")
+                            Text(
+                                if (uiState.isEditing) "Actualizar Persona" else "Crear Persona"
+                            )
                         }
                     }
 
                     OutlinedButton(
                         onClick = { navController.popBackStack() },
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = !uiState.isLoading // También deshabilitar el botón cancelar durante la creación
+                        enabled = !uiState.isLoading
                     ) {
                         Text("Cancelar")
                     }
                 }
             }
+
         }
     }
 }
