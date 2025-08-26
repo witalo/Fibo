@@ -130,7 +130,8 @@ fun NewReceiptScreen(
     var discountGlobalPercentage by remember { mutableStateOf(0.0) }
     var discountGlobalString by remember { mutableStateOf("0.00") }
     var applyGlobalDiscount by remember { mutableStateOf(false) }
-
+    // Esto es cuando la cotizacion se convierte en factura
+    val quotationID by viewModel.quotationID.collectAsState()
     // 2. CALCULAR TOTALES POR TIPO DE OPERACIÓN (ANTES DE DESCUENTOS)
     val totalTaxedBeforeDiscount = operationDetails.filter { it.typeAffectationId == 1 }
         .sumOf { it.totalValue } // Suma de valores gravados
@@ -1306,7 +1307,8 @@ fun NewReceiptScreen(
                                                 totalFree = max(0.0, totalFree),
                                                 totalAmount = max(0.0, totalAmount),
                                                 totalToPay = max(0.0, totalToPay),
-                                                totalPayed = max(0.0, totalToPay) // Asumimos que se paga completo
+                                                totalPayed = max(0.0, totalToPay), // Asumimos que se paga completo
+                                                parentOperation = quotationID ?: 0
                                             )
                                             // ENVIAR PAGOS SEGÚN CONFIGURACIÓN:
                                             if (paymentsEnabled) {

@@ -32,6 +32,9 @@ class NewReceiptViewModel @Inject constructor(
     private val operationRepository: OperationRepository,
     private val preferencesManager: PreferencesManager
 ) : ViewModel() {
+    // Esto es para la cotización cuando la cotizacion se convierte en factura
+    private val _quotationID = MutableStateFlow<Int?>(null)
+    val quotationID: StateFlow<Int?> = _quotationID.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -208,7 +211,7 @@ class NewReceiptViewModel @Inject constructor(
                     },
                     onFailure = { error ->
                         _isLoading.value = false
-                        _error.value = error.message ?: "Error al crear la factura"
+                        _error.value = error.message ?: "Error al crear la boleta"
                         Log.e("Italo", "Error creating receipt", error)
                     }
                 )
@@ -261,6 +264,7 @@ class NewReceiptViewModel @Inject constructor(
         _selectedProduct.value = null
     }
     fun loadQuotationData(quotationId: Int, callback: (IOperation?) -> Unit) {
+        _quotationID.value = quotationId // Guardar el ID
         viewModelScope.launch {
             try {
                 val result = operationRepository.getOperationById(quotationId)
@@ -270,6 +274,10 @@ class NewReceiptViewModel @Inject constructor(
                 callback(null)
             }
         }
+        // Función para limpiar el quotationId si es necesario
+//        fun clearQuotationId() {
+//            _quotationID.value = null
+//        }
     }
     // NUEVAS FUNCIONES PARA MANEJAR PAGOS
 
