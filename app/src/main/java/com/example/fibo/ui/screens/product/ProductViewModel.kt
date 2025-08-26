@@ -34,18 +34,35 @@ class ProductViewModel @Inject constructor(
                 _products,
                 _searchQuery,
                 _uiState.map { it.sortOrder },
-                _uiState.map { it.filterCategory },
                 _uiState.map { it.filterAvailable }
-            ) { products, query, sortOrder, filterCategory, filterAvailable ->
+            ) { products, query, sortOrder, filterAvailable ->
+                println("DEBUG: Iniciando filtrado - Total productos: ${products.size}")
+                println("DEBUG: Filtros activos - Disponibilidad: $filterAvailable")
+                
                 var filteredProducts = products
 
                 // Aplicar filtros
-                if (filterCategory != null) {
-                    filteredProducts = filteredProducts.filter { it.activeType == filterCategory }
-                }
-
                 if (filterAvailable != null) {
+                    val beforeFilter = filteredProducts.size
+                    println("DEBUG: Aplicando filtro de disponibilidad: $filterAvailable")
+                    println("DEBUG: Productos antes del filtro: $beforeFilter")
+                    
+                    // Log de todos los productos con su estado de disponibilidad
+                    filteredProducts.forEach { product ->
+                        println("DEBUG: Producto '${product.name}' - available: ${product.available}")
+                    }
+                    
                     filteredProducts = filteredProducts.filter { it.available == filterAvailable }
+                    val afterFilter = filteredProducts.size
+                    
+                    println("DEBUG: Filtro disponibilidad $filterAvailable aplicado, antes: $beforeFilter, después: $afterFilter")
+                    println("DEBUG: Productos disponibles en total: ${products.count { it.available }}")
+                    println("DEBUG: Productos no disponibles en total: ${products.count { !it.available }}")
+                    
+                    // Log de productos filtrados
+                    filteredProducts.forEach { product ->
+                        println("DEBUG: Producto filtrado '${product.name}' - available: ${product.available}")
+                    }
                 }
 
                 // Aplicar búsqueda
@@ -69,6 +86,7 @@ class ProductViewModel @Inject constructor(
                     ProductSortOrder.DATE_CREATED_DESC -> filteredProducts.sortedByDescending { it.id }
                 }
 
+                println("DEBUG: Filtrado completado - Productos finales: ${filteredProducts.size}")
                 filteredProducts
             }.collect { filteredProducts ->
                 _uiState.value = _uiState.value.copy(
@@ -176,53 +194,18 @@ class ProductViewModel @Inject constructor(
             }
         }
     }
-    fun setFilterCategory(category: String?) {
-        _uiState.value = _uiState.value.copy(
-            filterCategory = category
-        )
-        applyFilters()
-    }
 
     fun setFilterAvailable(available: Boolean?) {
+        println("DEBUG: setFilterAvailable llamado con: $available")
         _uiState.value = _uiState.value.copy(
             filterAvailable = available
         )
-        applyFilters()
     }
 
     fun clearFilters() {
+        println("DEBUG: clearFilters llamado")
         _uiState.value = _uiState.value.copy(
-            filterCategory = null,
             filterAvailable = null
-        )
-        applyFilters()
-    }
-
-    private fun applyFilters() {
-        val currentState = _uiState.value
-        var filtered = currentState.products
-
-        // Aplicar filtro por categoría
-        currentState.filterCategory?.let { category ->
-            filtered = filtered.filter { product ->
-                product.productStores.any { store ->
-                    store.warehouse!!.category == category
-                }
-            }
-        }
-
-        // Aplicar filtro por disponibilidad
-        currentState.filterAvailable?.let { available ->
-            filtered = filtered.filter { product ->
-                product.available == available
-            }
-        }
-
-        // Aplicar ordenamiento
-        filtered = applySorting(filtered)
-
-        _uiState.value = currentState.copy(
-            filteredProducts = filtered
         )
     }
 
@@ -231,28 +214,8 @@ class ProductViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(
             sortOrder = sortOrder
         )
-        applySorting()
     }
 
-    private fun applySorting(products: List<IProduct> = uiState.value.products): List<IProduct> {
-        return when (uiState.value.sortOrder) {
-            ProductSortOrder.NAME_ASC -> products.sortedBy { it.name }
-            ProductSortOrder.NAME_DESC -> products.sortedByDescending { it.name }
-            ProductSortOrder.CODE_ASC -> products.sortedBy { it.code }
-            ProductSortOrder.CODE_DESC -> products.sortedByDescending { it.code }
-            ProductSortOrder.STOCK_ASC -> products.sortedBy { it.totalStock }
-            ProductSortOrder.STOCK_DESC -> products.sortedByDescending { it.totalStock }
-            ProductSortOrder.DATE_CREATED_ASC -> products.sortedBy { it.id }
-            ProductSortOrder.DATE_CREATED_DESC -> products.sortedByDescending { it.id }
-        }
-    }
-
-    private fun applySorting() {
-        val sortedProducts = applySorting(uiState.value.products) // Pasar la lista actual
-        _uiState.value = _uiState.value.copy(
-            filteredProducts = sortedProducts
-        )
-    }
     // Función para seleccionar producto
     fun selectProduct(product: IProduct) {
         _uiState.value = _uiState.value.copy(
@@ -290,9 +253,9 @@ class ProductViewModel @Inject constructor(
 
                 // Simular eliminación exitosa
                 val updatedProducts = uiState.value.products.filter { it.id != product.id }
+                _products.value = updatedProducts
                 _uiState.value = _uiState.value.copy(
                     products = updatedProducts,
-                    filteredProducts = updatedProducts,
                     isDeleting = false,
                     showDeleteDialog = false,
                     productToDelete = null,

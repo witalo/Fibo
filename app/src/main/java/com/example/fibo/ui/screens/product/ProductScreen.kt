@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -21,6 +22,7 @@ import com.example.fibo.model.ISubsidiary
 import com.example.fibo.ui.components.AppScaffold
 import com.example.fibo.ui.components.ProductTopBar
 import com.example.fibo.utils.ProductSortOrder
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,48 +63,41 @@ fun ProductScreen(
         subsidiaryData = subsidiaryData,
         onLogout = onLogout,
         topBar = {
-            ProductTopBar(
-                title = "Productos",
-                searchQuery = uiState.searchQuery,
-                onSearchQueryChanged = { viewModel.onSearchQueryChanged(it) },
-                onClearSearch = { viewModel.clearSearch() },
-                onSortClick = { showSortDialog = true },
-                onFilterClick = { showFilterDialog = true },
-                onRefreshClick = { subsidiaryData?.id?.let { viewModel.refreshProducts(it) } },
-                onClearFilters = { // AGREGAR ESTA FUNCIÓN
-                    viewModel.setFilterCategory(null)
-                    viewModel.setFilterAvailable(null)
-                },
-                isSearching = uiState.isSearching,
-                isRefreshing = uiState.isRefreshing,
-                currentSortOrder = uiState.sortOrder,
-                currentFilters = uiState.filterCategory to uiState.filterAvailable
-            )
+            // TopBar vacío para que no tape el contenido
         }
     ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(
+                    start = paddingValues.calculateStartPadding(LocalLayoutDirection.current),
+                    end = paddingValues.calculateEndPadding(LocalLayoutDirection.current),
+                    bottom = paddingValues.calculateBottomPadding()
+                )
                 .background(MaterialTheme.colorScheme.background)
         ) {
+            // Contenido principal en Column
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-                // Barra de herramientas superior
-                ToolbarSection(
+                // ProductTopBar como parte del contenido principal
+                ProductTopBar(
+                    title = "Productos",
+                    searchQuery = uiState.searchQuery,
                     onSearchQueryChanged = { viewModel.onSearchQueryChanged(it) },
                     onClearSearch = { viewModel.clearSearch() },
                     onSortClick = { showSortDialog = true },
                     onFilterClick = { showFilterDialog = true },
                     onRefreshClick = { subsidiaryData?.id?.let { viewModel.refreshProducts(it) } },
-                    searchQuery = uiState.searchQuery,
+                    onClearFilters = { 
+                        viewModel.clearFilters()
+                    },
                     isSearching = uiState.isSearching,
-                    isRefreshing = uiState.isRefreshing
+                    isRefreshing = uiState.isRefreshing,
+                    currentSortOrder = uiState.sortOrder,
+                    currentFilters = null to uiState.filterAvailable
                 )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
+                
                 // Contenido principal
                 when {
                     uiState.isLoading -> {
@@ -122,18 +117,13 @@ fun ProductScreen(
                     else -> {
                         ProductList(
                             products = uiState.filteredProducts,
-                            navController = navController, // Pasar navController aquí
-                            onProductClick = { product ->
-                                viewModel.selectProduct(product)
-                                navController.navigate("productDetail/${product.id}")
-                            },
+                            navController = navController,
+                            onProductClick = { /* Click desactivado para evitar crash */ },
                             onEditClick = { product ->
                                 viewModel.selectProduct(product)
                                 navController.navigate("editProduct/${product.id}")
                             },
-                            onDeleteClick = { product ->
-                                viewModel.showDeleteDialog(product)
-                            }
+                            onDeleteClick = { /* Eliminación desactivada */ }
                         )
                     }
                 }
@@ -141,13 +131,14 @@ fun ProductScreen(
 
             // Botón flotante para crear producto
             FloatingActionButton(
-                onClick = {  try {
-                                    navController.navigate("newProduct")
-                                } catch (e: Exception) {
-                                    // Log del error para debugging
-                                    Log.e("NavigationError", "Error al navegar: ${e.message}", e)
-                                }
-                          },
+                onClick = {  
+                    try {
+                        navController.navigate("newProduct")
+                    } catch (e: Exception) {
+                        // Log del error para debugging
+                        Log.e("NavigationError", "Error al navegar: ${e.message}", e)
+                    }
+                },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(16.dp),
@@ -172,111 +163,17 @@ fun ProductScreen(
         // Diálogo de filtros
         if (showFilterDialog) {
             FilterDialog(
-                currentCategory = uiState.filterCategory,
                 currentAvailable = uiState.filterAvailable,
-                onCategorySelected = { category ->
-                    viewModel.setFilterCategory(category)
-                },
                 onAvailableSelected = { available ->
+                    println("DEBUG: Disponibilidad seleccionada en diálogo: $available")
                     viewModel.setFilterAvailable(available)
                 },
                 onClearFilters = {
+                    println("DEBUG: Limpiar filtros desde diálogo")
                     viewModel.clearFilters()
                 },
                 onDismiss = { showFilterDialog = false }
             )
-        }
-
-        // Diálogo de confirmación de eliminación
-        if (uiState.showDeleteDialog) {
-            DeleteConfirmationDialog(
-                product = uiState.productToDelete,
-                isDeleting = uiState.isDeleting,
-                onConfirm = {
-                    viewModel.deleteProduct(
-                        onSuccess = {
-                            // Producto eliminado exitosamente
-                        },
-                        onError = { error ->
-                            // Error al eliminar
-                        }
-                    )
-                },
-                onDismiss = { viewModel.hideDeleteDialog() }
-            )
-        }
-    }
-}
-
-@Composable
-fun ToolbarSection(
-    onSearchQueryChanged: (String) -> Unit,
-    onClearSearch: () -> Unit,
-    onSortClick: () -> Unit,
-    onFilterClick: () -> Unit,
-    onRefreshClick: () -> Unit,
-    searchQuery: String,
-    isSearching: Boolean,
-    isRefreshing: Boolean
-) {
-    Column(
-        modifier = Modifier.padding(horizontal = 16.dp)
-    ) {
-        // Barra de búsqueda
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = onSearchQueryChanged,
-            label = { Text("Buscar productos...") },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Buscar") },
-            trailingIcon = {
-                if (searchQuery.isNotBlank()) {
-                    IconButton(onClick = onClearSearch) {
-                        Icon(Icons.Default.Clear, contentDescription = "Limpiar")
-                    }
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Botones de acción
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            OutlinedButton(
-                onClick = onSortClick,
-                modifier = Modifier.weight(1f)
-            ) {
-                Icon(Icons.Default.Sort, contentDescription = null)
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Ordenar")
-            }
-
-            OutlinedButton(
-                onClick = onFilterClick,
-                modifier = Modifier.weight(1f)
-            ) {
-                Icon(Icons.Default.FilterList, contentDescription = null)
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Filtrar")
-            }
-
-            IconButton(
-                onClick = onRefreshClick,
-                enabled = !isRefreshing
-            ) {
-                if (isRefreshing) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Icon(Icons.Default.Refresh, contentDescription = "Actualizar")
-                }
-            }
         }
     }
 }
@@ -284,21 +181,27 @@ fun ToolbarSection(
 @Composable
 fun ProductList(
     products: List<IProduct>,
-    navController: NavController, // Agregar este parámetro
+    navController: NavController,
     onProductClick: (IProduct) -> Unit,
     onEditClick: (IProduct) -> Unit,
     onDeleteClick: (IProduct) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        contentPadding = PaddingValues(
+            start = 16.dp,
+            end = 16.dp,
+            top = 8.dp, // Padding superior para separar del ProductTopBar
+            bottom = 32.dp
+        ),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+
         items(products) { product ->
             ProductCard(
                 product = product,
                 onClick = { onProductClick(product) },
-                onEditClick = { onEditClick(product) }, // Usar el callback en lugar de navegar directamente
+                onEditClick = { onEditClick(product) },
                 onDeleteClick = { onDeleteClick(product) }
             )
         }
@@ -314,10 +217,8 @@ fun ProductCard(
     onDeleteClick: () -> Unit
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -350,21 +251,13 @@ fun ProductCard(
                     }
                 }
 
-                Row {
-                    IconButton(onClick = onEditClick) {
-                        Icon(
-                            Icons.Default.Edit,
-                            contentDescription = "Editar",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    IconButton(onClick = onDeleteClick) {
-                        Icon(
-                            Icons.Default.Delete,
-                            contentDescription = "Eliminar",
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                    }
+                // Solo botón de editar
+                IconButton(onClick = onEditClick) {
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = "Editar",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
 
@@ -537,9 +430,7 @@ fun SortDialog(
 
 @Composable
 fun FilterDialog(
-    currentCategory: String?,
     currentAvailable: Boolean?,
-    onCategorySelected: (String?) -> Unit,
     onAvailableSelected: (Boolean?) -> Unit,
     onClearFilters: () -> Unit,
     onDismiss: () -> Unit
@@ -549,34 +440,6 @@ fun FilterDialog(
         title = { Text("Filtros") },
         text = {
             Column {
-                // Filtro por categoría
-                Text(
-                    text = "Categoría",
-                    style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-                Row {
-                    FilterChip(
-                        selected = currentCategory == null,
-                        onClick = { onCategorySelected(null) },
-                        label = { Text("Todas") }
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    FilterChip(
-                        selected = currentCategory == "01",
-                        onClick = { onCategorySelected("01") },
-                        label = { Text("Venta") }
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    FilterChip(
-                        selected = currentCategory == "02",
-                        onClick = { onCategorySelected("02") },
-                        label = { Text("Vehículo") }
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
                 // Filtro por disponibilidad
                 Text(
                     text = "Disponibilidad",

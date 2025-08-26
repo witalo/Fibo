@@ -41,6 +41,7 @@ class ProductRepository @Inject constructor(
                     available = product.available ?: true,
                     activeType = (product.activeType).toString(),
                     ean = product.ean ?: "",
+                    observation = product.observation?:"",
                     weightInKilograms = product.weightInKilograms?.toDouble() ?: 0.0,
                     maximumFactor = product.maximumFactor?.toDouble() ?: 0.0,
                     minimumFactor = product.minimumFactor?.toDouble() ?: 0.0,
@@ -161,6 +162,7 @@ class ProductRepository @Inject constructor(
                 weightInKilograms = product.weightInKilograms?.toDouble() ?: 0.0,
                 maximumFactor = product.maximumFactor?.toDouble() ?: 0.0,
                 minimumFactor = product.minimumFactor?.toDouble() ?: 0.0,
+                observation = product.observation?:"",
                 minimumUnit = product.minimumUnit?.let { unit ->
                     IUnit(
                         id = unit.id.toInt(),

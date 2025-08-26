@@ -84,7 +84,6 @@ private fun AppTopBarWrapper(
         topBar()
     }
 }
-// ... existing code ...
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -96,7 +95,7 @@ fun ProductTopBar(
     onSortClick: () -> Unit,
     onFilterClick: () -> Unit,
     onRefreshClick: () -> Unit,
-    onClearFilters: () -> Unit, // AGREGAR ESTE PARÁMETRO
+    onClearFilters: () -> Unit,
     isSearching: Boolean,
     isRefreshing: Boolean,
     currentSortOrder: ProductSortOrder,
@@ -106,7 +105,8 @@ fun ProductTopBar(
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface)
-            .padding(16.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(top = 8.dp) // Padding superior adicional ya que no está en topBar
     ) {
         // Título y botón de refresh
         Row(
@@ -140,7 +140,7 @@ fun ProductTopBar(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         // Barra de búsqueda
         OutlinedTextField(
@@ -174,168 +174,144 @@ fun ProductTopBar(
             )
         )
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         // Barra de herramientas con filtros
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Botón de ordenamiento
-            FilterChip(
-                selected = false, // Siempre false para este botón
-                onClick = onSortClick,
-                label = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+            // Botones principales (izquierda)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Botón de ordenamiento
+                FilterChip(
+                    selected = false,
+                    onClick = onSortClick,
+                    label = {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Sort,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = when (currentSortOrder) {
+                                    ProductSortOrder.NAME_ASC -> "Nombre ↑"
+                                    ProductSortOrder.NAME_DESC -> "Nombre ↓"
+                                    ProductSortOrder.CODE_ASC -> "Código ↑"
+                                    ProductSortOrder.CODE_DESC -> "Código ↓"
+                                    ProductSortOrder.STOCK_ASC -> "Stock ↑"
+                                    ProductSortOrder.STOCK_DESC -> "Stock ↓"
+                                    ProductSortOrder.DATE_CREATED_ASC -> "Fecha ↑"
+                                    ProductSortOrder.DATE_CREATED_DESC -> "Fecha ↓"
+                                },
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    },
+                    leadingIcon = {
                         Icon(
                             Icons.Default.Sort,
                             contentDescription = null,
                             modifier = Modifier.size(16.dp)
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = when (currentSortOrder) {
-                                ProductSortOrder.NAME_ASC -> "Nombre ↑"
-                                ProductSortOrder.NAME_DESC -> "Nombre ↓"
-                                ProductSortOrder.CODE_ASC -> "Código ↑"
-                                ProductSortOrder.CODE_DESC -> "Código ↓"
-                                ProductSortOrder.STOCK_ASC -> "Stock ↑"
-                                ProductSortOrder.STOCK_DESC -> "Stock ↓"
-                                ProductSortOrder.DATE_CREATED_ASC -> "Fecha ↑"
-                                ProductSortOrder.DATE_CREATED_DESC -> "Fecha ↓"
-                            },
-                            style = MaterialTheme.typography.bodySmall
-                        )
                     }
-                },
-                leadingIcon = {
-                    Icon(
-                        Icons.Default.Sort,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            )
+                )
 
-            // Botón de filtros
-            FilterChip(
-                selected = currentFilters.first != null || currentFilters.second != null,
-                onClick = onFilterClick,
-                label = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                // Botón de filtros
+                FilterChip(
+                    selected = currentFilters.first != null || currentFilters.second != null,
+                    onClick = onFilterClick,
+                    label = {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.FilterList,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Filtros",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    },
+                    leadingIcon = {
                         Icon(
                             Icons.Default.FilterList,
                             contentDescription = null,
                             modifier = Modifier.size(16.dp)
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "Filtros",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                },
-                leadingIcon = {
-                    Icon(
-                        Icons.Default.FilterList,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = if (currentFilters.first != null || currentFilters.second != null)
-                        MaterialTheme.colorScheme.secondaryContainer
-                    else
-                        MaterialTheme.colorScheme.surfaceVariant,
-                    selectedLabelColor = if (currentFilters.first != null || currentFilters.second != null)
-                        MaterialTheme.colorScheme.onSecondaryContainer
-                    else
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            )
-
-            // Indicadores de filtros activos
-            if (currentFilters.first != null) {
-                FilterChip(
-                    selected = true,
-                    onClick = onFilterClick,
-                    label = {
-                        Text(
-                            text = when (currentFilters.first) {
-                                "01" -> "Venta"
-                                "02" -> "Vehículo"
-                                "03" -> "Reserva"
-                                else -> "Categoría"
-                            },
-                            style = MaterialTheme.typography.bodySmall
-                        )
                     },
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                        selectedLabelColor = MaterialTheme.colorScheme.onTertiaryContainer
+                        selectedContainerColor = if (currentFilters.first != null || currentFilters.second != null)
+                            MaterialTheme.colorScheme.secondaryContainer
+                        else
+                            MaterialTheme.colorScheme.surfaceVariant,
+                        selectedLabelColor = if (currentFilters.first != null || currentFilters.second != null)
+                            MaterialTheme.colorScheme.onSecondaryContainer
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 )
             }
 
-            if (currentFilters.second != null) {
-                FilterChip(
-                    selected = true,
-                    onClick = onFilterClick,
-                    label = {
-                        Text(
-                            text = if (currentFilters.second == true) "Disponible" else "No Disponible",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = if (currentFilters.second == true)
-                            MaterialTheme.colorScheme.primaryContainer
-                        else
-                            MaterialTheme.colorScheme.errorContainer,
-                        selectedLabelColor = if (currentFilters.second == true)
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        else
-                            MaterialTheme.colorScheme.onErrorContainer
-                    )
-                )
-            }
-
-            // En la parte donde muestras el FilterChip para limpiar todo:
+            // Botón limpiar (derecha) - Solo icono
             if (currentFilters.first != null || currentFilters.second != null || searchQuery.isNotBlank()) {
-                FilterChip(
-                    selected = false,
+                IconButton(
                     onClick = {
                         onClearSearch()
-                        onClearFilters() // USAR LA FUNCIÓN PASADA COMO PARÁMETRO
+                        onClearFilters()
                     },
-                    label = { Text("Limpiar todo") },
-                    leadingIcon = {
-                        Icon(Icons.Default.Clear, contentDescription = null)
-                    }
-                )
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Clear,
+                        contentDescription = "Limpiar todo",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
         }
 
-        // Indicador de búsqueda activa
-        if (isSearching) {
-            Spacer(modifier = Modifier.height(8.dp))
+        // Filtros activos - Solo cuando hay filtros, sin espacio extra
+        if (currentFilters.second != null) {
             Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Start,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(16.dp),
-                    strokeWidth = 2.dp
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Buscando...",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                // Indicadores de filtros activos
+                if (currentFilters.second != null) {
+                    FilterChip(
+                        selected = true,
+                        onClick = onFilterClick,
+                        label = {
+                            Text(
+                                text = if (currentFilters.second == true) "Disponible" else "No Disponible",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = if (currentFilters.second == true)
+                                MaterialTheme.colorScheme.primaryContainer
+                            else
+                                MaterialTheme.colorScheme.errorContainer,
+                            selectedLabelColor = if (currentFilters.second == true)
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            else
+                                MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    )
+                }
             }
         }
     }
