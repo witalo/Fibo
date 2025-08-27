@@ -293,7 +293,7 @@ class NewPersonViewModel @Inject constructor(
                 currentState.documentNumber.isNotBlank() &&
 //                currentState.phone.isNotBlank() &&
 //                currentState.email.isNotBlank() &&
-                currentState.address.isNotBlank() &&
+//                currentState.address.isNotBlank() &&
                 (currentState.isClient || currentState.isSupplier || currentState.isDriver) &&
                 // Validar licencia de conducir solo si es conductor
                 (!currentState.isDriver || currentState.driverLicense.isNotBlank())
