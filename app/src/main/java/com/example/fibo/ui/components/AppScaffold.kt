@@ -2,10 +2,12 @@ package com.example.fibo.ui.components
 
 import android.util.Log
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Sort
@@ -13,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -101,196 +104,180 @@ fun ProductTopBar(
     currentSortOrder: ProductSortOrder,
     currentFilters: Pair<String?, Boolean?>
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .padding(top = 8.dp) // Padding superior adicional ya que no está en topBar
-    ) {
-        // Título y botón de refresh
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+    // ✅ Obtener el handler del menú lateral
+    val onMenuClick = LocalMenuClickHandler.current
 
-            IconButton(
-                onClick = onRefreshClick,
-                enabled = !isRefreshing
-            ) {
-                if (isRefreshing) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Icon(
-                        Icons.Default.Refresh,
-                        contentDescription = "Actualizar",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Barra de búsqueda
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = onSearchQueryChanged,
-            label = { Text("Buscar productos...") },
-            placeholder = { Text("Nombre, código o barcode") },
-            leadingIcon = {
-                Icon(
-                    Icons.Default.Search,
-                    contentDescription = "Buscar",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+    Column {
+        // ✅ TopAppBar con botón hamburguesa y refresh
+        TopAppBar(
+            title = {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
                 )
             },
-            trailingIcon = {
-                if (searchQuery.isNotBlank()) {
-                    IconButton(onClick = onClearSearch) {
+            navigationIcon = {
+                // ✅ Botón hamburguesa para menú lateral
+                IconButton(onClick = onMenuClick) {
+                    Icon(
+                        imageVector = Icons.Default.Menu,
+                        contentDescription = "Menú"
+                    )
+                }
+            },
+            actions = {
+                // ✅ Botón de refresh en la TopBar
+                IconButton(
+                    onClick = onRefreshClick,
+                    enabled = !isRefreshing
+                ) {
+                    if (isRefreshing) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
                         Icon(
-                            Icons.Default.Clear,
-                            contentDescription = "Limpiar búsqueda",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            Icons.Default.Refresh,
+                            contentDescription = "Actualizar",
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
-            },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline
-            )
+            }
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Barra de herramientas con filtros
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        // ✅ Contenido de búsqueda y filtros
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
-            // Botones principales (izquierda)
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // Botón de ordenamiento
-                FilterChip(
-                    selected = false,
-                    onClick = onSortClick,
-                    label = {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Default.Sort,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = when (currentSortOrder) {
-                                    ProductSortOrder.NAME_ASC -> "Nombre ↑"
-                                    ProductSortOrder.NAME_DESC -> "Nombre ↓"
-                                    ProductSortOrder.CODE_ASC -> "Código ↑"
-                                    ProductSortOrder.CODE_DESC -> "Código ↓"
-                                    ProductSortOrder.STOCK_ASC -> "Stock ↑"
-                                    ProductSortOrder.STOCK_DESC -> "Stock ↓"
-                                    ProductSortOrder.DATE_CREATED_ASC -> "Fecha ↑"
-                                    ProductSortOrder.DATE_CREATED_DESC -> "Fecha ↓"
-                                },
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                    },
-                    leadingIcon = {
-                        Icon(
-                            Icons.Default.Sort,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                )
-
-                // Botón de filtros
-                FilterChip(
-                    selected = currentFilters.first != null || currentFilters.second != null,
-                    onClick = onFilterClick,
-                    label = {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Default.FilterList,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Filtros",
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                    },
-                    leadingIcon = {
-                        Icon(
-                            Icons.Default.FilterList,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = if (currentFilters.first != null || currentFilters.second != null)
-                            MaterialTheme.colorScheme.secondaryContainer
-                        else
-                            MaterialTheme.colorScheme.surfaceVariant,
-                        selectedLabelColor = if (currentFilters.first != null || currentFilters.second != null)
-                            MaterialTheme.colorScheme.onSecondaryContainer
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                )
-            }
-
-            // Botón limpiar (derecha) - Solo icono
-            if (currentFilters.first != null || currentFilters.second != null || searchQuery.isNotBlank()) {
-                IconButton(
-                    onClick = {
-                        onClearSearch()
-                        onClearFilters()
-                    },
-                    modifier = Modifier.size(40.dp)
-                ) {
+            // Barra de búsqueda
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = onSearchQueryChanged,
+                label = { Text("Buscar productos...") },
+                placeholder = { Text("Nombre, código o barcode") },
+                leadingIcon = {
                     Icon(
-                        Icons.Default.Clear,
-                        contentDescription = "Limpiar todo",
-                        tint = MaterialTheme.colorScheme.primary
+                        Icons.Default.Search,
+                        contentDescription = "Buscar",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                }
-            }
-        }
+                },
+                trailingIcon = {
+                    if (searchQuery.isNotBlank()) {
+                        IconButton(onClick = onClearSearch) {
+                            Icon(
+                                Icons.Default.Clear,
+                                contentDescription = "Limpiar búsqueda",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                )
+            )
 
-        // Filtros activos - Solo cuando hay filtros, sin espacio extra
-        if (currentFilters.second != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Barra de herramientas con filtros
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Start,
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Indicadores de filtros activos
-                if (currentFilters.second != null) {
+                // Botones principales (izquierda)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Botón de ordenamiento
+                    FilterChip(
+                        selected = false,
+                        onClick = onSortClick,
+                        label = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.Sort,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = when (currentSortOrder) {
+                                        ProductSortOrder.NAME_ASC -> "Nombre ↑"
+                                        ProductSortOrder.NAME_DESC -> "Nombre ↓"
+                                        ProductSortOrder.CODE_ASC -> "Código ↑"
+                                        ProductSortOrder.CODE_DESC -> "Código ↓"
+                                        ProductSortOrder.STOCK_ASC -> "Stock ↑"
+                                        ProductSortOrder.STOCK_DESC -> "Stock ↓"
+                                        ProductSortOrder.DATE_CREATED_ASC -> "Fecha ↑"
+                                        ProductSortOrder.DATE_CREATED_DESC -> "Fecha ↓"
+                                    },
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+                    )
+
+                    // Botón de filtros
+                    FilterChip(
+                        selected = currentFilters.first != null || currentFilters.second != null,
+                        onClick = onFilterClick,
+                        label = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.FilterList,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Filtros",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+                    )
+                }
+
+                // Botón limpiar (derecha)
+                if (currentFilters.first != null || currentFilters.second != null || searchQuery.isNotBlank()) {
+                    IconButton(
+                        onClick = {
+                            onClearSearch()
+                            onClearFilters()
+                        },
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Clear,
+                            contentDescription = "Limpiar todo",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+
+            // Filtros activos
+            if (currentFilters.second != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Start,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     FilterChip(
                         selected = true,
                         onClick = onFilterClick,

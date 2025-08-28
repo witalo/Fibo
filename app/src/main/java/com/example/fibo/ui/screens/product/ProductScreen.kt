@@ -63,41 +63,42 @@ fun ProductScreen(
         subsidiaryData = subsidiaryData,
         onLogout = onLogout,
         topBar = {
-            // TopBar vacío para que no tape el contenido
+            // ✅ Usar ProductTopBar que ya incluye TopAppBar con botón hamburguesa
+            ProductTopBar(
+                title = "Productos",
+                searchQuery = uiState.searchQuery,
+                onSearchQueryChanged = { viewModel.onSearchQueryChanged(it) },
+                onClearSearch = { viewModel.clearSearch() },
+                onSortClick = { showSortDialog = true },
+                onFilterClick = { showFilterDialog = true },
+                onRefreshClick = {
+                    // ✅ Debug: agregar log para verificar que se ejecute
+                    println("DEBUG: Refresh button clicked!")
+                    subsidiaryData?.id?.let { subsidiaryId ->
+                        println("DEBUG: Refreshing products for subsidiary: $subsidiaryId")
+                        viewModel.refreshProducts(subsidiaryId)
+                    } ?: println("DEBUG: No subsidiary ID available")
+                },
+                onClearFilters = {
+                    viewModel.clearFilters()
+                },
+                isSearching = uiState.isSearching,
+                isRefreshing = uiState.isRefreshing,
+                currentSortOrder = uiState.sortOrder,
+                currentFilters = null to uiState.filterAvailable
+            )
         }
     ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(
-                    start = paddingValues.calculateStartPadding(LocalLayoutDirection.current),
-                    end = paddingValues.calculateEndPadding(LocalLayoutDirection.current),
-                    bottom = paddingValues.calculateBottomPadding()
-                )
+                .padding(paddingValues)
                 .background(MaterialTheme.colorScheme.background)
         ) {
             // Contenido principal en Column
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-                // ProductTopBar como parte del contenido principal
-                ProductTopBar(
-                    title = "Productos",
-                    searchQuery = uiState.searchQuery,
-                    onSearchQueryChanged = { viewModel.onSearchQueryChanged(it) },
-                    onClearSearch = { viewModel.clearSearch() },
-                    onSortClick = { showSortDialog = true },
-                    onFilterClick = { showFilterDialog = true },
-                    onRefreshClick = { subsidiaryData?.id?.let { viewModel.refreshProducts(it) } },
-                    onClearFilters = { 
-                        viewModel.clearFilters()
-                    },
-                    isSearching = uiState.isSearching,
-                    isRefreshing = uiState.isRefreshing,
-                    currentSortOrder = uiState.sortOrder,
-                    currentFilters = null to uiState.filterAvailable
-                )
-                
                 // Contenido principal
                 when {
                     uiState.isLoading -> {
