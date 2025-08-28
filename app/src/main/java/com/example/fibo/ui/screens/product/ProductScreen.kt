@@ -275,7 +275,7 @@ fun ProductCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "${product.totalStock}",
+                        text = "${product.stockVentas}",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold
                     )

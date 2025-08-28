@@ -43,5 +43,23 @@ data class IProduct(
         get() = productTariffs.firstOrNull()?.unit?.shortName ?: ""
 
     val totalStock: Double
-        get() = productStores.sumOf { it.stock }
+        get() = productStores
+            .filter { store ->
+                // ✅ Solo almacenes de categoría "01" (VENTA)
+                // Maneja tanto "01" como "A_01" para compatibilidad
+                store.warehouse?.category?.let { category ->
+                    category == "01" || category == "A_01"
+                } ?: false
+            }
+            .sumOf { it.stock }
+
+    // ✅ Agregar también una función específica para stock de ventas
+    val stockVentas: Double
+        get() = productStores
+            .filter { store ->
+                store.warehouse?.category?.let { category ->
+                    category == "01" || category == "A_01"
+                } ?: false
+            }
+            .sumOf { it.stock }
 }

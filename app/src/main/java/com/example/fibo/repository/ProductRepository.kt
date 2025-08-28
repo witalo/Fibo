@@ -116,7 +116,13 @@ class ProductRepository @Inject constructor(
                                     category = (warehouse.category ?: "NA").toString()
                                 )
                             },
-                            stock = (store.stock as? Double) ?: 0.0
+                            // ✅ CORREGIR: Convertir stock de String a Double correctamente
+                            stock = try {
+                                store.stock.toString().toDouble()
+                            } catch (e: NumberFormatException) {
+                                println("Error convirtiendo stock '${store.stock}': ${e.message}")
+                                0.0
+                            }
                         )
                     } ?: emptyList()
                 )
