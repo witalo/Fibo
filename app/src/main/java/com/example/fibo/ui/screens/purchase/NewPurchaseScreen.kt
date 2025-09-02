@@ -1500,7 +1500,7 @@ fun ProductEditDialog(
 ) {
     // Estados para edición - inicializar con valores del producto
     var quantity by remember { mutableStateOf("1.0") }
-    var priceWithIgv by remember { mutableStateOf(product.priceWithIgv3?.toString() ?: "0.00") }
+    var priceWithIgv by remember { mutableStateOf("0.00") }
     var priceWithoutIgv by remember { mutableStateOf("0.00") }
     var selectedAffectationType by remember { mutableStateOf(1) } // 1 = Gravada por defecto
     var showAffectationDialog by remember { mutableStateOf(false) }
@@ -1509,12 +1509,24 @@ fun ProductEditDialog(
     val igvPercentage = 18.0 // TODO: Obtener de PreferencesManager
     val igvFactor = igvPercentage / 100.0
 
-    // Calcular precio sin IGV basado en el precio con IGV
+    // Inicializar precios del producto
+    LaunchedEffect(product) {
+        val productPrice = product.priceWithIgv3 ?: 0.0
+        priceWithIgv = String.format("%.2f", productPrice)
+        
+        // Calcular precio sin IGV inicial
+        priceWithoutIgv = when (selectedAffectationType) {
+            1 -> String.format("%.2f", productPrice / (1 + igvFactor)) // Gravado: quitar IGV
+            else -> String.format("%.2f", productPrice) // Exonerado/Inafecto: mismo valor
+        }
+    }
+
+    // Recalcular precio sin IGV cuando cambie el precio con IGV o el tipo de afectación
     LaunchedEffect(priceWithIgv, selectedAffectationType) {
         val withIgvValue = priceWithIgv.toDoubleOrNull() ?: 0.0
         priceWithoutIgv = when (selectedAffectationType) {
-            1 -> String.format("%.4f", withIgvValue / (1 + igvFactor)) // Gravado: quitar IGV
-            else -> String.format("%.4f", withIgvValue) // Exonerado/Inafecto: mismo valor
+            1 -> String.format("%.2f", withIgvValue / (1 + igvFactor)) // Gravado: quitar IGV
+            else -> String.format("%.2f", withIgvValue) // Exonerado/Inafecto: mismo valor
         }
     }
 
@@ -1632,21 +1644,42 @@ fun ProductEditDialog(
                 )
 
                 // Tipo de afectación
-                OutlinedTextField(
-                    value = affectationTypes.find { it.first == selectedAffectationType.toString() }?.second ?: "Gravada",
-                    onValueChange = { },
-                    label = { Text("Tipo de Afectación") },
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { showAffectationDialog = true },
-                    readOnly = true,
-                    trailingIcon = {
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "Tipo de Afectación",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = affectationTypes.find { it.first == selectedAffectationType.toString() }?.second ?: "Gravada",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                         Icon(
                             Icons.Default.KeyboardArrowDown,
-                            contentDescription = "Seleccionar tipo"
+                            contentDescription = "Seleccionar tipo",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                )
+                }
 
 
 
@@ -1654,18 +1687,59 @@ fun ProductEditDialog(
                 Card(
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                 ) {
                     Column(
-                        modifier = Modifier.padding(12.dp)
+                        modifier = Modifier.padding(16.dp)
                     ) {
                         Text(
                             text = "Resumen de Cálculos",
-                            style = MaterialTheme.typography.titleSmall,
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        // Detalle de cálculo
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Cantidad:",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Text(
+                                text = "${String.format("%.1f", qtyValue)}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Precio sin IGV:",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Text(
+                                text = "S/. ${String.format("%.2f", priceWithoutIgvValue)}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                        
+                        Divider(
+                            modifier = Modifier.padding(vertical = 8.dp),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.3f)
+                        )
                         
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -1673,12 +1747,13 @@ fun ProductEditDialog(
                         ) {
                             Text(
                                 text = "Subtotal:",
-                                style = MaterialTheme.typography.bodyMedium,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                             Text(
                                 text = "S/. ${String.format("%.2f", subtotal)}",
-                                style = MaterialTheme.typography.bodyMedium,
+                                style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
@@ -1691,31 +1766,37 @@ fun ProductEditDialog(
                             ) {
                                 Text(
                                     text = "IGV (18%):",
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                                 Text(
                                     text = "S/. ${String.format("%.2f", igvAmount)}",
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                             }
                         }
                         
+                        Divider(
+                            modifier = Modifier.padding(vertical = 8.dp),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)
+                        )
+                        
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "Total:",
-                                style = MaterialTheme.typography.titleMedium,
+                                text = "TOTAL:",
+                                style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                             Text(
                                 text = "S/. ${String.format("%.2f", totalAmount)}",
-                                style = MaterialTheme.typography.titleMedium,
+                                style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
@@ -1750,43 +1831,99 @@ fun ProductEditDialog(
     if (showAffectationDialog) {
         AlertDialog(
             onDismissRequest = { showAffectationDialog = false },
-            title = { Text("Seleccionar Tipo de Afectación") },
+            title = { 
+                Text(
+                    "Seleccionar Tipo de Afectación",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            },
             text = {
-                Column {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     affectationTypes.forEach { (type, name) ->
+                        val isSelected = selectedAffectationType == type.toInt()
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 4.dp)
                                 .clickable {
                                     selectedAffectationType = type.toInt()
                                     showAffectationDialog = false
                                 },
                             colors = CardDefaults.cardColors(
-                                containerColor = if (selectedAffectationType == type.toInt()) {
+                                containerColor = if (isSelected) {
                                     MaterialTheme.colorScheme.primaryContainer
                                 } else {
                                     MaterialTheme.colorScheme.surfaceVariant
                                 }
+                            ),
+                            elevation = CardDefaults.cardElevation(
+                                defaultElevation = if (isSelected) 4.dp else 2.dp
                             )
                         ) {
-                            Text(
-                                text = name,
-                                modifier = Modifier.padding(12.dp),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = if (selectedAffectationType == type.toInt()) {
-                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = isSelected,
+                                    onClick = {
+                                        selectedAffectationType = type.toInt()
+                                        showAffectationDialog = false
+                                    },
+                                    colors = RadioButtonDefaults.colors(
+                                        selectedColor = MaterialTheme.colorScheme.primary
+                                    )
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = name,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isSelected) {
+                                            MaterialTheme.colorScheme.onPrimaryContainer
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        }
+                                    )
+                                    Text(
+                                        text = when (type) {
+                                            "1" -> "Aplica IGV 18%"
+                                            "2" -> "Exonerado de IGV"
+                                            "3" -> "Inafecto al IGV"
+                                            "4" -> "Operación gratuita"
+                                            else -> ""
+                                        },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = if (isSelected) {
+                                            MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                        }
+                                    )
                                 }
-                            )
+                            }
                         }
                     }
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showAffectationDialog = false }) {
-                    Text("Cancelar")
+                TextButton(
+                    onClick = { showAffectationDialog = false },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text(
+                        "Cerrar",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
                 }
             }
         )
