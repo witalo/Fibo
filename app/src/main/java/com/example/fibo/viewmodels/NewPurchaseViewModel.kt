@@ -143,6 +143,47 @@ class NewPurchaseViewModel @Inject constructor(
         _isSearchingSupplier.value = false
     }
 
+    fun clearSupplier() {
+        _uiState.value = _uiState.value.copy(
+            supplier = null,
+            error = null
+        )
+        // ✅ También limpiar los resultados de búsqueda
+        _supplierSearchResults.value = emptyList()
+        _isSearchingSupplier.value = false
+    }
+
+    fun addProduct(product: IProductOperation) {
+        val currentProducts = _uiState.value.products.toMutableList()
+        // Verificar si el producto ya existe
+        val existingIndex = currentProducts.indexOfFirst { it.id == product.id }
+        if (existingIndex != -1) {
+            // Si ya existe, incrementar la cantidad
+            val existingProduct = currentProducts[existingIndex]
+            currentProducts[existingIndex] = existingProduct.copy(
+                // TODO: Implementar lógica de cantidad si es necesario
+            )
+        } else {
+            // Si no existe, agregarlo
+            currentProducts.add(product)
+        }
+        
+        _uiState.value = _uiState.value.copy(
+            products = currentProducts,
+            error = null
+        )
+    }
+
+    fun removeProduct(productId: Int) {
+        val currentProducts = _uiState.value.products.toMutableList()
+        currentProducts.removeAll { it.id == productId }
+        
+        _uiState.value = _uiState.value.copy(
+            products = currentProducts,
+            error = null
+        )
+    }
+
     // FUNCIONES DE PAGOS EXACTAMENTE IGUAL QUE NoteOfSale
     fun showPaymentDialog(totalAmount: Double) {
         _paymentSummary.value = PaymentSummary(

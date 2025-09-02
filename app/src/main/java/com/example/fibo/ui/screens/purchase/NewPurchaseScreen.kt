@@ -25,6 +25,7 @@ import com.example.fibo.model.*
 import com.example.fibo.ui.components.AppScaffold
 import com.example.fibo.utils.getCurrentFormattedTime
 import com.example.fibo.viewmodels.NewPurchaseViewModel
+import com.example.fibo.viewmodels.ProductSearchState
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.math.max
@@ -50,6 +51,8 @@ fun NewPurchaseScreen(
     var showSupplierDialog by remember { mutableStateOf(false) }
     var showDocumentTypeDialog by remember { mutableStateOf(false) } // ✅ MOVER AQUÍ
     var supplierSearchQuery by remember { mutableStateOf("") } // Para buscar proveedor por RUC/DNI
+    var showProductDialog by remember { mutableStateOf(false) } // Para buscar productos
+    var productSearchQuery by remember { mutableStateOf("") } // Para buscar productos
     // ✅ Agregar operationDetails como en NoteOfSale
     var operationDetails by remember { mutableStateOf<List<IOperationDetail>>(emptyList()) }
     // ✅ MOVER AQUÍ: Declarar paymentsEnabled y currentPayments al nivel del composable principal
@@ -141,7 +144,8 @@ fun NewPurchaseScreen(
             item {
                 ProductsSection(
                     products = uiState.products,
-                    onAddProduct = { /* TODO: Implementar selección de productos */ }
+                    onAddProduct = { showProductDialog = true },
+                    viewModel = viewModel
                 )
             }
 
@@ -329,6 +333,27 @@ fun NewPurchaseScreen(
                 paymentSummary = viewModel.paymentSummary.collectAsState().value
             )
         }
+
+        // Diálogo de búsqueda de productos
+        if (showProductDialog) {
+            ProductSearchDialog(
+                onDismiss = { showProductDialog = false },
+                searchQuery = productSearchQuery,
+                onSearchQueryChange = { query ->
+                    productSearchQuery = query
+                    if (query.length >= 3) {
+                        viewModel.searchProductsByQuery(query, subsidiaryData?.id ?: 0)
+                    }
+                },
+                searchResults = viewModel.searchResults.collectAsState().value,
+                searchState = viewModel.searchState.collectAsState().value,
+                onProductSelected = { product ->
+                    viewModel.addProduct(product)
+                    showProductDialog = false
+                    productSearchQuery = ""
+                }
+            )
+        }
     }
 }
 
@@ -349,8 +374,8 @@ fun GeneralInformationSection(
             containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Column(
+        ) {
+            Column(
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
@@ -683,7 +708,11 @@ fun SupplierDataSection(
                                     )
                                 }
                             }
-                            IconButton(onClick = onSupplierClick) {
+                            IconButton(onClick = {
+                                // Limpiar el proveedor actual para permitir buscar uno nuevo
+                                viewModel.clearSupplier()
+                                onSupplierClick()
+                            }) {
                                 Icon(
                                     Icons.Default.Edit,
                                     contentDescription = "Cambiar proveedor",
@@ -742,7 +771,8 @@ fun DatePickerDialog(
 @Composable
 fun ProductsSection(
     products: List<IProductOperation>,
-    onAddProduct: () -> Unit
+    onAddProduct: () -> Unit,
+    viewModel: NewPurchaseViewModel
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -757,7 +787,7 @@ fun ProductsSection(
             Text(
                 text = "Productos",
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
 
@@ -801,7 +831,7 @@ fun ProductsSection(
                     items(products) { product ->
                         ProductOperationCard(
                             product = product,
-                            onRemove = { /* TODO: Implementar eliminación */ }
+                            onRemove = { viewModel.removeProduct(product.id) }
                         )
                     }
                 }
@@ -1422,6 +1452,126 @@ fun getCurrentFormattedTime(): String {
     val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
     return timeFormat.format(Date())
 }
+@Composable
+fun ProductSearchDialog(
+    onDismiss: () -> Unit,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    searchResults: List<IProductOperation>,
+    searchState: ProductSearchState,
+    onProductSelected: (IProductOperation) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Buscar Producto") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = onSearchQueryChange,
+                    label = { Text("Nombre o código del producto") },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("Ej: Coca Cola, 12345") },
+                    trailingIcon = {
+                        if (searchQuery.isNotBlank()) {
+                            IconButton(onClick = { onSearchQueryChange("") }) {
+                                Icon(
+                                    Icons.Default.Clear,
+                                    contentDescription = "Limpiar"
+                                )
+                            }
+                        }
+                    }
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                when (searchState) {
+                    is ProductSearchState.Loading -> {
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                    is ProductSearchState.Success -> {
+                        if (searchResults.isEmpty()) {
+                            Text(
+                                text = "No se encontraron productos",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.height(200.dp)
+                            ) {
+                                items(searchResults) { product ->
+                                    Card(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 2.dp)
+                                            .clickable { onProductSelected(product) },
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                        )
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.padding(12.dp)
+                                        ) {
+                                            Text(
+                                                text = product.name ?: "Sin nombre",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Text(
+                                                text = "Código: ${product.code}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            Text(
+                                                text = "Stock: ${product.stock} - Precio: S/. ${String.format("%.2f", product.priceWithIgv3)}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    is ProductSearchState.Empty -> {
+                        Text(
+                            text = "No se encontraron productos para '${searchState.query}'",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    is ProductSearchState.Error -> {
+                        Text(
+                            text = "Error: ${searchState.message}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                    is ProductSearchState.Idle -> {
+                        Text(
+                            text = "Ingrese al menos 3 caracteres para buscar",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cerrar")
+            }
+        }
+    )
+}
+
 // ✅ Función helper para convertir código de documento a nombre legible
 private fun getDocumentTypeName(documentType: String?): String {
     return when (documentType) {
@@ -1438,4 +1588,4 @@ private fun getDocumentTypeName(documentType: String?): String {
         "-" -> "VARIOS - VENTAS MENORES A S/.700.00"
         else -> "DOC"
     }
-}
+} 
