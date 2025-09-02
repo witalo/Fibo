@@ -234,6 +234,37 @@ class OperationRepository @Inject constructor(
             )
         }
     }
+    suspend fun getSntSupplier(document: String): Result<ISupplier> {
+        return runCatching {
+            val mutation = SntPersonMutation(document = document)
+            val response = apolloClient.mutation(mutation).execute()
+
+            if (response.hasErrors()) {
+                val errorMessages =
+                    response.errors?.joinToString { it.message } ?: "Error desconocido"
+                throw RuntimeException("Error en la mutación: $errorMessages")
+            }
+
+            val personData = response.data?.sntPerson?.person
+            val message = response.data?.sntPerson?.message ?: ""
+
+            // Si no hay datos de persona, lanzar error
+            if (personData == null) {
+                throw RuntimeException(message.ifEmpty { "No se encontraron datos del cliente" })
+            }
+
+            // Aunque el success sea false (cliente ya registrado), si hay datos de persona, los devolvemos
+            ISupplier(
+                id = 0,
+                names = personData.sntNames.orEmpty(),
+                documentType = personData.sntDocumentType,
+                documentNumber = document,
+                phone = "",
+                email = "",
+                address = personData.sntAddress.orEmpty(),
+            )
+        }
+    }
 
     suspend fun searchProducts(query: String, subsidiaryId: Int): List<IProductOperation> {
         return try {
@@ -335,13 +366,13 @@ class OperationRepository @Inject constructor(
 
             // Create person input (código existente)
             val clientInput = PersonInput(
-                id = Optional.present(operation.client.id as Int?),
-                names = Optional.present(operation.client.names),
-                documentType = Optional.present(operation.client.documentType),
-                documentNumber = Optional.present(operation.client.documentNumber),
-                email = Optional.present(operation.client.email),
-                phone = Optional.present(operation.client.phone),
-                address = Optional.present(operation.client.address)
+                id = Optional.present(operation.client?.id as Int?),
+                names = Optional.present(operation.client?.names),
+                documentType = Optional.present(operation.client?.documentType),
+                documentNumber = Optional.present(operation.client?.documentNumber),
+                email = Optional.present(operation.client?.email),
+                phone = Optional.present(operation.client?.phone),
+                address = Optional.present(operation.client?.address)
             )
 
             // NUEVO: Convert payments to input type

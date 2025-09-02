@@ -250,22 +250,22 @@ class PdfGenerator @Inject constructor(
             setFontSize(9f)
         })
         document.add(
-            Paragraph("${formatDocumentType(operation.client.documentType)}: ${operation.client.documentNumber ?: ""}").apply {
+            Paragraph("${formatDocumentType(operation.client?.documentType)}: ${operation.client?.documentNumber ?: ""}").apply {
                 setBold()
                 setFontSize(8f)
             }
         )
-        document.add(Paragraph("DENOMINACIÓN: ${operation.client.names ?: ""}").apply {
+        document.add(Paragraph("DENOMINACIÓN: ${operation.client?.names ?: ""}").apply {
             setBold()
             setFontSize(8f)
         })
-        if (!operation.client.phone.isNullOrEmpty()) {
-            document.add(Paragraph("TELEFONO: ${operation.client.phone}").apply {
+        if (!operation.client?.phone.isNullOrEmpty()) {
+            document.add(Paragraph("TELEFONO: ${operation.client?.phone}").apply {
                 setBold()
                 setFontSize(8f)
             })
         }
-        document.add(Paragraph("DIRECCION: ${operation.client.address ?: ""}").apply {
+        document.add(Paragraph("DIRECCION: ${operation.client?.address ?: ""}").apply {
             setBold()
             setFontSize(8f)
         })
@@ -336,7 +336,7 @@ class PdfGenerator @Inject constructor(
             Cell().apply {
                 setPadding(2f)
                 setVerticalAlignment(VerticalAlignment.MIDDLE)
-                add(createQrCode("${operation.serial}|${operation.correlative}|${operation.totalAmount}|${operation.emitDate}|${operation.emitTime}|${operation.client.documentNumber}|${operation.client.names}"))
+                add(createQrCode("${operation.serial}|${operation.correlative}|${operation.totalAmount}|${operation.emitDate}|${operation.emitTime}|${operation.client?.documentNumber}|${operation.client?.names}"))
             }
         )
 

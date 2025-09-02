@@ -310,14 +310,14 @@ class QuotationViewModel @Inject constructor(
             outputStream.write(PrinterCommands.ESC_BOLD_ON)
             writer.write("DATOS DEL CLIENTE\n")
             outputStream.write(PrinterCommands.ESC_BOLD_OFF)
-            writer.write("${formatDocumentType(operation.client.documentType)}: ${operation.client.documentNumber ?: ""}\n")
-            writer.write("DENOMINACION: ${operation.client.names ?: ""}\n")
+            writer.write("${formatDocumentType(operation.client?.documentType)}: ${operation.client?.documentNumber ?: ""}\n")
+            writer.write("DENOMINACION: ${operation.client?.names ?: ""}\n")
 
-            if (!operation.client.phone.isNullOrEmpty()) {
-                writer.write("TELEFONO: ${operation.client.phone}\n")
+            if (!operation.client?.phone.isNullOrEmpty()) {
+                writer.write("TELEFONO: ${operation.client?.phone}\n")
             }
 
-            writer.write("DIRECCION: ${operation.client.address ?: ""}\n")
+            writer.write("DIRECCION: ${operation.client?.address ?: ""}\n")
             writer.write("FECHA: ${"${operation.emitDate} ${operation.emitTime}".formatToDisplayDateTime()}\n")
 
             writer.write("--------------------------------\n")

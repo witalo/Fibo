@@ -191,7 +191,7 @@ class NewReceiptViewModel @Inject constructor(
     }
 
     fun createInvoice(operation: IOperation, payments: List<IPayment>, onSuccess: (Int, String) -> Unit) {
-        if (operation.client.names.isNullOrBlank()) {
+        if (operation.client?.names.isNullOrBlank()) {
             _error.value = "Ingrese el nombre del cliente"
             return
         }

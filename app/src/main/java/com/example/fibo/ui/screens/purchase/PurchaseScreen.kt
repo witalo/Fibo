@@ -1,5 +1,7 @@
 package com.example.fibo.ui.screens.purchase
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -78,6 +80,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun PurchaseScreen(
     navController: NavController,
@@ -189,6 +192,7 @@ fun PurchaseScreen(
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun PurchaseContent(
     purchases: List<IOperation>,
@@ -251,6 +255,7 @@ fun PurchaseContent(
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun PurchaseList(
     purchases: List<IOperation>,
@@ -269,6 +274,7 @@ fun PurchaseList(
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun PurchaseItem(
     purchase: IOperation,
@@ -772,6 +778,7 @@ fun EmptyState(message: String) {
                 imageVector = Icons.Outlined.Receipt,
                 contentDescription = null,
                 modifier = Modifier.size(48.dp),
+                // ✅ Corregir: color → tint
                 tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             )
             Spacer(modifier = Modifier.height(16.dp))
@@ -813,4 +820,4 @@ fun ErrorMessage(message: String, onRetry: () -> Unit) {
             }
         }
     }
-} 
+}

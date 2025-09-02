@@ -354,12 +354,17 @@ fun NavGraph(
 
         composable(Screen.NewPurchase.route) {
             NewPurchaseScreen(
-                onBack = { navController.popBackStack() },
-                onPurchaseCreated = { purchaseId ->
-                    navController.navigate(Screen.PurchaseDetail.createRoute(purchaseId.toInt()))
+                navController = navController, // ✅ Agregar navController
+                subsidiaryData = subsidiaryData, // ✅ Agregar subsidiaryData
+                onLogout = { // ✅ Agregar onLogout
+                    authViewModel.logout()
+                    navController.navigate(Screen.QrScanner.route) {
+                        popUpTo(navController.graph.id) { inclusive = true }
+                    }
                 }
             )
         }
+
         composable(Screen.Reports.route) {
             ReportScreen(
                 navController = navController,

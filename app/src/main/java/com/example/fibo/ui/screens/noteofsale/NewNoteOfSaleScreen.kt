@@ -226,7 +226,7 @@ fun NewNoteOfSaleScreen(
                 quotation?.let {
                     // Actualiza los estados aquí
                     clientData = it.client
-                    documentNumber = it.client.documentNumber ?: ""
+                    documentNumber = it.client?.documentNumber ?: ""
                     operationDetails = it.operationDetailSet.toList()
                     // Manejo del descuento
                     if (it.discountGlobal > 0) {

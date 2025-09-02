@@ -10,6 +10,7 @@ mutation SntPersonMutation($document: String!) {
             sntProvince
             sntDistrict
             sntDriverLicense
+            sntDocumentType
         }
     }
 }

@@ -115,7 +115,7 @@ class NewQuotationViewModel @Inject constructor(
     }
 
     fun createQuotation(operation: IOperation, onSuccess: (Int, String) -> Unit) {
-        if (operation.client.names.isNullOrBlank()) {
+        if (operation.client?.names.isNullOrBlank()) {
             _error.value = "Ingrese el nombre del cliente"
             return
         }

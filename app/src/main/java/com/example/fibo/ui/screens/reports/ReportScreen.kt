@@ -407,7 +407,7 @@ fun OperationCard(
                     Spacer(modifier = Modifier.height(4.dp))
 
                     Text(
-                        text = operation.client.names!!,
+                        text = operation.client?.names!!,
                         style = MaterialTheme.typography.bodyMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis

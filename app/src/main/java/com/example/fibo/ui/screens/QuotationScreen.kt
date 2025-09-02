@@ -419,7 +419,7 @@ fun QuotationItem(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            quotation.client.names?.let {
+            quotation.client?.names?.let {
                 Text(
                     text = it,
                     style = MaterialTheme.typography.titleSmall,

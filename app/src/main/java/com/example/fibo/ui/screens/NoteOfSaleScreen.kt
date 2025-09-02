@@ -350,7 +350,7 @@ fun NoteOfSaleItem(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            invoice.client.names?.let {
+            invoice.client?.names?.let {
                 Text(
                     text = it,
                     style = MaterialTheme.typography.titleSmall,

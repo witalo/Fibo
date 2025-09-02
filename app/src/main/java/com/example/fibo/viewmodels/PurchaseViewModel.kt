@@ -1,6 +1,8 @@
 package com.example.fibo.viewmodels
 
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fibo.datastore.PreferencesManager
@@ -20,6 +22,7 @@ import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
 
+@RequiresApi(Build.VERSION_CODES.O)
 @HiltViewModel
 class PurchaseViewModel @Inject constructor(
     private val operationRepository: OperationRepository,
@@ -29,7 +32,9 @@ class PurchaseViewModel @Inject constructor(
     private val _subsidiaryData = MutableStateFlow<ISubsidiary?>(null)
     val subsidiaryData: StateFlow<ISubsidiary?> = _subsidiaryData.asStateFlow()
 
+    @RequiresApi(Build.VERSION_CODES.O)
     private val _selectedDate = MutableStateFlow(LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")))
+    @RequiresApi(Build.VERSION_CODES.O)
     val selectedDate: StateFlow<String> = _selectedDate.asStateFlow()
 
     private val _purchaseState = MutableStateFlow<PurchaseState>(PurchaseState.Loading)
@@ -59,6 +64,7 @@ class PurchaseViewModel @Inject constructor(
         loadSubsidiaryData()
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun loadSubsidiaryData() {
         viewModelScope.launch {
             try {
@@ -74,6 +80,7 @@ class PurchaseViewModel @Inject constructor(
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     fun updateSelectedDate(newDate: String) {
         _selectedDate.value = newDate
         loadPurchases(newDate)
@@ -203,4 +210,4 @@ class PurchaseViewModel @Inject constructor(
             false
         }
     }
-} 
+}
