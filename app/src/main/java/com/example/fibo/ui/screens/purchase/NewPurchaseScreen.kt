@@ -1,7 +1,6 @@
 package com.example.fibo.ui.screens.purchase
 
 import android.widget.Toast
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,16 +18,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.fibo.model.*
 import com.example.fibo.ui.components.AppScaffold
-import com.example.fibo.ui.components.AppTopBar
-import com.example.fibo.ui.screens.cleanDocumentType
-import com.example.fibo.utils.ColorGradients
 import com.example.fibo.utils.getCurrentFormattedTime
+import com.example.fibo.viewmodels.NewPurchaseViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.math.max
@@ -52,7 +48,7 @@ fun NewPurchaseScreen(
     var invoiceDate by remember { mutableStateOf(getCurrentFormattedDate()) }
     var showDatePicker by remember { mutableStateOf(false) }
     var showSupplierDialog by remember { mutableStateOf(false) }
-    var showDocumentTypeDialog by remember { mutableStateOf(false) }
+    var showDocumentTypeDialog by remember { mutableStateOf(false) } // ✅ MOVER AQUÍ
     var supplierSearchQuery by remember { mutableStateOf("") } // Para buscar proveedor por RUC/DNI
     // ✅ Agregar operationDetails como en NoteOfSale
     var operationDetails by remember { mutableStateOf<List<IOperationDetail>>(emptyList()) }
@@ -112,7 +108,7 @@ fun NewPurchaseScreen(
             item {
                 GeneralInformationSection(
                     selectedDocumentType = selectedDocumentType,
-                    onDocumentTypeClick = { showDocumentTypeDialog = true },
+                    onDocumentTypeClick = { showDocumentTypeDialog = true }, // ✅ Pasar la función
                     manualSerial = manualSerial,
                     onSerialChange = { manualSerial = it },
                     manualCorrelative = manualCorrelative,
@@ -275,17 +271,27 @@ fun NewPurchaseScreen(
                     }
                 )
             }
-}
-        // Diálogos
+        }
+        // Diálogos - CON MÁS LOGS
+        println("DEBUG: ===== EVALUANDO DIÁLOGOS =====")
+        println("DEBUG: showDocumentTypeDialog = $showDocumentTypeDialog")
+
         if (showDocumentTypeDialog) {
+            println("DEBUG: ===== MOSTRANDO DocumentTypeDialog =====")
             DocumentTypeDialog(
                 selectedType = selectedDocumentType,
-                onTypeSelected = {
-                    selectedDocumentType = it
+                onTypeSelected = { newType ->
+                    println("DEBUG: Tipo seleccionado: $newType")
+                    selectedDocumentType = newType
                     showDocumentTypeDialog = false
                 },
-                onDismiss = { showDocumentTypeDialog = false }
+                onDismiss = {
+                    println("DEBUG: Cerrando diálogo")
+                    showDocumentTypeDialog = false
+                }
             )
+        } else {
+            println("DEBUG: NO se muestra DocumentTypeDialog")
         }
 
         if (showDatePicker) {
@@ -329,7 +335,7 @@ fun NewPurchaseScreen(
 @Composable
 fun GeneralInformationSection(
     selectedDocumentType: String,
-    onDocumentTypeClick: () -> Unit,
+    onDocumentTypeClick: () -> Unit, // ✅ Agregar parámetro
     manualSerial: String,
     onSerialChange: (String) -> Unit,
     manualCorrelative: String,
@@ -376,29 +382,45 @@ fun GeneralInformationSection(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Tipo de documento
+            // Tipo de documento - VERSIÓN SIMPLIFICADA PARA DEBUG
             OutlinedTextField(
                 value = when (selectedDocumentType) {
                     "01" -> "FACTURA ELECTRÓNICA"
-                    "03" -> "BOLETA DE VENTA ELECTRÓNICA"
+                    "03" -> "BOLETA ELECTRÓNICA"
                     else -> "Seleccionar tipo"
                 },
                 onValueChange = { },
                 label = { Text("Tipo documento") },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onDocumentTypeClick() },
+                    .clickable {
+                        println("DEBUG: ===== CLICK EN TIPO DOCUMENTO =====")
+                        onDocumentTypeClick() // ✅ Usar el parámetro
+                        println("DEBUG: ===== FIN CLICK =====")
+                    },
                 readOnly = true,
                 trailingIcon = {
-                    Icon(
-                        Icons.Default.KeyboardArrowDown,
-                        contentDescription = "Seleccionar tipo"
-                    )
+                    IconButton(
+                        onClick = {
+                            println("DEBUG: ===== CLICK EN ICONO =====")
+                            onDocumentTypeClick() // ✅ Usar el parámetro
+                            println("DEBUG: ===== FIN CLICK ICONO =====")
+                        }
+                    ) {
+                        Icon(
+                            Icons.Default.KeyboardArrowDown,
+                            contentDescription = "Seleccionar tipo",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 },
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
-                )
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                    focusedLabelColor = MaterialTheme.colorScheme.primary,
+                    unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ),
+                shape = RoundedCornerShape(8.dp)
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -910,42 +932,119 @@ fun DocumentTypeDialog(
     onTypeSelected: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
+    println("DEBUG: ===== DocumentTypeDialog COMPOSABLE EJECUTÁNDOSE =====")
+
     AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Seleccionar Tipo de Documento") },
+        onDismissRequest = {
+            println("DEBUG: onDismissRequest llamado")
+            onDismiss()
+        },
+        title = {
+            Text(
+                "Seleccionar Tipo de Documento",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        },
         text = {
-            Column {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 listOf(
                     "01" to "FACTURA ELECTRÓNICA",
                     "03" to "BOLETA DE VENTA ELECTRÓNICA"
                 ).forEach { (type, name) ->
-                    Row(
+                    Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onTypeSelected(type) }
-                            .padding(vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .clickable {
+                                println("DEBUG: ===== CLICK EN CARD: $type =====")
+                                onTypeSelected(type)
+                                onDismiss()
+                            },
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (selectedType == type) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant
+                            }
+                        ),
+                        elevation = CardDefaults.cardElevation(
+                            defaultElevation = if (selectedType == type) 4.dp else 2.dp
+                        )
                     ) {
-                        RadioButton(
-                            selected = selectedType == type,
-                            onClick = { onTypeSelected(type) }
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = name,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = selectedType == type,
+                                onClick = {
+                                    println("DEBUG: ===== CLICK EN RADIOBUTTON: $type =====")
+                                    onTypeSelected(type)
+                                    onDismiss()
+                                },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = MaterialTheme.colorScheme.primary
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = name,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = if (selectedType == type) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (selectedType == type) {
+                                        MaterialTheme.colorScheme.onPrimaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    }
+                                )
+                                Text(
+                                    text = when (type) {
+                                        "01" -> "Para proveedores con RUC"
+                                        "03" -> "Para proveedores con RUC o DNI"
+                                        else -> ""
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (selectedType == type) {
+                                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar")
+            TextButton(
+                onClick = {
+                    println("DEBUG: Botón Cancelar clickeado")
+                    onDismiss()
+                },
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Text(
+                    "Cancelar",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
             }
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = 8.dp,
+        shape = RoundedCornerShape(16.dp)
     )
 }
+
 
 @Composable
 fun SupplierSelectionDialog(
