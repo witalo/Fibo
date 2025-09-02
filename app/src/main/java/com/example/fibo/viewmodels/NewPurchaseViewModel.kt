@@ -37,6 +37,10 @@ class NewPurchaseViewModel @Inject constructor(
     private val _isFromBarcodeScan = MutableStateFlow(false)
     val isFromBarcodeScan: StateFlow<Boolean> = _isFromBarcodeScan.asStateFlow()
 
+    // Estado para el producto seleccionado con tarifa
+    private val _selectedProduct = MutableStateFlow<ITariff?>(null)
+    val selectedProduct: StateFlow<ITariff?> = _selectedProduct.asStateFlow()
+
     // Estados para pagos (EXACTAMENTE igual que NoteOfSale)
     private val _payments = MutableStateFlow<List<IPayment>>(emptyList())
     val payments: StateFlow<List<IPayment>> = _payments.asStateFlow()
@@ -151,6 +155,24 @@ class NewPurchaseViewModel @Inject constructor(
         // ✅ También limpiar los resultados de búsqueda
         _supplierSearchResults.value = emptyList()
         _isSearchingSupplier.value = false
+    }
+
+    fun getTariff(productId: Int) {
+        viewModelScope.launch {
+            try {
+                // Consulta completa que devuelve todos los datos del producto
+                val tariff = operationRepository.getTariffByProductID(productId = productId)
+                _selectedProduct.value = tariff
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    error = "Error al obtener tarifas del producto: ${e.message}"
+                )
+            }
+        }
+    }
+
+    fun clearProductSelection() {
+        _selectedProduct.value = null
     }
 
     fun addProduct(product: IProductOperation) {

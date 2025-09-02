@@ -6,8 +6,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -55,8 +57,7 @@ fun NewPurchaseScreen(
     var productSearchQuery by remember { mutableStateOf("") } // Para buscar productos
     var showProductEditDialog by remember { mutableStateOf(false) } // Para editar productos
     var selectedProductForEdit by remember { mutableStateOf<IProductOperation?>(null) } // Producto seleccionado para editar
-    // ✅ Agregar operationDetails como en NoteOfSale
-    var operationDetails by remember { mutableStateOf<List<IOperationDetail>>(emptyList()) }
+
     // ✅ MOVER AQUÍ: Declarar paymentsEnabled y currentPayments al nivel del composable principal
     val paymentsEnabled by viewModel.paymentsEnabled.collectAsState()
     val currentPayments by viewModel.payments.collectAsState()
@@ -80,6 +81,8 @@ fun NewPurchaseScreen(
             )
         }
     }
+
+
 
     AppScaffold(
         navController = navController,
@@ -161,12 +164,12 @@ fun NewPurchaseScreen(
                     PaymentsSection(
                         payments = uiState.payments,
                         onAddPayment = {
-                            // ✅ Usar operationDetails en lugar de uiState.products
-                            val totalAmount = operationDetails.sumOf { it.totalToPay }
+                            // ✅ Calcular total de productos
+                            val totalAmount = uiState.products.sumOf { it.priceWithIgv3 ?: 0.0 }
                             viewModel.showPaymentDialog(totalAmount)
                         },
                         onRemovePayment = { paymentId -> viewModel.removePayment(paymentId) },
-                        totalAmount = operationDetails.sumOf { it.totalToPay }, // ✅ Usar operationDetails
+                        totalAmount = uiState.products.sumOf { it.priceWithIgv3 ?: 0.0 }, // ✅ Usar productos
                         paymentSummary = viewModel.paymentSummary.collectAsState().value
                     )
                 }
@@ -214,39 +217,49 @@ fun NewPurchaseScreen(
                                 ).show()
                                 return@CreatePurchaseButton
                             },
-                            operationDetailSet = operationDetails.map { detail ->
-                                detail.copy(
-                                    // Asegurar valores positivos
+                            operationDetailSet = uiState.products.map { product ->
+                                IOperationDetail(
                                     id = 0,
-                                    typeAffectationId = max(1, detail.typeAffectationId),
-                                    description = detail.description.trim().uppercase(),
-                                    tariff = detail.tariff,
-                                    quantity = max(0.0, detail.quantity),
-                                    unitValue = max(0.0, detail.unitValue),
-                                    unitPrice = max(0.0, detail.unitPrice),
-                                    discountPercentage = max(0.0, detail.discountPercentage),
-                                    totalDiscount = max(0.0, detail.totalDiscount),
-                                    perceptionPercentage = max(0.0, detail.perceptionPercentage),
-                                    totalPerception = max(0.0, detail.totalPerception),
-                                    igvPercentage = max(0.0, detail.igvPercentage),
-                                    totalValue = max(0.0, detail.totalValue),
-                                    totalIgv = max(0.0, detail.totalIgv),
-                                    totalAmount = max(0.0, detail.totalAmount),
-                                    totalToPay = max(0.0, detail.totalToPay)
+                                    typeAffectationId = 1, // Por defecto gravada
+                                    description = product.name ?: "Producto",
+                                    tariff = ITariff(
+                                        productId = product.id,
+                                        productCode = product.code,
+                                        productName = product.name,
+                                        unitId = 0,
+                                        unitName = product.minimumUnitName,
+                                        stock = product.stock,
+                                        priceWithIgv = product.priceWithIgv3 ?: 0.0,
+                                        priceWithoutIgv = product.priceWithoutIgv3 ?: 0.0,
+                                        productTariffId = 0,
+                                        typeAffectationId = 1
+                                    ),
+                                    quantity = 1.0, // TODO: Obtener cantidad del producto
+                                    unitValue = product.priceWithoutIgv3 ?: 0.0,
+                                    unitPrice = product.priceWithIgv3 ?: 0.0,
+                                    discountPercentage = 0.0,
+                                    totalDiscount = 0.0,
+                                    perceptionPercentage = 0.0,
+                                    totalPerception = 0.0,
+                                    igvPercentage = 18.0,
+                                    totalValue = product.priceWithoutIgv3 ?: 0.0,
+                                    totalIgv = (product.priceWithIgv3 ?: 0.0) - (product.priceWithoutIgv3 ?: 0.0),
+                                    totalAmount = product.priceWithIgv3 ?: 0.0,
+                                    totalToPay = product.priceWithIgv3 ?: 0.0
                                 )
                             },
-                            discountGlobal = max(0.0, 0.0), // TODO: Implementar descuento global
-                            discountPercentageGlobal = max(0.0, min(0.0, 100.0)), // TODO: Implementar
-                            discountForItem = max(0.0, 0.0), // TODO: Implementar
-                            totalDiscount = max(0.0, operationDetails.sumOf { it.totalDiscount }),
-                            totalTaxed = max(0.0, operationDetails.sumOf { it.totalValue }), // ✅ Usar operationDetails
-                            totalUnaffected = max(0.0, 0.0), // TODO: Implementar
-                            totalExonerated = max(0.0, 0.0), // TODO: Implementar
-                            totalIgv = max(0.0, operationDetails.sumOf { it.totalIgv }), // ✅ Usar operationDetails
-                            totalFree = max(0.0, 0.0), // TODO: Implementar
-                            totalAmount = max(0.0, operationDetails.sumOf { it.totalAmount }), // ✅ Usar operationDetails
-                            totalToPay = max(0.0, operationDetails.sumOf { it.totalToPay }), // ✅ Usar operationDetails
-                            totalPayed = max(0.0, operationDetails.sumOf { it.totalToPay }) // ✅ Usar operationDetails
+                            discountGlobal = 0.0,
+                            discountPercentageGlobal = 0.0,
+                            discountForItem = 0.0,
+                            totalDiscount = 0.0,
+                            totalTaxed = uiState.products.sumOf { it.priceWithoutIgv3 ?: 0.0 },
+                            totalUnaffected = 0.0,
+                            totalExonerated = 0.0,
+                            totalIgv = uiState.products.sumOf { (it.priceWithIgv3 ?: 0.0) - (it.priceWithoutIgv3 ?: 0.0) },
+                            totalFree = 0.0,
+                            totalAmount = uiState.products.sumOf { it.priceWithIgv3 ?: 0.0 },
+                            totalToPay = uiState.products.sumOf { it.priceWithIgv3 ?: 0.0 },
+                            totalPayed = uiState.products.sumOf { it.priceWithIgv3 ?: 0.0 }
                         )
 
                         if (paymentsEnabled) { // ✅ Usar paymentsEnabled que ya está declarado arriba
@@ -371,6 +384,7 @@ fun NewPurchaseScreen(
                     selectedProductForEdit = null
                 },
                 onSave = { configuredProduct ->
+                    // Agregar el producto configurado
                     viewModel.addProduct(configuredProduct)
                     showProductEditDialog = false
                     selectedProductForEdit = null
@@ -921,7 +935,7 @@ fun ProductOperationCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "Total: S/. ${String.format("%.2f", product.priceWithIgv3)}",
+                    text = "Total: S/. ${String.format("%.2f", product.priceWithIgv3 ?: 0.0)}",
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -1536,7 +1550,7 @@ fun ProductEditDialog(
     val priceWithIgvValue = priceWithIgv.toDoubleOrNull() ?: 0.0
 
     // CÁLCULOS SEGÚN SUNAT (SIN DESCUENTOS):
-    // 1. Calcular subtotal
+    // 1. Calcular subtotal (cantidad × precio sin IGV)
     val subtotal = priceWithoutIgvValue * qtyValue
 
     // 2. Calcular IGV solo para operaciones gravadas (tipo 1)
@@ -1552,6 +1566,18 @@ fun ProductEditDialog(
         2, 3, 4 -> subtotal           // Exonerada/Inafecta: Solo subtotal
         else -> subtotal + igvAmount
     }
+
+    // Debug temporal
+    println("DEBUG ProductEditDialog:")
+    println("  qtyValue: $qtyValue")
+    println("  priceWithoutIgvValue: $priceWithoutIgvValue")
+    println("  priceWithIgvValue: $priceWithIgvValue")
+    println("  selectedAffectationType: $selectedAffectationType")
+    println("  subtotal: $subtotal")
+    println("  igvAmount: $igvAmount")
+    println("  totalAmount: $totalAmount")
+
+
 
     // Lista de tipos de afectación
     val affectationTypes = listOf(
@@ -1572,8 +1598,10 @@ fun ProductEditDialog(
         },
         text = {
             Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()), // ✅ HACER SCROLLABLE
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 // Información del producto
                 Card(
@@ -1693,54 +1721,7 @@ fun ProductEditDialog(
                     Column(
                         modifier = Modifier.padding(16.dp)
                     ) {
-                        Text(
-                            text = "Resumen de Cálculos",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        
-                        // Detalle de cálculo
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = "Cantidad:",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                            Text(
-                                text = "${String.format("%.1f", qtyValue)}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
-                        
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = "Precio sin IGV:",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                            Text(
-                                text = "S/. ${String.format("%.2f", priceWithoutIgvValue)}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
-                        
-                        Divider(
-                            modifier = Modifier.padding(vertical = 8.dp),
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.3f)
-                        )
-                        
+                        // SUBTOTAL
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
@@ -1759,6 +1740,7 @@ fun ProductEditDialog(
                             )
                         }
                         
+                        // IGV (solo para gravadas)
                         if (selectedAffectationType == 1) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -1777,6 +1759,25 @@ fun ProductEditDialog(
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                             }
+                        } else {
+                            // Mostrar que no hay IGV para operaciones exoneradas/inafectas
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "IGV:",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                Text(
+                                    text = "S/. 0.00",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
                         }
                         
                         Divider(
@@ -1784,23 +1785,14 @@ fun ProductEditDialog(
                             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)
                         )
                         
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = "TOTAL:",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                            Text(
-                                text = "S/. ${String.format("%.2f", totalAmount)}",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
+                        // TOTAL - FORZAR VISIBILIDAD CON COLOR DIFERENTE
+                        Text(
+                            text = "TOTAL: S/. ${String.format("%.2f", totalAmount)}",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Red, // Color rojo para que sea visible
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
                 }
             }
