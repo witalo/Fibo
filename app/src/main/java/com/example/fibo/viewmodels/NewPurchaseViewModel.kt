@@ -184,6 +184,18 @@ class NewPurchaseViewModel @Inject constructor(
         )
     }
 
+    fun updateProduct(updatedProduct: IProductOperation) {
+        val currentProducts = _uiState.value.products.toMutableList()
+        val index = currentProducts.indexOfFirst { it.id == updatedProduct.id }
+        if (index != -1) {
+            currentProducts[index] = updatedProduct
+            _uiState.value = _uiState.value.copy(
+                products = currentProducts,
+                error = null
+            )
+        }
+    }
+
     // FUNCIONES DE PAGOS EXACTAMENTE IGUAL QUE NoteOfSale
     fun showPaymentDialog(totalAmount: Double) {
         _paymentSummary.value = PaymentSummary(

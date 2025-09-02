@@ -53,6 +53,8 @@ fun NewPurchaseScreen(
     var supplierSearchQuery by remember { mutableStateOf("") } // Para buscar proveedor por RUC/DNI
     var showProductDialog by remember { mutableStateOf(false) } // Para buscar productos
     var productSearchQuery by remember { mutableStateOf("") } // Para buscar productos
+    var showProductEditDialog by remember { mutableStateOf(false) } // Para editar productos
+    var selectedProductForEdit by remember { mutableStateOf<IProductOperation?>(null) } // Producto seleccionado para editar
     // ✅ Agregar operationDetails como en NoteOfSale
     var operationDetails by remember { mutableStateOf<List<IOperationDetail>>(emptyList()) }
     // ✅ MOVER AQUÍ: Declarar paymentsEnabled y currentPayments al nivel del composable principal
@@ -145,7 +147,11 @@ fun NewPurchaseScreen(
                 ProductsSection(
                     products = uiState.products,
                     onAddProduct = { showProductDialog = true },
-                    viewModel = viewModel
+                    viewModel = viewModel,
+                    onEditProduct = { product ->
+                        selectedProductForEdit = product
+                        showProductEditDialog = true
+                    }
                 )
             }
 
@@ -348,9 +354,26 @@ fun NewPurchaseScreen(
                 searchResults = viewModel.searchResults.collectAsState().value,
                 searchState = viewModel.searchState.collectAsState().value,
                 onProductSelected = { product ->
-                    viewModel.addProduct(product)
+                    selectedProductForEdit = product
+                    showProductEditDialog = true
                     showProductDialog = false
                     productSearchQuery = ""
+                }
+            )
+        }
+
+        // Diálogo de edición de productos
+        if (showProductEditDialog && selectedProductForEdit != null) {
+            ProductEditDialog(
+                product = selectedProductForEdit!!,
+                onDismiss = { 
+                    showProductEditDialog = false
+                    selectedProductForEdit = null
+                },
+                onSave = { configuredProduct ->
+                    viewModel.addProduct(configuredProduct)
+                    showProductEditDialog = false
+                    selectedProductForEdit = null
                 }
             )
         }
@@ -772,7 +795,8 @@ fun DatePickerDialog(
 fun ProductsSection(
     products: List<IProductOperation>,
     onAddProduct: () -> Unit,
-    viewModel: NewPurchaseViewModel
+    viewModel: NewPurchaseViewModel,
+    onEditProduct: (IProductOperation) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -794,8 +818,8 @@ fun ProductsSection(
             Spacer(modifier = Modifier.height(12.dp))
 
             if (products.isEmpty()) {
-                Box(
-                    modifier = Modifier
+        Box(
+            modifier = Modifier
                         .fillMaxWidth()
                         .height(120.dp)
                         .border(
@@ -803,11 +827,11 @@ fun ProductsSection(
                             color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
                             shape = RoundedCornerShape(8.dp)
                         ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                         Icon(
                             Icons.Default.Inventory2,
                             contentDescription = null,
@@ -815,7 +839,7 @@ fun ProductsSection(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(
+                Text(
                             text = "No hay productos agregados",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -831,7 +855,8 @@ fun ProductsSection(
                     items(products) { product ->
                         ProductOperationCard(
                             product = product,
-                            onRemove = { viewModel.removeProduct(product.id) }
+                            onRemove = { viewModel.removeProduct(product.id) },
+                            onEdit = { onEditProduct(product) }
                         )
                     }
                 }
@@ -862,7 +887,8 @@ fun ProductsSection(
 @Composable
 fun ProductOperationCard(
     product: IProductOperation,
-    onRemove: () -> Unit
+    onRemove: () -> Unit,
+    onEdit: (IProductOperation) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -880,29 +906,43 @@ fun ProductOperationCard(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = product.name.ifBlank { "Producto sin nombre" }, // ✅ Usar name que sí existe
+                    text = product.name.ifBlank { "Producto sin nombre" },
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text = "Código: ${product.code} - Stock: ${product.stock}", // ✅ Usar propiedades que existen
+                    text = "Código: ${product.code} - Stock: ${product.stock}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "Precio: S/. ${String.format("%.2f", product.priceWithIgv3)}", // ✅ Usar priceWithIgv3 que existe
+                    text = "Precio sin IGV: S/. ${String.format("%.2f", product.priceWithoutIgv3)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "Total: S/. ${String.format("%.2f", product.priceWithIgv3)}",
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
             }
 
-            IconButton(onClick = onRemove) {
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = "Eliminar producto",
-                    tint = MaterialTheme.colorScheme.error
-                )
+            Row {
+                IconButton(onClick = { onEdit(product) }) {
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = "Editar producto",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                IconButton(onClick = onRemove) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Eliminar producto",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
             }
         }
     }
@@ -1025,7 +1065,7 @@ fun DocumentTypeDialog(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = name,
-                                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = if (selectedType == type) FontWeight.Bold else FontWeight.Normal,
                                     color = if (selectedType == type) {
                                         MaterialTheme.colorScheme.onPrimaryContainer
@@ -1118,8 +1158,8 @@ fun SupplierSelectionDialog(
                                 Text(
                                     text = "${getDocumentTypeName(supplier.documentType)}: ${supplier.documentNumber}", // ✅ Usar función helper
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                             }
                         }
                     }
@@ -1152,10 +1192,10 @@ fun PaymentsSection(
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            Text(
+                Text(
                 text = "Pagos",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
 
@@ -1176,9 +1216,9 @@ fun PaymentsSection(
                         text = "S/. ${String.format("%.2f", totalAmount)}",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
 
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
@@ -1452,6 +1492,307 @@ fun getCurrentFormattedTime(): String {
     val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
     return timeFormat.format(Date())
 }
+@Composable
+fun ProductEditDialog(
+    product: IProductOperation,
+    onDismiss: () -> Unit,
+    onSave: (IProductOperation) -> Unit
+) {
+    // Estados para edición - inicializar con valores del producto
+    var quantity by remember { mutableStateOf("1.0") }
+    var priceWithIgv by remember { mutableStateOf(product.priceWithIgv3?.toString() ?: "0.00") }
+    var priceWithoutIgv by remember { mutableStateOf("0.00") }
+    var selectedAffectationType by remember { mutableStateOf(1) } // 1 = Gravada por defecto
+    var showAffectationDialog by remember { mutableStateOf(false) }
+
+    // IGV de la empresa (por defecto 18%)
+    val igvPercentage = 18.0 // TODO: Obtener de PreferencesManager
+    val igvFactor = igvPercentage / 100.0
+
+    // Calcular precio sin IGV basado en el precio con IGV
+    LaunchedEffect(priceWithIgv, selectedAffectationType) {
+        val withIgvValue = priceWithIgv.toDoubleOrNull() ?: 0.0
+        priceWithoutIgv = when (selectedAffectationType) {
+            1 -> String.format("%.4f", withIgvValue / (1 + igvFactor)) // Gravado: quitar IGV
+            else -> String.format("%.4f", withIgvValue) // Exonerado/Inafecto: mismo valor
+        }
+    }
+
+    // Convertir valores a números
+    val qtyValue = quantity.toDoubleOrNull() ?: 1.0
+    val priceWithoutIgvValue = priceWithoutIgv.toDoubleOrNull() ?: 0.0
+    val priceWithIgvValue = priceWithIgv.toDoubleOrNull() ?: 0.0
+
+    // CÁLCULOS SEGÚN SUNAT (SIN DESCUENTOS):
+    // 1. Calcular subtotal
+    val subtotal = priceWithoutIgvValue * qtyValue
+
+    // 2. Calcular IGV solo para operaciones gravadas (tipo 1)
+    val igvAmount = if (selectedAffectationType == 1) {
+        subtotal * igvFactor
+    } else {
+        0.0
+    }
+
+    // 3. Calcular total según tipo de operación
+    val totalAmount = when (selectedAffectationType) {
+        1 -> subtotal + igvAmount  // Gravada: Subtotal + IGV
+        2, 3, 4 -> subtotal           // Exonerada/Inafecta: Solo subtotal
+        else -> subtotal + igvAmount
+    }
+
+    // Lista de tipos de afectación
+    val affectationTypes = listOf(
+        "1" to "Gravada",
+        "2" to "Exonerada", 
+        "3" to "Inafecta",
+        "4" to "Gratuita"
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { 
+            Text(
+                "Configurar Producto",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Información del producto
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp)
+                    ) {
+                        Text(
+                            text = product.name ?: "Sin nombre",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Código: ${product.code}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "Stock disponible: ${product.stock}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                // Cantidad
+                OutlinedTextField(
+                    value = quantity,
+                    onValueChange = { newValue ->
+                        if (newValue.matches(Regex("^\\d*\\.?\\d{0,2}\$")) || newValue.isEmpty()) {
+                            quantity = newValue
+                        }
+                    },
+                    label = { Text("Cantidad") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    placeholder = { Text("1.0") }
+                )
+
+                // Precio con IGV (editable)
+                OutlinedTextField(
+                    value = priceWithIgv,
+                    onValueChange = { newValue ->
+                        if (newValue.matches(Regex("^\\d*\\.?\\d{0,4}\$")) || newValue.isEmpty()) {
+                            priceWithIgv = newValue
+                        }
+                    },
+                    label = { Text("Precio con IGV (S/.)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    placeholder = { Text("0.00") }
+                )
+
+                // Precio sin IGV (calculado automáticamente)
+                OutlinedTextField(
+                    value = priceWithoutIgv,
+                    onValueChange = { },
+                    label = { Text("Precio sin IGV (S/.)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    readOnly = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                        disabledBorderColor = MaterialTheme.colorScheme.outline
+                    )
+                )
+
+                // Tipo de afectación
+                OutlinedTextField(
+                    value = affectationTypes.find { it.first == selectedAffectationType.toString() }?.second ?: "Gravada",
+                    onValueChange = { },
+                    label = { Text("Tipo de Afectación") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showAffectationDialog = true },
+                    readOnly = true,
+                    trailingIcon = {
+                        Icon(
+                            Icons.Default.KeyboardArrowDown,
+                            contentDescription = "Seleccionar tipo"
+                        )
+                    }
+                )
+
+
+
+                // Resumen de cálculos
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp)
+                    ) {
+                        Text(
+                            text = "Resumen de Cálculos",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Subtotal:",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Text(
+                                text = "S/. ${String.format("%.2f", subtotal)}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                        
+                        if (selectedAffectationType == 1) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "IGV (18%):",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                Text(
+                                    text = "S/. ${String.format("%.2f", igvAmount)}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Total:",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Text(
+                                text = "S/. ${String.format("%.2f", totalAmount)}",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    // Crear el producto actualizado con los nuevos valores
+                    val updatedProduct = product.copy(
+                        priceWithIgv3 = totalAmount, // Total calculado
+                        priceWithoutIgv3 = subtotal // Subtotal sin descuentos
+                    )
+                    onSave(updatedProduct)
+                },
+                enabled = qtyValue > 0 && priceWithIgvValue > 0
+            ) {
+                Text("Agregar Producto")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
+
+    // Diálogo para seleccionar tipo de afectación
+    if (showAffectationDialog) {
+        AlertDialog(
+            onDismissRequest = { showAffectationDialog = false },
+            title = { Text("Seleccionar Tipo de Afectación") },
+            text = {
+                Column {
+                    affectationTypes.forEach { (type, name) ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .clickable {
+                                    selectedAffectationType = type.toInt()
+                                    showAffectationDialog = false
+                                },
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (selectedAffectationType == type.toInt()) {
+                                    MaterialTheme.colorScheme.primaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceVariant
+                                }
+                            )
+                        ) {
+                            Text(
+                                text = name,
+                                modifier = Modifier.padding(12.dp),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (selectedAffectationType == type.toInt()) {
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                }
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAffectationDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+}
+
 @Composable
 fun ProductSearchDialog(
     onDismiss: () -> Unit,
