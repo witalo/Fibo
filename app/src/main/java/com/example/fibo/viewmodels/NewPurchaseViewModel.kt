@@ -2,19 +2,24 @@ package com.example.fibo.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.fibo.datastore.PreferencesManager
 import com.example.fibo.model.*
 import com.example.fibo.repository.OperationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlin.random.Random
 
 @HiltViewModel
 class NewPurchaseViewModel @Inject constructor(
-    private val operationRepository: OperationRepository
+    private val operationRepository: OperationRepository,
+    private val preferencesManager: PreferencesManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(NewPurchaseUiState())
@@ -51,9 +56,17 @@ class NewPurchaseViewModel @Inject constructor(
     private val _paymentSummary = MutableStateFlow(PaymentSummary(0.0, 0.0, 0.0))
     val paymentSummary: StateFlow<PaymentSummary> = _paymentSummary.asStateFlow()
 
-    // ✅ Agregar el estado que falta
-    private val _paymentsEnabled = MutableStateFlow(true)
-    val paymentsEnabled: StateFlow<Boolean> = _paymentsEnabled.asStateFlow()
+    // ✅ Configurar paymentsEnabled basado en PreferencesManager (igual que NoteOfSale)
+    val paymentsEnabled: StateFlow<Boolean> = preferencesManager.companyData
+        .map { company ->
+            // Si disableContinuePay es false, los pagos SÍ están habilitados
+            !(company?.disableContinuePay ?: false)
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = true // Por defecto habilitado
+        )
 
     fun loadInitialData(subsidiaryId: Int) {
         viewModelScope.launch {
@@ -332,7 +345,7 @@ class NewPurchaseViewModel @Inject constructor(
     // Actualizar isFormValid para incluir validación de pagos (igual que NoteOfSale)
     fun isFormValid(): Boolean {
         val state = _uiState.value
-        val paymentsValid = if (_paymentsEnabled.value) {
+        val paymentsValid = if (paymentsEnabled.value) { // ✅ Usar paymentsEnabled en lugar de _paymentsEnabled
             _paymentSummary.value.isComplete
         } else {
             true

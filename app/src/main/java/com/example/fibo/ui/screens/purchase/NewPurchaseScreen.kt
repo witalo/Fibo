@@ -182,102 +182,93 @@ fun NewPurchaseScreen(
                     isEnabled = viewModel.isFormValid(),
                     isLoading = uiState.isLoading,
                     onClick = {
-                        // ✅ Construir la operación EXACTAMENTE como en NoteOfSale
-                        val operation = IOperation(
-                            id = 0, // ID se generará en el backend
-                            serial = manualSerial, // Serie ingresada manualmente
-                            correlative = manualCorrelative.toIntOrNull() ?: 0, // Correlativo ingresado manualmente
-                            documentType = selectedDocumentType, // 01 = Factura, 03 = Boleta
-                            operationType = when (selectedDocumentType) {
-                                "01" -> "0501" // Factura de proveedor
-                                "03" -> "0501" // Boleta de proveedor
-                                else -> "0501"
-                            },
-                            operationStatus = "01", // Pendiente de envío a SUNAT
-                            operationAction = "E", // Emitir
-                            currencyType = "PEN", // Soles peruanos
-                            operationDate = getCurrentFormattedDate(), // Fecha actual
-                            emitDate = invoiceDate, // Fecha de emisión
-                            emitTime = getCurrentFormattedTime(), // Hora actual
-                            userId = 0, // TODO: Obtener del usuario logueado
-                            subsidiaryId = subsidiaryData?.id ?: 0, // Sucursal
-                            client = null, // No hay cliente en compras
-                            supplier = uiState.supplier?.copy( // Solo cambiar esto: cliente por proveedor
-                                documentType = uiState.supplier!!.documentType,
-                                documentNumber = uiState.supplier!!.documentNumber?.trim() ?: "", // ✅ Agregar ?: "" para evitar null
-                                names = uiState.supplier!!.names?.trim()?.uppercase() ?: "", // ✅ Agregar ?: "" para evitar null
-                                address = uiState.supplier!!.address?.trim() ?: "", // ✅ Agregar ?: "" para evitar null
-                                email = uiState.supplier!!.email ?: "", // ✅ Agregar ?: "" para evitar null
-                                phone = uiState.supplier!!.phone ?: "" // ✅ Agregar ?: "" para evitar null
-                            ) ?: run {
-                                Toast.makeText(
-                                    context,
-                                    "Complete datos del proveedor",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                                return@CreatePurchaseButton
-                            },
-                            operationDetailSet = uiState.products.map { product ->
-                                IOperationDetail(
-                                    id = 0,
-                                    typeAffectationId = 1, // Por defecto gravada
-                                    description = product.name ?: "Producto",
-                                    tariff = ITariff(
-                                        productId = product.id,
-                                        productCode = product.code,
-                                        productName = product.name,
-                                        unitId = 0,
-                                        unitName = product.minimumUnitName,
-                                        stock = product.stock,
-                                        priceWithIgv = product.priceWithIgv3 ?: 0.0,
-                                        priceWithoutIgv = product.priceWithoutIgv3 ?: 0.0,
-                                        productTariffId = 0,
-                                        typeAffectationId = 1
-                                    ),
-                                    quantity = 1.0, // TODO: Obtener cantidad del producto
-                                    unitValue = product.priceWithoutIgv3 ?: 0.0,
-                                    unitPrice = product.priceWithIgv3 ?: 0.0,
-                                    discountPercentage = 0.0,
-                                    totalDiscount = 0.0,
-                                    perceptionPercentage = 0.0,
-                                    totalPerception = 0.0,
-                                    igvPercentage = 18.0,
-                                    totalValue = product.priceWithoutIgv3 ?: 0.0,
-                                    totalIgv = (product.priceWithIgv3 ?: 0.0) - (product.priceWithoutIgv3 ?: 0.0),
-                                    totalAmount = product.priceWithIgv3 ?: 0.0,
-                                    totalToPay = product.priceWithIgv3 ?: 0.0
-                                )
-                            },
-                            discountGlobal = 0.0,
-                            discountPercentageGlobal = 0.0,
-                            discountForItem = 0.0,
-                            totalDiscount = 0.0,
-                            totalTaxed = uiState.products.sumOf { it.priceWithoutIgv3 ?: 0.0 },
-                            totalUnaffected = 0.0,
-                            totalExonerated = 0.0,
-                            totalIgv = uiState.products.sumOf { (it.priceWithIgv3 ?: 0.0) - (it.priceWithoutIgv3 ?: 0.0) },
-                            totalFree = 0.0,
-                            totalAmount = uiState.products.sumOf { it.priceWithIgv3 ?: 0.0 },
-                            totalToPay = uiState.products.sumOf { it.priceWithIgv3 ?: 0.0 },
-                            totalPayed = uiState.products.sumOf { it.priceWithIgv3 ?: 0.0 }
-                        )
-
-                        if (paymentsEnabled) { // ✅ Usar paymentsEnabled que ya está declarado arriba
-                            // disableContinuePay = false → Enviar pagos registrados
-                            viewModel.createPurchase(
-                                operation = operation,
-                                payments = currentPayments, // ✅ Usar currentPayments que ya está declarado arriba
-                                onSuccess = { operationId, message ->
+                        if (paymentsEnabled) {
+                            // ✅ Si los pagos están habilitados, mostrar el diálogo de pagos (igual que NoteOfSale)
+                            val totalAmount = uiState.products.sumOf { it.priceWithIgv3 ?: 0.0 }
+                            viewModel.showPaymentDialog(totalAmount)
+                        } else {
+                            // ✅ Si los pagos están deshabilitados, proceder directamente con la creación
+                            // ✅ Construir la operación EXACTAMENTE como en NoteOfSale
+                            val operation = IOperation(
+                                id = 0, // ID se generará en el backend
+                                serial = manualSerial, // Serie ingresada manualmente
+                                correlative = manualCorrelative.toIntOrNull() ?: 0, // Correlativo ingresado manualmente
+                                documentType = selectedDocumentType, // 01 = Factura, 03 = Boleta
+                                operationType = when (selectedDocumentType) {
+                                    "01" -> "0501" // Factura de proveedor
+                                    "03" -> "0501" // Boleta de proveedor
+                                    else -> "0501"
+                                },
+                                operationStatus = "01", // Pendiente de envío a SUNAT
+                                operationAction = "E", // Emitir
+                                currencyType = "PEN", // Soles peruanos
+                                operationDate = getCurrentFormattedDate(), // Fecha actual
+                                emitDate = invoiceDate, // Fecha de emisión
+                                emitTime = getCurrentFormattedTime(), // Hora actual
+                                userId = 0, // TODO: Obtener del usuario logueado
+                                subsidiaryId = subsidiaryData?.id ?: 0, // Sucursal
+                                client = null, // No hay cliente en compras
+                                supplier = uiState.supplier?.copy( // Solo cambiar esto: cliente por proveedor
+                                    documentType = uiState.supplier!!.documentType,
+                                    documentNumber = uiState.supplier!!.documentNumber?.trim() ?: "", // ✅ Agregar ?: "" para evitar null
+                                    names = uiState.supplier!!.names?.trim()?.uppercase() ?: "", // ✅ Agregar ?: "" para evitar null
+                                    address = uiState.supplier!!.address?.trim() ?: "", // ✅ Agregar ?: "" para evitar null
+                                    email = uiState.supplier!!.email ?: "", // ✅ Agregar ?: "" para evitar null
+                                    phone = uiState.supplier!!.phone ?: "" // ✅ Agregar ?: "" para evitar null
+                                ) ?: run {
                                     Toast.makeText(
                                         context,
-                                        "Compra $message creada",
+                                        "Complete datos del proveedor",
                                         Toast.LENGTH_SHORT
                                     ).show()
-                                    navController.popBackStack()
-                                }
+                                    return@CreatePurchaseButton
+                                },
+                                operationDetailSet = uiState.products.map { product ->
+                                    IOperationDetail(
+                                        id = 0,
+                                        typeAffectationId = 1, // Por defecto gravada
+                                        description = product.name ?: "Producto",
+                                        tariff = ITariff(
+                                            productId = product.id,
+                                            productCode = product.code,
+                                            productName = product.name,
+                                            unitId = 0,
+                                            unitName = product.minimumUnitName,
+                                            stock = product.stock,
+                                            priceWithIgv = product.priceWithIgv3 ?: 0.0,
+                                            priceWithoutIgv = product.priceWithoutIgv3 ?: 0.0,
+                                            productTariffId = 0,
+                                            typeAffectationId = 1
+                                        ),
+                                        quantity = 1.0, // TODO: Obtener cantidad del producto
+                                        unitValue = product.priceWithoutIgv3 ?: 0.0,
+                                        unitPrice = product.priceWithIgv3 ?: 0.0,
+                                        discountPercentage = 0.0,
+                                        totalDiscount = 0.0,
+                                        perceptionPercentage = 0.0,
+                                        totalPerception = 0.0,
+                                        igvPercentage = 18.0,
+                                        totalValue = product.priceWithoutIgv3 ?: 0.0,
+                                        totalIgv = (product.priceWithIgv3 ?: 0.0) - (product.priceWithoutIgv3 ?: 0.0),
+                                        totalAmount = product.priceWithIgv3 ?: 0.0,
+                                        totalToPay = product.priceWithIgv3 ?: 0.0
+                                    )
+                                },
+                                discountGlobal = 0.0,
+                                discountPercentageGlobal = 0.0,
+                                discountForItem = 0.0,
+                                totalDiscount = 0.0,
+                                totalTaxed = uiState.products.sumOf { it.priceWithoutIgv3 ?: 0.0 },
+                                totalUnaffected = 0.0,
+                                totalExonerated = 0.0,
+                                totalIgv = uiState.products.sumOf { (it.priceWithIgv3 ?: 0.0) - (it.priceWithoutIgv3 ?: 0.0) },
+                                totalFree = 0.0,
+                                totalAmount = uiState.products.sumOf { it.priceWithIgv3 ?: 0.0 },
+                                totalToPay = uiState.products.sumOf { it.priceWithIgv3 ?: 0.0 },
+                                totalPayed = uiState.products.sumOf { it.priceWithIgv3 ?: 0.0 }
                             )
-                        } else {
-                            // disableContinuePay = true → Backend maneja pago automático
+
+                            // ✅ ENVIAR PAGOS SEGÚN CONFIGURACIÓN (exactamente como en NoteOfSale):
                             viewModel.createPurchase(
                                 operation = operation,
                                 payments = emptyList(),
@@ -295,6 +286,7 @@ fun NewPurchaseScreen(
                 )
             }
         }
+        
         // Diálogos - CON MÁS LOGS
         println("DEBUG: ===== EVALUANDO DIÁLOGOS =====")
         println("DEBUG: showDocumentTypeDialog = $showDocumentTypeDialog")
@@ -349,7 +341,102 @@ fun NewPurchaseScreen(
                 onPaymentAdded = { payment ->
                     viewModel.addPayment(payment)
                 },
-                paymentSummary = viewModel.paymentSummary.collectAsState().value
+                paymentSummary = viewModel.paymentSummary.collectAsState().value,
+                onConfirmPayments = {
+                    // ✅ Cuando se confirman los pagos, crear la compra
+                    val operation = IOperation(
+                        id = 0, // ID se generará en el backend
+                        serial = manualSerial, // Serie ingresada manualmente
+                        correlative = manualCorrelative.toIntOrNull() ?: 0, // Correlativo ingresado manualmente
+                        documentType = selectedDocumentType, // 01 = Factura, 03 = Boleta
+                        operationType = when (selectedDocumentType) {
+                            "01" -> "0501" // Factura de proveedor
+                            "03" -> "0501" // Boleta de proveedor
+                            else -> "0501"
+                        },
+                        operationStatus = "01", // Pendiente de envío a SUNAT
+                        operationAction = "E", // Emitir
+                        currencyType = "PEN", // Soles peruanos
+                        operationDate = getCurrentFormattedDate(), // Fecha actual
+                        emitDate = invoiceDate, // Fecha de emisión
+                        emitTime = getCurrentFormattedTime(), // Hora actual
+                        userId = 0, // TODO: Obtener del usuario logueado
+                        subsidiaryId = subsidiaryData?.id ?: 0, // Sucursal
+                        client = null, // No hay cliente en compras
+                        supplier = uiState.supplier?.copy( // Solo cambiar esto: cliente por proveedor
+                            documentType = uiState.supplier!!.documentType,
+                            documentNumber = uiState.supplier!!.documentNumber?.trim() ?: "", // ✅ Agregar ?: "" para evitar null
+                            names = uiState.supplier!!.names?.trim()?.uppercase() ?: "", // ✅ Agregar ?: "" para evitar null
+                            address = uiState.supplier!!.address?.trim() ?: "", // ✅ Agregar ?: "" para evitar null
+                            email = uiState.supplier!!.email ?: "", // ✅ Agregar ?: "" para evitar null
+                            phone = uiState.supplier!!.phone ?: "" // ✅ Agregar ?: "" para evitar null
+                        ) ?: run {
+                            Toast.makeText(
+                                context,
+                                "Complete datos del proveedor",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            return@PaymentDialog
+                        },
+                        operationDetailSet = uiState.products.map { product ->
+                            IOperationDetail(
+                                id = 0,
+                                typeAffectationId = 1, // Por defecto gravada
+                                description = product.name ?: "Producto",
+                                tariff = ITariff(
+                                    productId = product.id,
+                                    productCode = product.code,
+                                    productName = product.name,
+                                    unitId = 0,
+                                    unitName = product.minimumUnitName,
+                                    stock = product.stock,
+                                    priceWithIgv = product.priceWithIgv3 ?: 0.0,
+                                    priceWithoutIgv = product.priceWithoutIgv3 ?: 0.0,
+                                    productTariffId = 0,
+                                    typeAffectationId = 1
+                                ),
+                                quantity = 1.0, // TODO: Obtener cantidad del producto
+                                unitValue = product.priceWithoutIgv3 ?: 0.0,
+                                unitPrice = product.priceWithIgv3 ?: 0.0,
+                                discountPercentage = 0.0,
+                                totalDiscount = 0.0,
+                                perceptionPercentage = 0.0,
+                                totalPerception = 0.0,
+                                igvPercentage = 18.0,
+                                totalValue = product.priceWithoutIgv3 ?: 0.0,
+                                totalIgv = (product.priceWithIgv3 ?: 0.0) - (product.priceWithoutIgv3 ?: 0.0),
+                                totalAmount = product.priceWithIgv3 ?: 0.0,
+                                totalToPay = product.priceWithIgv3 ?: 0.0
+                            )
+                        },
+                        discountGlobal = 0.0,
+                        discountPercentageGlobal = 0.0,
+                        discountForItem = 0.0,
+                        totalDiscount = 0.0,
+                        totalTaxed = uiState.products.sumOf { it.priceWithoutIgv3 ?: 0.0 },
+                        totalUnaffected = 0.0,
+                        totalExonerated = 0.0,
+                        totalIgv = uiState.products.sumOf { (it.priceWithIgv3 ?: 0.0) - (it.priceWithoutIgv3 ?: 0.0) },
+                        totalFree = 0.0,
+                        totalAmount = uiState.products.sumOf { it.priceWithIgv3 ?: 0.0 },
+                        totalToPay = uiState.products.sumOf { it.priceWithIgv3 ?: 0.0 },
+                        totalPayed = uiState.products.sumOf { it.priceWithIgv3 ?: 0.0 }
+                    )
+
+                    // ✅ Crear la compra con los pagos registrados
+                    viewModel.createPurchase(
+                        operation = operation,
+                        payments = currentPayments,
+                        onSuccess = { operationId, message ->
+                            Toast.makeText(
+                                context,
+                                "Compra $message creada",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            navController.popBackStack()
+                        }
+                    )
+                }
             )
         }
 
@@ -1372,46 +1459,158 @@ fun PaymentCard(
 fun PaymentDialog(
     onDismiss: () -> Unit,
     onPaymentAdded: (IPayment) -> Unit,
-    paymentSummary: PaymentSummary
+    paymentSummary: PaymentSummary,
+    onConfirmPayments: () -> Unit = {} // ✅ Agregar parámetro opcional
 ) {
     var selectedPaymentMethod by remember { mutableStateOf<PaymentMethod?>(null) }
     var amount by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
     var showPaymentMethodDialog by remember { mutableStateOf(false) }
+    var paymentDate by remember { mutableStateOf(getCurrentFormattedDate()) } // ✅ Fecha de pago para crédito
+    var showDatePicker by remember { mutableStateOf(false) } // ✅ Para mostrar selector de fecha
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Agregar Pago") },
+        title = { 
+            Text(
+                "Agregar Pago",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Método de pago
-                OutlinedTextField(
-                    value = selectedPaymentMethod?.name ?: "Seleccionar método",
-                    onValueChange = { },
-                    label = { Text("Método de Pago") },
+                // Resumen de pagos actual
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp)
+                    ) {
+                        Text(
+                            text = "Resumen de Pagos",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Total:",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Text(
+                                text = "S/. ${String.format("%.2f", paymentSummary.totalAmount)}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Pagado:",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Text(
+                                text = "S/. ${String.format("%.2f", paymentSummary.totalPaid)}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Pendiente:",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Text(
+                                text = "S/. ${String.format("%.2f", paymentSummary.remaining)}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = if (paymentSummary.remaining > 0.01) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+
+                // Método de pago - MEJORADO
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { showPaymentMethodDialog = true },
-                    readOnly = true,
-                    trailingIcon = {
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "Método de Pago",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = selectedPaymentMethod?.name ?: "Seleccionar método",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                         Icon(
                             Icons.Default.KeyboardArrowDown,
-                            contentDescription = "Seleccionar"
+                            contentDescription = "Seleccionar",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                )
+                }
 
                 // Monto
                 OutlinedTextField(
                     value = amount,
-                    onValueChange = { amount = it },
+                    onValueChange = { newValue ->
+                        // Validar que sea un número válido
+                        if (newValue.matches(Regex("^\\d*\\.?\\d{0,2}\$")) || newValue.isEmpty()) {
+                            amount = newValue
+                        }
+                    },
                     label = { Text("Monto (S/.)") },
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    placeholder = { Text("Máximo: ${String.format("%.2f", paymentSummary.remaining)}") }
+                    placeholder = { Text("Máximo: ${String.format("%.2f", paymentSummary.remaining)}") },
+                    trailingIcon = {
+                        if (amount.isNotBlank()) {
+                            IconButton(onClick = { amount = "" }) {
+                                Icon(
+                                    Icons.Default.Clear,
+                                    contentDescription = "Limpiar"
+                                )
+                            }
+                        }
+                    }
                 )
 
                 // Nota (opcional)
@@ -1422,31 +1621,126 @@ fun PaymentDialog(
                     modifier = Modifier.fillMaxWidth(),
                     placeholder = { Text("Ej: Transferencia, Cheque N°") }
                 )
+
+                // ✅ Fecha de pago (automática para contado, selector para crédito)
+                if (selectedPaymentMethod != null) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { 
+                                // Solo permitir editar fecha si es crédito
+                                if (selectedPaymentMethod?.name?.contains("Crédito", ignoreCase = true) == true) {
+                                    showDatePicker = true
+                                }
+                            },
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = "Fecha de Pago",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = if (selectedPaymentMethod?.name?.contains("Crédito", ignoreCase = true) == true) {
+                                        paymentDate // Fecha seleccionada para crédito
+                                    } else {
+                                        getCurrentFormattedDate() // Fecha actual para contado
+                                    },
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                // Indicador de tipo de fecha
+                                Text(
+                                    text = if (selectedPaymentMethod?.name?.contains("Crédito", ignoreCase = true) == true) {
+                                        "Fecha futura (click para cambiar)"
+                                    } else {
+                                        "Fecha actual (automática)"
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Icon(
+                                Icons.Default.DateRange,
+                                contentDescription = "Fecha de pago",
+                                tint = if (selectedPaymentMethod?.name?.contains("Crédito", ignoreCase = true) == true) {
+                                    MaterialTheme.colorScheme.primary // Clickable para crédito
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f) // No clickable para contado
+                                }
+                            )
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
-            Button(
-                onClick = {
-                    val amountValue = amount.toDoubleOrNull() ?: 0.0
-                    if (selectedPaymentMethod != null && amountValue > 0 && amountValue <= paymentSummary.remaining) {
-                        val payment = IPayment(
-                            id = 0,
-                            wayPay = selectedPaymentMethod!!.id,
-                            amount = amountValue,
-                            note = note.trim(),
-                            paymentDate = getCurrentFormattedDate(),
-                            operationId = 0
-                        )
-                        onPaymentAdded(payment)
-                        onDismiss() // Cerrar diálogo después de agregar
-                    }
-                },
-                enabled = selectedPaymentMethod != null &&
-                        amount.isNotBlank() &&
-                        (amount.toDoubleOrNull() ?: 0.0) > 0 &&
-                        (amount.toDoubleOrNull() ?: 0.0) <= paymentSummary.remaining
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text("Agregar Pago")
+                // Botón para agregar pago individual
+                Button(
+                    onClick = {
+                        val amountValue = amount.toDoubleOrNull() ?: 0.0
+                        if (selectedPaymentMethod != null && amountValue > 0 && amountValue <= paymentSummary.remaining) {
+                            // ✅ Usar fecha correcta según el tipo de pago
+                            val finalPaymentDate = if (selectedPaymentMethod?.name?.contains("Crédito", ignoreCase = true) == true) {
+                                paymentDate // Fecha seleccionada para crédito
+                            } else {
+                                getCurrentFormattedDate() // Fecha actual para contado
+                            }
+                            
+                            val payment = IPayment(
+                                id = 0,
+                                wayPay = selectedPaymentMethod!!.id,
+                                amount = amountValue,
+                                note = note.trim(),
+                                paymentDate = finalPaymentDate, // ✅ Fecha correcta según tipo
+                                operationId = 0
+                            )
+                            onPaymentAdded(payment)
+                            
+                            // Limpiar campos después de agregar
+                            selectedPaymentMethod = null
+                            amount = ""
+                            note = ""
+                            paymentDate = getCurrentFormattedDate() // Resetear fecha para próximo pago
+                        }
+                    },
+                    enabled = selectedPaymentMethod != null &&
+                            amount.isNotBlank() &&
+                            (amount.toDoubleOrNull() ?: 0.0) > 0 &&
+                            (amount.toDoubleOrNull() ?: 0.0) <= paymentSummary.remaining
+                ) {
+                    Text("Agregar Pago")
+                }
+                
+                // Botón para confirmar todos los pagos (solo si el pago está completo)
+                if (paymentSummary.remaining <= 0.01) {
+                    Button(
+                        onClick = {
+                            onConfirmPayments()
+                            onDismiss()
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Text("Confirmar Pagos")
+                    }
+                }
             }
         },
         dismissButton = {
@@ -1456,39 +1750,146 @@ fun PaymentDialog(
         }
     )
 
-    // Diálogo para seleccionar método de pago
+    // Diálogo para seleccionar método de pago - MEJORADO
     if (showPaymentMethodDialog) {
         AlertDialog(
             onDismissRequest = { showPaymentMethodDialog = false },
-            title = { Text("Seleccionar Método de Pago") },
+            title = { 
+                Text(
+                    "Seleccionar Método de Pago",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            },
             text = {
                 LazyColumn(
-                    modifier = Modifier.height(200.dp)
+                    modifier = Modifier.height(200.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     items(PaymentMethods.AVAILABLE_METHODS) { method ->
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 4.dp)
                                 .clickable {
                                     selectedPaymentMethod = method
                                     showPaymentMethodDialog = false
                                 },
                             colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                containerColor = if (selectedPaymentMethod?.id == method.id) {
+                                    MaterialTheme.colorScheme.primaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceVariant
+                                }
+                            ),
+                            elevation = CardDefaults.cardElevation(
+                                defaultElevation = if (selectedPaymentMethod?.id == method.id) 4.dp else 2.dp
                             )
                         ) {
-                            Text(
-                                text = method.name,
-                                modifier = Modifier.padding(12.dp),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = selectedPaymentMethod?.id == method.id,
+                                    onClick = {
+                                        selectedPaymentMethod = method
+                                        showPaymentMethodDialog = false
+                                    },
+                                    colors = RadioButtonDefaults.colors(
+                                        selectedColor = MaterialTheme.colorScheme.primary
+                                    )
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = method.name,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = if (selectedPaymentMethod?.id == method.id) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (selectedPaymentMethod?.id == method.id) {
+                                        MaterialTheme.colorScheme.onPrimaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    }
+                                )
+                            }
                         }
                     }
                 }
             },
             confirmButton = {
                 TextButton(onClick = { showPaymentMethodDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
+    // ✅ Diálogo para seleccionar fecha de pago (solo para crédito)
+    if (showDatePicker) {
+        AlertDialog(
+            onDismissRequest = { showDatePicker = false },
+            title = { 
+                Text(
+                    "Seleccionar Fecha de Pago",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column {
+                    // Campo de texto para ingresar fecha manualmente
+                    OutlinedTextField(
+                        value = paymentDate,
+                        onValueChange = { paymentDate = it },
+                        label = { Text("Fecha (dd/MM/yyyy)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("01/01/2025") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Información sobre fechas de pago
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp)
+                        ) {
+                            Text(
+                                text = "Información:",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "• La fecha debe ser posterior a la fecha actual",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Text(
+                                text = "• Formato: dd/MM/yyyy (ej: 15/01/2025)",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { showDatePicker = false },
+                    enabled = paymentDate.isNotBlank()
+                ) {
+                    Text("Confirmar Fecha")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
                     Text("Cancelar")
                 }
             }
