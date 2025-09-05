@@ -315,8 +315,8 @@ class NewPurchaseViewModel @Inject constructor(
             try {
                 _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
-                // Llamar al repositorio exactamente igual que NoteOfSale
-                val result = operationRepository.createInvoice(operation, payments)
+                // Llamar al repositorio con el nuevo método para compras móviles
+                val result = operationRepository.createMobilePurchase(operation, payments)
 
                 // Manejar el resultado igual que NoteOfSale
                 result.fold(

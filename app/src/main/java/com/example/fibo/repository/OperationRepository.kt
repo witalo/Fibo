@@ -59,6 +59,7 @@ import com.example.fibo.GetPurchasesQuery
 import com.example.fibo.GetSuppliersQuery
 import com.example.fibo.SearchSupplierByParameterQuery
 import com.example.fibo.CancelPurchaseMutation
+import com.example.fibo.CreateMobilePurchaseMutation
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -443,6 +444,118 @@ class OperationRepository @Inject constructor(
             }
         } catch (e: Exception) {
             Log.e("CreateOperation", "Exception: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun createMobilePurchase(operation: IOperation, payments: List<IPayment> = emptyList()): Result<Pair<Int, String>> {
+        return try {
+            // Convert operation details to input type
+            val operationDetailInputs = operation.operationDetailSet.map { detail ->
+                val tariffInput = TariffInput(
+                    productTariffId = Optional.present(detail.tariff?.productTariffId),
+                    typeAffectationId = Optional.present(detail.tariff?.typeAffectationId)
+                )
+                OperationDetailInput(
+                    tariff = Optional.present(tariffInput),
+                    description = Optional.present(detail.description),
+                    typeAffectationId = Optional.present(detail.typeAffectationId),
+                    quantity = Optional.present(detail.quantity),
+                    unitValue = Optional.present(detail.unitValue),
+                    unitPrice = Optional.present(detail.unitPrice),
+                    discountPercentage = Optional.present(detail.discountPercentage),
+                    totalDiscount = Optional.present(detail.totalDiscount),
+                    perceptionPercentage = Optional.present(detail.perceptionPercentage),
+                    totalPerception = Optional.present(detail.totalPerception),
+                    igvPercentage = Optional.present(detail.igvPercentage),
+                    totalValue = Optional.present(detail.totalValue),
+                    totalIgv = Optional.present(detail.totalIgv),
+                    totalAmount = Optional.present(detail.totalAmount),
+                    totalToPay = Optional.present(detail.totalToPay)
+                )
+            }
+
+            // Create supplier input (para compras usamos supplier en lugar de client)
+            val supplierInput = PersonInput(
+                id = Optional.present(operation.supplier?.id as Int?),
+                names = Optional.present(operation.supplier?.names),
+                documentType = Optional.present(operation.supplier?.documentType),
+                documentNumber = Optional.present(operation.supplier?.documentNumber),
+                email = Optional.present(operation.supplier?.email),
+                phone = Optional.present(operation.supplier?.phone),
+                address = Optional.present(operation.supplier?.address)
+            )
+
+            // Convert payments to input type
+            val paymentInputs = payments.map { payment ->
+                PaymentInput(
+                    wayPay = payment.wayPay,
+                    amount = payment.amount,
+                    note = Optional.present(payment.note),
+                    paymentDate = payment.paymentDate
+                )
+            }
+
+            // Execute the mutation para compras
+            val response = apolloClient.mutation(
+                CreateMobilePurchaseMutation(
+                    id = Optional.present(operation.id),
+                    serial = Optional.present(operation.serial),
+                    correlative = Optional.present(operation.correlative),
+                    documentType = operation.documentType,
+                    operationType = operation.operationType,
+                    operationStatus = operation.operationStatus,
+                    operationAction = operation.operationAction,
+                    currencyType = operation.currencyType,
+                    operationDate = operation.operationDate,
+                    dueDate = Optional.present(operation.dueDate),
+                    emitDate = operation.emitDate,
+                    emitTime = operation.emitTime,
+                    userId = operation.userId,
+                    subsidiaryId = operation.subsidiaryId,
+                    supplier = Optional.present(supplierInput),
+                    discountGlobal = Optional.present(operation.discountGlobal),
+                    discountPercentageGlobal = Optional.present(operation.discountPercentageGlobal),
+                    discountForItem = Optional.present(operation.discountForItem),
+                    totalDiscount = Optional.present(operation.totalDiscount),
+                    totalTaxed = Optional.present(operation.totalTaxed),
+                    totalUnaffected = Optional.present(operation.totalUnaffected),
+                    totalExonerated = Optional.present(operation.totalExonerated),
+                    totalIgv = Optional.present(operation.totalIgv),
+                    totalFree = Optional.present(operation.totalFree),
+                    totalAmount = Optional.present(operation.totalAmount),
+                    totalToPay = Optional.present(operation.totalToPay),
+                    totalPayed = Optional.present(operation.totalPayed),
+                    parentOperation = Optional.present(operation.parentOperation),
+                    observation = Optional.present(operation.observation),
+                    operationDetailSet = operationDetailInputs,
+                    payments = Optional.present(paymentInputs)
+                )
+            ).execute()
+
+            val data = response.data
+            if (data != null && data.createMobilePurchase?.success == true) {
+                val operationIdStr = data.createMobilePurchase.operation?.id
+                val operationIdInt = operationIdStr?.toIntOrNull() ?: -1
+                val serial = data.createMobilePurchase.operation?.serial ?: ""
+                val correlative = data.createMobilePurchase.operation?.correlative ?: 0
+
+                val successMessage = if (serial.isNotEmpty()) {
+                    "${data.createMobilePurchase.message ?: "Compra creada exitosamente"} (${serial}-${correlative})"
+                } else {
+                    data.createMobilePurchase.message ?: "Compra creada exitosamente"
+                }
+                Result.success(Pair(operationIdInt, successMessage))
+            } else {
+                val errorMessage = data?.createMobilePurchase?.message
+                    ?: response.errors?.firstOrNull()?.message
+                    ?: "Error desconocido al crear la compra"
+
+                Log.e("CreateMobilePurchase", "Error: $errorMessage")
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
+            Log.e("CreateMobilePurchase", "Exception: ${e.message}", e)
             Result.failure(e)
         }
     }

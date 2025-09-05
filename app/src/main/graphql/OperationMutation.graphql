@@ -89,3 +89,91 @@ mutation cancelInvoice($operationId: Int!, $lowDate: Date!) {
         message
     }
 }
+mutation CreateMobilePurchase(
+    $id: Int = 0,
+    $serial: String,
+    $correlative: Int = 0,
+    $documentType: String!,
+    $operationType: String!,
+    $operationStatus: String!,
+    $operationAction: String!,
+    $currencyType: String!,
+    $operationDate: String!,
+    $dueDate: String,
+    $emitDate: String!,
+    $emitTime: String!,
+    $userId: Int!,
+    $subsidiaryId: Int!,
+    $supplier: PersonInput,
+    $discountGlobal: Float = 0.0,
+    $discountPercentageGlobal: Float = 0.0,
+    $discountForItem: Float = 0.0,
+    $totalDiscount: Float = 0.0,
+    $totalTaxed: Float = 0.0,
+    $totalUnaffected: Float = 0.0,
+    $totalExonerated: Float = 0.0,
+    $totalIgv: Float = 0.0,
+    $totalFree: Float = 0.0,
+    $totalAmount: Float = 0.0,
+    $totalToPay: Float = 0.0,
+    $totalPayed: Float = 0.0,
+    $parentOperation: Int = 0,
+    $observation: String = "",
+    $operationDetailSet: [OperationDetailInput!]!,
+    $payments: [PaymentInput]
+) {
+    createMobilePurchase(
+        id: $id
+        serial: $serial
+        correlative: $correlative
+        documentType: $documentType
+        operationType: $operationType
+        operationStatus: $operationStatus
+        operationAction: $operationAction
+        currencyType: $currencyType
+        operationDate: $operationDate
+        dueDate: $dueDate
+        emitDate: $emitDate
+        emitTime: $emitTime
+        userId: $userId
+        subsidiaryId: $subsidiaryId
+        supplier: $supplier
+        discountGlobal: $discountGlobal
+        discountPercentageGlobal: $discountPercentageGlobal
+        discountForItem: $discountForItem
+        totalDiscount: $totalDiscount
+        totalTaxed: $totalTaxed
+        totalUnaffected: $totalUnaffected
+        totalExonerated: $totalExonerated
+        totalIgv: $totalIgv
+        totalFree: $totalFree
+        totalAmount: $totalAmount
+        totalToPay: $totalToPay
+        totalPayed: $totalPayed
+        parentOperation: $parentOperation
+        observation: $observation
+        operationDetailSet: $operationDetailSet
+        payments: $payments
+    ) {
+        success
+        message
+        operation {
+            id
+            serial
+            correlative
+            documentType
+            operationType
+            operationStatus
+            totalAmount
+            totalPayed
+            emitDate
+            emitTime
+            supplier {
+                id
+                documentNumber
+                names
+                address
+            }
+        }
+    }
+}

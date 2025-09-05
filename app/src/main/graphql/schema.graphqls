@@ -992,7 +992,7 @@ enum OperationsOperationCreditNoteTypeChoices {
   A_12
 
   """
-  Corrección o modificación del monto neto pendiente de pago y/o la(s) fechas(s) de vencimiento del pago único o de las cuotas y/o los montos correspondientes a cada cuota, de ser el caso
+  Ajustes - montos y/o fechas de pago
   """
   A_13
 
@@ -4411,6 +4411,8 @@ type Mutation {
 
   createOperation(client: PersonInput!, correlative: Int = 0, currencyType: String!, discountForItem: Float = 0, discountGlobal: Float = 0, discountPercentageGlobal: Float = 0, documentType: String!, emitDate: String!, emitTime: String!, id: Int = 0, operationAction: String!, operationDate: String!, operationDetailSet: [OperationDetailInput]!, operationStatus: String!, operationType: String!, parentOperation: Int = 0, payments: [PaymentInput], serial: String, subsidiaryId: Int!, totalAmount: Float = 0, totalDiscount: Float = 0, totalExonerated: Float = 0, totalFree: Float = 0, totalIgv: Float = 0, totalPayed: Float = 0, totalTaxed: Float = 0, totalToPay: Float = 0, totalUnaffected: Float = 0, userId: Int!): CreateOperationMutation
 
+  createMobilePurchase(correlative: Int = 0, currencyType: String!, discountForItem: Float = 0, discountGlobal: Float = 0, discountPercentageGlobal: Float = 0, documentType: String!, dueDate: String, emitDate: String!, emitTime: String!, id: Int = 0, observation: String = "", operationAction: String!, operationDate: String!, operationDetailSet: [OperationDetailInput]!, operationStatus: String!, operationType: String!, parentOperation: Int = 0, payments: [PaymentInput], serial: String, subsidiaryId: Int!, supplier: PersonInput, totalAmount: Float = 0, totalDiscount: Float = 0, totalExonerated: Float = 0, totalFree: Float = 0, totalIgv: Float = 0, totalPayed: Float = 0, totalTaxed: Float = 0, totalToPay: Float = 0, totalUnaffected: Float = 0, userId: Int!): CreateMobilePurchaseMutation
+
   sntPerson(document: String): SntMutation
 
   createSale(clientId: Int = 0, commentSet: [String!], correlative: Int = 0, creditNoteType: String = "NA", currencyType: String = "PEN", descriptionSet: [String!], detractionPaymentMethod: Int = 0, detractionPercentage: Float = 0, detractionType: Int = 0, discountForItem: Float = 0, discountGlobal: Float = 0, discountPercentageGlobal: Float = 0, discountPercentageSet: [Float!], documentType: String = "NA", dueDate: Date = null, emitDate: Date = null, guideArrivalAddress: String = "", guideArrivalDistrictId: String = "040101", guideArrivalSerial: String = "", guideModeTransfer: String = "NA", guideOriginAddress: String = "", guideOriginDistrictId: String = "040101", guideOriginSerial: String = "", guideReasonTransfer: String = "NA", hasDetraction: Boolean = false, hasPerception: Boolean = false, hasRetention: Boolean = false, igvPercentageSet: [Float!], igvType: Int = 0, isAnticipationSet: [Boolean!], mainDriverDocumentNumber: String = "", mainDriverDocumentType: String = "1", mainDriverDriverLicense: String = "", mainDriverNames: String = "", mainVehicleLicensePlate: String = "", observation: String = "", operationType: String = "NA", othersDriversDocumentNumberSet: [String!], othersDriversDocumentTypeSet: [String!], othersDriversDriverLicenseSet: [String!], othersDriversNamesSet: [String!], othersVehiclesLicensePlateSet: [String!], parentOperationId: Int = 0, perceptionPercentage: Float = 0, perceptionPercentageSet: [Float!], perceptionType: Int = 0, productIdSet: [Int!], productTariffIdSet: [Int!], quantityPackages: Float = 0, quantitySet: [Float!], receiverDocumentNumber: String = "", receiverDocumentType: String = "1", receiverNames: String = "", relatedDocumentCorrelativeSet: [Int!], relatedDocumentSerialSet: [String!], relatedDocumentsCorrelativeSet: [Int!], relatedDocumentsDocumentTypeSet: [String!], relatedDocumentsSerialSet: [String!], retentionPercentage: Float = 0, retentionType: Int = 0, saleExchangeRate: Float = 0, serial: String = "", totalAmount: Float = 0, totalAmountSet: [Float!], totalAnticipation: Float = 0, totalDetraction: Float = 0, totalDiscount: Float = 0, totalDiscountSet: [Float!], totalExonerated: Float = 0, totalFree: Float = 0, totalIgv: Float = 0, totalIgvSet: [Float!], totalPayed: Float = 0, totalPerception: Float = 0, totalPerceptionSet: [Float!], totalRetention: Float = 0, totalSet: [Float!], totalTaxed: Float = 0, totalToPay: Float = 0, totalToPaySet: [Float!], totalTurned: Float = 0, totalUnaffected: Float = 0, totalValueSet: [Float!], totalWeight: Float = 0, transactionDateSet: [Date!], transferDate: Date = null, transportationCompanyDocumentNumber: String = "", transportationCompanyDocumentType: String = "6", transportationCompanyMtcRegistrationNumber: String = "", transportationCompanyNames: String = "", typeAffectationIdSet: [Int!], unitPriceSet: [Float!], unitValueSet: [Float!], wayPaySet: [Int!], weightMeasurementUnitCode: String = "KGM"): CreateSaleMutation
@@ -4433,7 +4435,7 @@ type Mutation {
 
   registerGuide(carrier: CarrierType, client: ClienteType, guide: GuideType, items: [ItemType], points: StopPointInputType, relatedDocuments: VentaType, transportation: TransportationType): RegisterGuideMutation
 
-  registerCreditNote(client: ClienteType, creditNote: VentaType, items: [ItemType], relatedDocuments: RelatedDocumentType): RegisterCreditNoteMutation
+  registerCreditNote(client: ClienteType, creditNote: VentaType, creditPay: [CreditPay], items: [ItemType], relatedDocuments: RelatedDocumentType): RegisterCreditNoteMutation
 
   createEntryNote(correlative: Int = 0, descriptionSet: [String!], emitDate: Date = null, observation: String = "", operationType: String = "16", productTariffIdSet: [Int!], quantitySet: [Float!], serial: String = "", supplierId: Int = 0, typeAffectationIdSet: [Int!], unitValueSet: [Float!], warehouseId: Int = 0): CreateEntryNoteMutation
 
@@ -4777,6 +4779,14 @@ input PaymentInput {
   note: String
 
   paymentDate: String!
+}
+
+type CreateMobilePurchaseMutation {
+  operation: OperationType
+
+  success: Boolean
+
+  message: String
 }
 
 type SntMutation {

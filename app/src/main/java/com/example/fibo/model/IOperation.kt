@@ -12,6 +12,7 @@ data class IOperation(
     val currencyType: String = "", //Moneda  currencyType = "PEN",
     val operationDate: String = "", //Fecha de operacion
     val emitDate: String = "", //Fecha de emision
+    val dueDate: String = "", //Fecha de emision
     val emitTime: String = "", //Hora emision
     val userId: Int = 0, //Usuario ID
     val client: IPerson? = null, //Person
@@ -30,5 +31,6 @@ data class IOperation(
     val totalToPay: Double = 0.0, // Total a pagar (debe ser igual a totalAmount)
     val totalPayed: Double = 0.0, // Total pagado
     val parentOperation: Int = 0,
+    val observation: String = "",
     val operationDetailSet: List<IOperationDetail> = emptyList()
 )

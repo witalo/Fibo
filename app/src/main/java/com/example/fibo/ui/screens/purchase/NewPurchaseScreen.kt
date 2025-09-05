@@ -55,7 +55,10 @@ fun NewPurchaseScreen(
     var manualSerial by remember { mutableStateOf("") } // Serie ingresada manualmente
     var manualCorrelative by remember { mutableStateOf("") } // Correlativo ingresado manualmente
     var invoiceDate by remember { mutableStateOf(getCurrentFormattedDate()) }
+    var dueDate by remember { mutableStateOf(getCurrentFormattedDate()) } // Fecha de vencimiento
+    var observation by remember { mutableStateOf("") } // Observación opcional
     var showDatePicker by remember { mutableStateOf(false) }
+    var showDueDatePicker by remember { mutableStateOf(false) }
     var showSupplierDialog by remember { mutableStateOf(false) }
     var showDocumentTypeDialog by remember { mutableStateOf(false) } // ✅ MOVER AQUÍ
     var supplierSearchQuery by remember { mutableStateOf("") } // Para buscar proveedor por RUC/DNI
@@ -96,7 +99,7 @@ fun NewPurchaseScreen(
         onLogout = onLogout,
         topBar = {
             TopAppBar(
-                title = { Text("Nueva Venta", style = MaterialTheme.typography.titleSmall) },
+                title = { Text("Nueva Compra", style = MaterialTheme.typography.titleSmall) },
                 navigationIcon = {
 //                    IconButton(onClick = onBack) {
 //                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
@@ -128,7 +131,11 @@ fun NewPurchaseScreen(
                     manualCorrelative = manualCorrelative,
                     onCorrelativeChange = { manualCorrelative = it },
                     invoiceDate = invoiceDate,
-                    onDateClick = { showDatePicker = true }
+                    onDateClick = { showDatePicker = true },
+                    dueDate = dueDate,
+                    onDueDateClick = { showDueDatePicker = true },
+                    observation = observation,
+                    onObservationChange = { observation = it }
                 )
             }
 
@@ -210,8 +217,9 @@ fun NewPurchaseScreen(
                                 currencyType = "PEN", // Soles peruanos
                                 operationDate = getCurrentFormattedDate(), // Fecha actual
                                 emitDate = invoiceDate, // Fecha de emisión
+                                dueDate = dueDate,
                                 emitTime = getCurrentFormattedTime(), // Hora actual
-                                userId = 0, // TODO: Obtener del usuario logueado
+                                userId = 1, // TODO: Obtener del usuario logueado desde PreferencesManager
                                 subsidiaryId = subsidiaryData?.id ?: 0, // Sucursal
                                 client = null, // No hay cliente en compras
                                 supplier = uiState.supplier?.copy( // Solo cambiar esto: cliente por proveedor
@@ -271,7 +279,8 @@ fun NewPurchaseScreen(
                                 totalFree = 0.0,
                                 totalAmount = uiState.products.sumOf { it.priceWithIgv3 ?: 0.0 },
                                 totalToPay = uiState.products.sumOf { it.priceWithIgv3 ?: 0.0 },
-                                totalPayed = uiState.products.sumOf { it.priceWithIgv3 ?: 0.0 }
+                                totalPayed = uiState.products.sumOf { it.priceWithIgv3 ?: 0.0 },
+                                observation = observation
                             )
 
                             // ✅ ENVIAR PAGOS SEGÚN CONFIGURACIÓN (exactamente como en NoteOfSale):
@@ -315,15 +324,45 @@ fun NewPurchaseScreen(
             println("DEBUG: NO se muestra DocumentTypeDialog")
         }
 
+        // Diálogos de fecha - CON MÁS LOGS
+        println("DEBUG: ===== EVALUANDO DIÁLOGOS DE FECHA =====")
+        println("DEBUG: showDatePicker = $showDatePicker")
+        println("DEBUG: showDueDatePicker = $showDueDatePicker")
+
         if (showDatePicker) {
+            println("DEBUG: ===== MOSTRANDO DatePickerDialog (EMISIÓN) =====")
             DatePickerDialog(
                 currentDate = invoiceDate,
                 onDateSelected = {
+                    println("DEBUG: Fecha emisión seleccionada: $it")
                     invoiceDate = it
                     showDatePicker = false
                 },
-                onDismiss = { showDatePicker = false }
+                onDismiss = { 
+                    println("DEBUG: Cerrando DatePickerDialog (emisión)")
+                    showDatePicker = false 
+                }
             )
+        } else {
+            println("DEBUG: NO se muestra DatePickerDialog (emisión)")
+        }
+
+        if (showDueDatePicker) {
+            println("DEBUG: ===== MOSTRANDO DatePickerDialog (VENCIMIENTO) =====")
+            DatePickerDialog(
+                currentDate = dueDate,
+                onDateSelected = {
+                    println("DEBUG: Fecha vencimiento seleccionada: $it")
+                    dueDate = it
+                    showDueDatePicker = false
+                },
+                onDismiss = { 
+                    println("DEBUG: Cerrando DatePickerDialog (vencimiento)")
+                    showDueDatePicker = false 
+                }
+            )
+        } else {
+            println("DEBUG: NO se muestra DatePickerDialog (vencimiento)")
         }
 
         if (showSupplierDialog) {
@@ -365,6 +404,7 @@ fun NewPurchaseScreen(
                         currencyType = "PEN", // Soles peruanos
                         operationDate = getCurrentFormattedDate(), // Fecha actual
                         emitDate = invoiceDate, // Fecha de emisión
+                        dueDate = dueDate, // Fecha de vencimiento
                         emitTime = getCurrentFormattedTime(), // Hora actual
                         userId = 0, // TODO: Obtener del usuario logueado
                         subsidiaryId = subsidiaryData?.id ?: 0, // Sucursal
@@ -426,7 +466,8 @@ fun NewPurchaseScreen(
                         totalFree = 0.0,
                         totalAmount = uiState.products.sumOf { it.priceWithIgv3 ?: 0.0 },
                         totalToPay = uiState.products.sumOf { it.priceWithIgv3 ?: 0.0 },
-                        totalPayed = uiState.products.sumOf { it.priceWithIgv3 ?: 0.0 }
+                        totalPayed = uiState.products.sumOf { it.priceWithIgv3 ?: 0.0 },
+                        observation = observation
                     )
 
                     // ✅ Crear la compra con los pagos registrados
@@ -496,7 +537,11 @@ fun GeneralInformationSection(
     manualCorrelative: String,
     onCorrelativeChange: (String) -> Unit,
     invoiceDate: String,
-    onDateClick: () -> Unit
+    onDateClick: () -> Unit,
+    dueDate: String,
+    onDueDateClick: () -> Unit,
+    observation: String,
+    onObservationChange: (String) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -587,13 +632,25 @@ fun GeneralInformationSection(
                 label = { Text("Fecha emisión") },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onDateClick() },
+                    .clickable { 
+                        println("DEBUG: ===== CLICK EN FECHA EMISIÓN =====")
+                        onDateClick() 
+                        println("DEBUG: ===== FIN CLICK FECHA EMISIÓN =====")
+                    },
                 readOnly = true,
                 trailingIcon = {
-                    Icon(
-                        Icons.Default.DateRange,
-                        contentDescription = "Seleccionar fecha"
-                    )
+                    IconButton(
+                        onClick = {
+                            println("DEBUG: ===== CLICK EN ICONO FECHA EMISIÓN =====")
+                            onDateClick()
+                            println("DEBUG: ===== FIN CLICK ICONO FECHA EMISIÓN =====")
+                        }
+                    ) {
+                        Icon(
+                            Icons.Default.DateRange,
+                            contentDescription = "Seleccionar fecha"
+                        )
+                    }
                 },
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
@@ -603,13 +660,33 @@ fun GeneralInformationSection(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Fecha vencimiento (igual a emisión para compras)
+            // Fecha vencimiento (editable)
             OutlinedTextField(
-                value = invoiceDate,
+                value = dueDate,
                 onValueChange = { },
                 label = { Text("Fecha vencimiento") },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { 
+                        println("DEBUG: ===== CLICK EN FECHA VENCIMIENTO =====")
+                        onDueDateClick() 
+                        println("DEBUG: ===== FIN CLICK FECHA VENCIMIENTO =====")
+                    },
                 readOnly = true,
+                trailingIcon = {
+                    IconButton(
+                        onClick = {
+                            println("DEBUG: ===== CLICK EN ICONO FECHA VENCIMIENTO =====")
+                            onDueDateClick()
+                            println("DEBUG: ===== FIN CLICK ICONO FECHA VENCIMIENTO =====")
+                        }
+                    ) {
+                        Icon(
+                            Icons.Default.DateRange,
+                            contentDescription = "Seleccionar fecha de vencimiento"
+                        )
+                    }
+                },
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = MaterialTheme.colorScheme.outline
@@ -671,6 +748,22 @@ fun GeneralInformationSection(
                     singleLine = true
                 )
             }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Observación (opcional)
+            OutlinedTextField(
+                value = observation,
+                onValueChange = onObservationChange,
+                label = { Text("Observación (Opcional)") },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Ej: Compra urgente, entrega especial, etc.") },
+                maxLines = 3,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                )
+            )
         }
     }
 }
@@ -867,22 +960,33 @@ fun DatePickerDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Seleccionar Fecha") },
+        title = { 
+            Text(
+                "Seleccionar Fecha",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        },
         text = {
             Column {
-                // Aquí podrías implementar un DatePicker real
-                // Por ahora usamos un campo de texto simple
                 OutlinedTextField(
                     value = selectedDate,
                     onValueChange = { selectedDate = it },
                     label = { Text("Fecha (dd/MM/yyyy)") },
                     modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("01/09/2025") }
+                    placeholder = { Text("01/01/2025") },
+                    supportingText = {
+                        Text(
+                            "Formato: día/mes/año",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 )
             }
         },
         confirmButton = {
-            TextButton(
+            Button(
                 onClick = {
                     onDateSelected(selectedDate)
                 }
