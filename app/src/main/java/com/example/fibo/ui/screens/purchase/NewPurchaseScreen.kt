@@ -82,10 +82,14 @@ fun NewPurchaseScreen(
             result.fold(
                 onSuccess = { message ->
                     Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                    // Limpiar el resultado antes de navegar
+                    viewModel.clearPurchaseResult()
                     navController.popBackStack()
                 },
                 onFailure = { error ->
                     Toast.makeText(context, "Error: ${error.message}", Toast.LENGTH_LONG).show()
+                    // Limpiar el resultado después de mostrar el error
+                    viewModel.clearPurchaseResult()
                 }
             )
         }
@@ -223,6 +227,7 @@ fun NewPurchaseScreen(
                                 subsidiaryId = subsidiaryData?.id ?: 0, // Sucursal
                                 client = null, // No hay cliente en compras
                                 supplier = uiState.supplier?.copy( // Solo cambiar esto: cliente por proveedor
+                                    id = uiState.supplier!!.id, // ✅ Agregar ID del proveedor
                                     documentType = uiState.supplier!!.documentType,
                                     documentNumber = uiState.supplier!!.documentNumber?.trim() ?: "", // ✅ Agregar ?: "" para evitar null
                                     names = uiState.supplier!!.names?.trim()?.uppercase() ?: "", // ✅ Agregar ?: "" para evitar null
@@ -251,7 +256,7 @@ fun NewPurchaseScreen(
                                             stock = product.stock,
                                             priceWithIgv = product.priceWithIgv3 ?: 0.0,
                                             priceWithoutIgv = product.priceWithoutIgv3 ?: 0.0,
-                                            productTariffId = 0,
+                                            productTariffId = product.id ?: 0, // ✅ Usar el ID real de la tarifa
                                             typeAffectationId = 1
                                         ),
                                         quantity = 1.0, // TODO: Obtener cantidad del producto
@@ -406,10 +411,11 @@ fun NewPurchaseScreen(
                         emitDate = invoiceDate, // Fecha de emisión
                         dueDate = dueDate, // Fecha de vencimiento
                         emitTime = getCurrentFormattedTime(), // Hora actual
-                        userId = 0, // TODO: Obtener del usuario logueado
+                        userId = 1, // TODO: Obtener del usuario logueado desde PreferencesManager
                         subsidiaryId = subsidiaryData?.id ?: 0, // Sucursal
                         client = null, // No hay cliente en compras
                         supplier = uiState.supplier?.copy( // Solo cambiar esto: cliente por proveedor
+                            id = uiState.supplier!!.id, // ✅ Agregar ID del proveedor
                             documentType = uiState.supplier!!.documentType,
                             documentNumber = uiState.supplier!!.documentNumber?.trim() ?: "", // ✅ Agregar ?: "" para evitar null
                             names = uiState.supplier!!.names?.trim()?.uppercase() ?: "", // ✅ Agregar ?: "" para evitar null
@@ -438,7 +444,7 @@ fun NewPurchaseScreen(
                                     stock = product.stock,
                                     priceWithIgv = product.priceWithIgv3 ?: 0.0,
                                     priceWithoutIgv = product.priceWithoutIgv3 ?: 0.0,
-                                    productTariffId = 0,
+                                    productTariffId = product.id ?: 0, // ✅ Usar el ID real de la tarifa
                                     typeAffectationId = 1
                                 ),
                                 quantity = 1.0, // TODO: Obtener cantidad del producto
@@ -2091,7 +2097,7 @@ fun PaymentDialog(
 
 // Funciones de utilidad
 fun getCurrentFormattedDate(): String {
-    val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) // ✅ Formato ISO para Django
     return dateFormat.format(Date())
 }
 

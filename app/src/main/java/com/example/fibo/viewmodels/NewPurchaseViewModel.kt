@@ -321,13 +321,17 @@ class NewPurchaseViewModel @Inject constructor(
                 // Manejar el resultado igual que NoteOfSale
                 result.fold(
                     onSuccess = { pair ->
-                        _uiState.value = _uiState.value.copy(isLoading = false)
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            purchaseResult = Result.success(pair.second)
+                        )
                         clearPayments() // Limpiar pagos después del éxito
                         onSuccess(pair.first, pair.second)
                     },
                     onFailure = { error ->
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
+                            purchaseResult = Result.failure(error),
                             error = error.message ?: "Error al crear la compra"
                         )
                     }
@@ -336,6 +340,7 @@ class NewPurchaseViewModel @Inject constructor(
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
+                    purchaseResult = Result.failure(e),
                     error = e.message ?: "Error al crear la compra"
                 )
             }
