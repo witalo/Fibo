@@ -29,12 +29,14 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.fibo.model.*
+import com.example.fibo.navigation.Screen
 import com.example.fibo.ui.components.AppScaffold
 import com.example.fibo.utils.getCurrentFormattedTime
 import com.example.fibo.viewmodels.NewPurchaseViewModel
 import com.example.fibo.viewmodels.ProductSearchState
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.Calendar
 import kotlin.math.max
 import kotlin.math.min
 
@@ -76,24 +78,31 @@ fun NewPurchaseScreen(
         viewModel.loadInitialData(subsidiaryData?.id ?: 0)
     }
 
-    // Manejar resultado de la operación
-    LaunchedEffect(uiState.purchaseResult) {
-        uiState.purchaseResult?.let { result ->
-            result.fold(
-                onSuccess = { message ->
-                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-                    // Limpiar el resultado antes de navegar
-                    viewModel.clearPurchaseResult()
-                    navController.popBackStack()
-                },
-                onFailure = { error ->
-                    Toast.makeText(context, "Error: ${error.message}", Toast.LENGTH_LONG).show()
-                    // Limpiar el resultado después de mostrar el error
-                    viewModel.clearPurchaseResult()
-                }
-            )
-        }
-    }
+    // ✅ COMENTAR LaunchedEffect porque usamos callbacks directos
+    // LaunchedEffect(uiState.purchaseResult) {
+    //     println("DEBUG: LaunchedEffect ejecutándose, purchaseResult = ${uiState.purchaseResult}")
+    //     uiState.purchaseResult?.let { result ->
+    //         println("DEBUG: Procesando resultado de compra: $result")
+    //         result.fold(
+    //             onSuccess = { message ->
+    //                 println("DEBUG: Compra exitosa, navegando a PurchaseScreen")
+    //                 Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+    //                 // Limpiar el resultado antes de navegar
+    //                 viewModel.clearPurchaseResult()
+    //                 // ✅ Navegar específicamente a PurchaseScreen en lugar de popBackStack
+    //                 navController.navigate(Screen.Purchase.route) {
+    //                     popUpTo(Screen.Purchase.route) { inclusive = false }
+    //                 }
+    //             },
+    //             onFailure = { error ->
+    //                 println("DEBUG: Error en compra: ${error.message}")
+    //                 Toast.makeText(context, "Error: ${error.message}", Toast.LENGTH_LONG).show()
+    //                 // Limpiar el resultado después de mostrar el error
+    //                 viewModel.clearPurchaseResult()
+    //             }
+    //         )
+    //     }
+    // }
 
 
 
@@ -148,10 +157,25 @@ fun NewPurchaseScreen(
                 SupplierDataSection(
                     supplier = uiState.supplier,
                     supplierSearchQuery = supplierSearchQuery,
-                    onSupplierSearchQueryChange = {
-                        supplierSearchQuery = it
-                        if (it.length >= 8) {
-                            viewModel.searchSupplierByDocument(it)
+                    onSupplierSearchQueryChange = { newValue ->
+                        // ✅ Validar según tipo de documento
+                        val isValid = when (selectedDocumentType) {
+                            "01" -> { // Factura: Solo RUC (11 dígitos)
+                                newValue.matches(Regex("^\\d{0,11}$"))
+                            }
+                            "03" -> { // Boleta: RUC (11 dígitos) o DNI (8 dígitos)
+                                newValue.matches(Regex("^\\d{0,11}$"))
+                            }
+                            else -> true
+                        }
+                        
+                        if (isValid) {
+                            supplierSearchQuery = newValue
+                            // Buscar solo si tiene la longitud mínima requerida
+                            val minLength = if (selectedDocumentType == "01") 11 else 8
+                            if (newValue.length >= minLength) {
+                                viewModel.searchSupplierByDocument(newValue)
+                            }
                         }
                     },
                     onSupplierClick = { showSupplierDialog = true },
@@ -293,12 +317,22 @@ fun NewPurchaseScreen(
                                 operation = operation,
                                 payments = emptyList(),
                                 onSuccess = { operationId, message ->
+                                    println("DEBUG: Callback onSuccess ejecutándose - operación sin pagos")
                                     Toast.makeText(
                                         context,
                                         "Compra $message creada",
                                         Toast.LENGTH_SHORT
                                     ).show()
-                                    navController.popBackStack()
+                                    // ✅ Navegar específicamente a PurchaseScreen
+                                    try {
+                                        navController.navigate(Screen.Purchase.route) {
+                                            popUpTo(0) { inclusive = false }
+                                        }
+                                        println("DEBUG: Navegación exitosa a PurchaseScreen")
+                                    } catch (e: Exception) {
+                                        println("DEBUG: Error en navegación: ${e.message}")
+                                        navController.popBackStack()
+                                    }
                                 }
                             )
                         }
@@ -481,12 +515,22 @@ fun NewPurchaseScreen(
                         operation = operation,
                         payments = currentPayments,
                         onSuccess = { operationId, message ->
+                            println("DEBUG: Callback onSuccess ejecutándose - operación con pagos")
                             Toast.makeText(
                                 context,
                                 "Compra $message creada",
                                 Toast.LENGTH_SHORT
                             ).show()
-                            navController.popBackStack()
+                            // ✅ Navegar específicamente a PurchaseScreen
+                            try {
+                                navController.navigate(Screen.Purchase.route) {
+                                    popUpTo(0) { inclusive = false }
+                                }
+                                println("DEBUG: Navegación exitosa a PurchaseScreen (con pagos)")
+                            } catch (e: Exception) {
+                                println("DEBUG: Error en navegación: ${e.message}")
+                                navController.popBackStack()
+                            }
                         }
                     )
                 }
@@ -633,7 +677,7 @@ fun GeneralInformationSection(
 
             // Fecha emisión
             OutlinedTextField(
-                value = invoiceDate,
+                value = formatDateForDisplay(invoiceDate),
                 onValueChange = { },
                 label = { Text("Fecha emisión") },
                 modifier = Modifier
@@ -668,7 +712,7 @@ fun GeneralInformationSection(
 
             // Fecha vencimiento (editable)
             OutlinedTextField(
-                value = dueDate,
+                value = formatDateForDisplay(dueDate),
                 onValueChange = { },
                 label = { Text("Fecha vencimiento") },
                 modifier = Modifier
@@ -726,10 +770,14 @@ fun GeneralInformationSection(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Serie - INGRESO MANUAL
+                // Serie - INGRESO MANUAL (máximo 4 caracteres)
                 OutlinedTextField(
                     value = manualSerial,
-                    onValueChange = onSerialChange,
+                    onValueChange = { newValue ->
+                        if (newValue.length <= 4) { // ✅ Máximo 4 caracteres
+                            onSerialChange(newValue)
+                        }
+                    },
                     label = { Text("Serie") },
                     modifier = Modifier.weight(1f),
                     placeholder = { Text("Ej: F001") },
@@ -737,7 +785,19 @@ fun GeneralInformationSection(
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
                         unfocusedBorderColor = MaterialTheme.colorScheme.outline
                     ),
-                    singleLine = true
+                    singleLine = true,
+                    supportingText = {
+                        Text(
+                            text = "${manualSerial.length}/4 caracteres",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (manualSerial.length > 4) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        )
+                    },
+                    isError = manualSerial.length > 4
                 )
 
                 // Número - INGRESO MANUAL
@@ -821,8 +881,8 @@ fun SupplierDataSection(
                     placeholder = {
                         Text(
                             when (documentType) {
-                                "01" -> "Ingrese RUC del proveedor"
-                                "03" -> "Ingrese RUC o DNI del proveedor"
+                                "01" -> "Ingrese RUC del proveedor (11 dígitos)"
+                                "03" -> "Ingrese RUC (11) o DNI (8) del proveedor"
                                 else -> "Ingrese RUC/DNI o nombre"
                             }
                         )
@@ -847,7 +907,59 @@ fun SupplierDataSection(
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
                         unfocusedBorderColor = MaterialTheme.colorScheme.outline
                     ),
-                    singleLine = true
+                    singleLine = true,
+                    supportingText = {
+                        when (documentType) {
+                            "01" -> {
+                                val isValid = supplierSearchQuery.matches(Regex("^\\d{11}$"))
+                                Text(
+                                    text = if (supplierSearchQuery.isBlank()) {
+                                        "RUC: 11 dígitos requeridos"
+                                    } else if (isValid) {
+                                        "RUC válido ✓"
+                                    } else {
+                                        "RUC: ${supplierSearchQuery.length}/11 dígitos"
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (supplierSearchQuery.isNotBlank() && !isValid) {
+                                        MaterialTheme.colorScheme.error
+                                    } else if (isValid) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    }
+                                )
+                            }
+                            "03" -> {
+                                val isRuc = supplierSearchQuery.matches(Regex("^\\d{11}$"))
+                                val isDni = supplierSearchQuery.matches(Regex("^\\d{8}$"))
+                                val isValid = isRuc || isDni
+                                Text(
+                                    text = if (supplierSearchQuery.isBlank()) {
+                                        "RUC: 11 dígitos o DNI: 8 dígitos"
+                                    } else if (isValid) {
+                                        if (isRuc) "RUC válido ✓" else "DNI válido ✓"
+                                    } else {
+                                        "RUC: ${supplierSearchQuery.length}/11 o DNI: ${supplierSearchQuery.length}/8"
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (supplierSearchQuery.isNotBlank() && !isValid) {
+                                        MaterialTheme.colorScheme.error
+                                    } else if (isValid) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    }
+                                )
+                            }
+                            else -> null
+                        }
+                    },
+                    isError = when (documentType) {
+                        "01" -> supplierSearchQuery.isNotBlank() && !supplierSearchQuery.matches(Regex("^\\d{11}$"))
+                        "03" -> supplierSearchQuery.isNotBlank() && !supplierSearchQuery.matches(Regex("^\\d{8}$|^\\d{11}$"))
+                        else -> false
+                    }
                 )
 
                 // Mostrar resultados de búsqueda
@@ -892,15 +1004,48 @@ fun SupplierDataSection(
 
                 // Información adicional según tipo de documento
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = when (documentType) {
-                        "01" -> "Para facturas: Solo se permiten proveedores con RUC"
-                        "03" -> "Para boletas: Se permiten RUC o DNI"
-                        else -> ""
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = when (documentType) {
+                            "01" -> MaterialTheme.colorScheme.primaryContainer
+                            "03" -> MaterialTheme.colorScheme.secondaryContainer
+                            else -> MaterialTheme.colorScheme.surfaceVariant
+                        }
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp)
+                    ) {
+                        Text(
+                            text = when (documentType) {
+                                "01" -> "📋 FACTURA ELECTRÓNICA"
+                                "03" -> "📄 BOLETA ELECTRÓNICA"
+                                else -> "📝 DOCUMENTO"
+                            },
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = when (documentType) {
+                                "01" -> MaterialTheme.colorScheme.onPrimaryContainer
+                                "03" -> MaterialTheme.colorScheme.onSecondaryContainer
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = when (documentType) {
+                                "01" -> "• Solo RUC de 11 dígitos\n• Para empresas y proveedores formales"
+                                "03" -> "• RUC de 11 dígitos (empresas)\n• DNI de 8 dígitos (personas naturales)"
+                                else -> "• Documento de identificación válido"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = when (documentType) {
+                                "01" -> MaterialTheme.colorScheme.onPrimaryContainer
+                                "03" -> MaterialTheme.colorScheme.onSecondaryContainer
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        )
+                    }
+                }
             } else {
                 // Mostrar información del proveedor seleccionado
                 Card(
@@ -963,6 +1108,29 @@ fun DatePickerDialog(
     onDismiss: () -> Unit
 ) {
     var selectedDate by remember { mutableStateOf(currentDate) }
+    var day by remember { mutableStateOf("") }
+    var month by remember { mutableStateOf("") }
+    var year by remember { mutableStateOf("") }
+
+    // Parsear la fecha actual
+    LaunchedEffect(currentDate) {
+        try {
+            val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val date = dateFormat.parse(currentDate)
+            if (date != null) {
+                val calendar = Calendar.getInstance()
+                calendar.time = date
+                day = calendar.get(Calendar.DAY_OF_MONTH).toString()
+                month = (calendar.get(Calendar.MONTH) + 1).toString()
+                year = calendar.get(Calendar.YEAR).toString()
+            }
+        } catch (e: Exception) {
+            val today = Calendar.getInstance()
+            day = today.get(Calendar.DAY_OF_MONTH).toString()
+            month = (today.get(Calendar.MONTH) + 1).toString()
+            year = today.get(Calendar.YEAR).toString()
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -974,28 +1142,180 @@ fun DatePickerDialog(
             )
         },
         text = {
-            Column {
-                OutlinedTextField(
-                    value = selectedDate,
-                    onValueChange = { selectedDate = it },
-                    label = { Text("Fecha (dd/MM/yyyy)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("01/01/2025") },
-                    supportingText = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Información de la fecha actual
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp)
+                    ) {
                         Text(
-                            "Formato: día/mes/año",
+                            text = "Fecha actual:",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            text = formatDateForDisplay(currentDate),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
-                )
+                }
+
+                // Campos de entrada para día, mes y año
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Día
+                    OutlinedTextField(
+                        value = day,
+                        onValueChange = { newValue ->
+                            if (newValue.matches(Regex("^\\d{0,2}$"))) {
+                                day = newValue
+                            }
+                        },
+                        label = { Text("Día") },
+                        modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        placeholder = { Text("DD") },
+                        supportingText = { Text("1-31") }
+                    )
+
+                    // Mes
+                    OutlinedTextField(
+                        value = month,
+                        onValueChange = { newValue ->
+                            if (newValue.matches(Regex("^\\d{0,2}$"))) {
+                                month = newValue
+                            }
+                        },
+                        label = { Text("Mes") },
+                        modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        placeholder = { Text("MM") },
+                        supportingText = { Text("1-12") }
+                    )
+
+                    // Año
+                    OutlinedTextField(
+                        value = year,
+                        onValueChange = { newValue ->
+                            if (newValue.matches(Regex("^\\d{0,4}$"))) {
+                                year = newValue
+                            }
+                        },
+                        label = { Text("Año") },
+                        modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        placeholder = { Text("YYYY") },
+                        supportingText = { Text("2024-2026") }
+                    )
+                }
+
+                // Botones de fecha rápida
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            val today = Calendar.getInstance()
+                            day = today.get(Calendar.DAY_OF_MONTH).toString()
+                            month = (today.get(Calendar.MONTH) + 1).toString()
+                            year = today.get(Calendar.YEAR).toString()
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondary
+                        )
+                    ) {
+                        Text("Hoy", style = MaterialTheme.typography.bodySmall)
+                    }
+
+                    Button(
+                        onClick = {
+                            val tomorrow = Calendar.getInstance()
+                            tomorrow.add(Calendar.DAY_OF_MONTH, 1)
+                            day = tomorrow.get(Calendar.DAY_OF_MONTH).toString()
+                            month = (tomorrow.get(Calendar.MONTH) + 1).toString()
+                            year = tomorrow.get(Calendar.YEAR).toString()
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.tertiary
+                        )
+                    ) {
+                        Text("Mañana", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+
+                // Vista previa de la fecha seleccionada
+                if (day.isNotBlank() && month.isNotBlank() && year.isNotBlank()) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp)
+                        ) {
+                            Text(
+                                text = "Vista previa:",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = try {
+                                    val dayInt = day.toInt()
+                                    val monthInt = month.toInt()
+                                    val yearInt = year.toInt()
+                                    val calendar = Calendar.getInstance()
+                                    calendar.set(yearInt, monthInt - 1, dayInt)
+                                    val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                                    dateFormat.format(calendar.time)
+                                } catch (e: Exception) {
+                                    "Fecha inválida"
+                                },
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isValidDate(day, month, year)) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.error
+                                }
+                            )
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
             Button(
                 onClick = {
-                    onDateSelected(selectedDate)
-                }
+                    if (isValidDate(day, month, year)) {
+                        try {
+                            val dayInt = day.toInt()
+                            val monthInt = month.toInt()
+                            val yearInt = year.toInt()
+                            val calendar = Calendar.getInstance()
+                            calendar.set(yearInt, monthInt - 1, dayInt)
+                            val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                            val formattedDate = dateFormat.format(calendar.time)
+                            onDateSelected(formattedDate)
+                        } catch (e: Exception) {
+                            // Error al formatear fecha
+                        }
+                    }
+                },
+                enabled = isValidDate(day, month, year)
             ) {
                 Text("Confirmar")
             }
@@ -1006,6 +1326,27 @@ fun DatePickerDialog(
             }
         }
     )
+}
+
+// Función para validar si la fecha es válida
+private fun isValidDate(day: String, month: String, year: String): Boolean {
+    return try {
+        val dayInt = day.toInt()
+        val monthInt = month.toInt()
+        val yearInt = year.toInt()
+        
+        if (dayInt < 1 || dayInt > 31) return false
+        if (monthInt < 1 || monthInt > 12) return false
+        if (yearInt < 2020 || yearInt > 2030) return false
+        
+        val calendar = Calendar.getInstance()
+        calendar.set(yearInt, monthInt - 1, dayInt)
+        calendar.get(Calendar.DAY_OF_MONTH) == dayInt &&
+        calendar.get(Calendar.MONTH) == monthInt - 1 &&
+        calendar.get(Calendar.YEAR) == yearInt
+    } catch (e: Exception) {
+        false
+    }
 }
 
 @Composable
@@ -2104,6 +2445,18 @@ fun getCurrentFormattedDate(): String {
 fun getCurrentFormattedTime(): String {
     val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
     return timeFormat.format(Date())
+}
+
+// ✅ Función para formatear fecha ISO a formato legible para el usuario
+fun formatDateForDisplay(isoDate: String): String {
+    return try {
+        val inputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val outputFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+        val date = inputFormat.parse(isoDate)
+        outputFormat.format(date ?: Date())
+    } catch (e: Exception) {
+        isoDate // Si hay error, devolver la fecha original
+    }
 }
 @Composable
 fun ProductEditDialog(

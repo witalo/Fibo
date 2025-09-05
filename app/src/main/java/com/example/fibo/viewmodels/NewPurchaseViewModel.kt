@@ -373,7 +373,7 @@ class NewPurchaseViewModel @Inject constructor(
 
     // Funciones de utilidad
     private fun getCurrentFormattedDate(): String {
-        val dateFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+        val dateFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()) // ✅ Formato ISO para Django
         return dateFormat.format(java.util.Date())
     }
 
