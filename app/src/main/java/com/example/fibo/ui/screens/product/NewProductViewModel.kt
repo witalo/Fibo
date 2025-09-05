@@ -114,9 +114,20 @@ class NewProductViewModel @Inject constructor(
         val tariff = currentTariffs[index]
         
         // ✅ Convertir string a Double solo cuando sea necesario
-        val price = if (priceString.isEmpty()) 0.0 else priceString.toDoubleOrNull() ?: 0.0
+        val priceWithIgv = if (priceString.isEmpty()) 0.0 else priceString.toDoubleOrNull() ?: 0.0
         
-        val updatedTariff = tariff.copy(priceWithIgv = price)
+        // ✅ Calcular precio sin IGV automáticamente
+        val igvPercentage = getIgvPercentage()
+        val priceWithoutIgv = if (priceWithIgv > 0) {
+            priceWithIgv / (1 + igvPercentage)
+        } else {
+            0.0
+        }
+        
+        val updatedTariff = tariff.copy(
+            priceWithIgv = priceWithIgv,
+            priceWithoutIgv = priceWithoutIgv
+        )
         currentTariffs[index] = updatedTariff
         _uiState.value = _uiState.value.copy(productTariffs = currentTariffs)
         validateForm()
@@ -247,8 +258,23 @@ class NewProductViewModel @Inject constructor(
         val tariff = currentTariffs[index]
 
         val updatedTariff = when (field) {
-            "priceWithIgv" -> tariff.copy(priceWithIgv = value as Double)
-            "priceWithoutIgv" -> tariff.copy(priceWithoutIgv = value as Double)
+            "priceWithIgv" -> {
+                val priceWithIgv = value as Double
+                val igvPercentage = getIgvPercentage()
+                val priceWithoutIgv = if (priceWithIgv > 0) {
+                    priceWithIgv / (1 + igvPercentage)
+                } else {
+                    0.0
+                }
+                tariff.copy(
+                    priceWithIgv = priceWithIgv,
+                    priceWithoutIgv = priceWithoutIgv
+                )
+            }
+            "priceWithoutIgv" -> {
+                // ✅ No permitir edición directa del precio sin IGV
+                tariff
+            }
             "quantityMinimum" -> tariff.copy(quantityMinimum = value as Double)
             else -> tariff
         }

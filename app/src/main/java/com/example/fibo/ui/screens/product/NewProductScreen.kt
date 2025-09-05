@@ -742,9 +742,13 @@ fun ProductTariffCard(
             ) {
                 OutlinedTextField(
                     value = if (tariff.priceWithIgv == 0.0) "" else tariff.priceWithIgv.toString(),
-                    onValueChange = { 
-                        // ✅ Solo enviar el string tal como está
-                        onChange("priceWithIgv", it)
+                    onValueChange = { newValue ->
+                        // ✅ Validar que sea un número válido o esté vacío
+                        if (newValue.matches(Regex("^\\d*\\.?\\d*$")) || newValue.isEmpty()) {
+                            // ✅ Convertir a Double solo si no está vacío
+                            val price = if (newValue.isEmpty()) 0.0 else newValue.toDoubleOrNull() ?: 0.0
+                            onChange("priceWithIgv", price)
+                        }
                     },
                     label = { Text("Precio con IGV *") },
                     modifier = Modifier.weight(1f),
@@ -753,15 +757,17 @@ fun ProductTariffCard(
                 )
 
                 OutlinedTextField(
-                    value = if (tariff.priceWithoutIgv == 0.0) "" else tariff.priceWithoutIgv.toString(),
-                    onValueChange = { 
-                        // ✅ Solo enviar el string tal como está
-                        onChange("priceWithoutIgv", it)
-                    },
+                    value = if (tariff.priceWithoutIgv == 0.0) "" else String.format("%.2f", tariff.priceWithoutIgv),
+                    onValueChange = { },
                     label = { Text("Precio sin IGV *") },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                    readOnly = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                        disabledBorderColor = MaterialTheme.colorScheme.outline,
+                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 )
             }
 
@@ -769,14 +775,18 @@ fun ProductTariffCard(
 
             OutlinedTextField(
                 value = if (tariff.quantityMinimum == 0.0) "" else tariff.quantityMinimum.toString(),
-                onValueChange = { 
-                    // ✅ Solo enviar el string tal como está
-                    onChange("quantityMinimum", it)
+                onValueChange = { newValue ->
+                    // ✅ Validar que sea un número válido o esté vacío
+                    if (newValue.matches(Regex("^\\d*\\.?\\d*$")) || newValue.isEmpty()) {
+                        // ✅ Convertir a Double solo si no está vacío
+                        val quantity = if (newValue.isEmpty()) 0.0 else newValue.toDoubleOrNull() ?: 0.0
+                        onChange("quantityMinimum", quantity)
+                    }
                 },
                 label = { Text("Cantidad Mínima *") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
             )
         }
     }
