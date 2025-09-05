@@ -1,6 +1,9 @@
 package com.example.fibo.ui.screens.purchase
 
+import android.os.Build
 import android.widget.Toast
+import androidx.annotation.RequiresApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -13,6 +16,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.DatePickerDefaults
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,6 +38,7 @@ import java.util.*
 import kotlin.math.max
 import kotlin.math.min
 
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewPurchaseScreen(
@@ -1455,6 +1461,8 @@ fun PaymentCard(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun PaymentDialog(
     onDismiss: () -> Unit,
@@ -1588,19 +1596,108 @@ fun PaymentDialog(
                     }
                 }
 
-                // Monto
+                // Botones de monto rápido con iconos (más compactos)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Botón "Pago Completo" con icono
+                    IconButton(
+                        onClick = { 
+                            // ✅ Usar el monto exacto restante, redondeado a 2 decimales
+                            amount = String.format("%.2f", paymentSummary.remaining)
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .background(
+                                MaterialTheme.colorScheme.primary,
+                                RoundedCornerShape(8.dp)
+                            )
+                    ) {
+                        Icon(
+                            Icons.Default.CheckCircle,
+                            contentDescription = "Pago completo",
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    
+                    // Botón "Mitad" con icono
+                    IconButton(
+                        onClick = { 
+                            amount = String.format("%.2f", paymentSummary.remaining / 2)
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .background(
+                                MaterialTheme.colorScheme.secondary,
+                                RoundedCornerShape(8.dp)
+                            )
+                    ) {
+                        Icon(
+                            Icons.Default.BrightnessMedium,
+                            contentDescription = "Mitad del pago",
+                            tint = MaterialTheme.colorScheme.onSecondary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    
+                    // Botón "Limpiar" con icono
+                    IconButton(
+                        onClick = { amount = "" },
+                        modifier = Modifier
+                            .weight(1f)
+                            .background(
+                                MaterialTheme.colorScheme.surfaceVariant,
+                                RoundedCornerShape(8.dp)
+                            )
+                    ) {
+                        Icon(
+                            Icons.Default.Clear,
+                            contentDescription = "Limpiar monto",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+
+                // Monto con mejor control y precisión decimal
                 OutlinedTextField(
                     value = amount,
                     onValueChange = { newValue ->
-                        // Validar que sea un número válido
+                        // Validar que sea un número válido y no exceda el monto restante
                         if (newValue.matches(Regex("^\\d*\\.?\\d{0,2}\$")) || newValue.isEmpty()) {
-                            amount = newValue
+                            val amountValue = newValue.toDoubleOrNull() ?: 0.0
+                            // ✅ Usar tolerancia de 0.01 para manejar errores de precisión decimal
+                            if (amountValue <= (paymentSummary.remaining + 0.01) || newValue.isEmpty()) {
+                                amount = newValue
+                            }
                         }
                     },
                     label = { Text("Monto (S/.)") },
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     placeholder = { Text("Máximo: ${String.format("%.2f", paymentSummary.remaining)}") },
+                    isError = amount.toDoubleOrNull()?.let { it > (paymentSummary.remaining + 0.01) } ?: false,
+                    supportingText = {
+                        val amountValue = amount.toDoubleOrNull() ?: 0.0
+                        val remainingAfter = paymentSummary.remaining - amountValue
+                        when {
+                            amount.isEmpty() -> Text("Ingrese el monto a pagar")
+                            amountValue > (paymentSummary.remaining + 0.01) -> Text(
+                                "Monto excede lo pendiente",
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            remainingAfter > 0.01 -> Text(
+                                "Restante después: S/. ${String.format("%.2f", remainingAfter)}",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            else -> Text(
+                                "Pago completo ✓",
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    },
                     trailingIcon = {
                         if (amount.isNotBlank()) {
                             IconButton(onClick = { amount = "" }) {
@@ -1622,9 +1719,16 @@ fun PaymentDialog(
                     placeholder = { Text("Ej: Transferencia, Cheque N°") }
                 )
 
-                // ✅ Fecha de pago (automática para contado, selector para crédito)
+                // ✅ Fecha de pago (automática para contado, selector para crédito) - MEJORADO
                 if (selectedPaymentMethod != null) {
-                    Card(
+                    OutlinedTextField(
+                        value = if (selectedPaymentMethod?.name?.contains("Crédito", ignoreCase = true) == true) {
+                            paymentDate // Fecha seleccionada para crédito
+                        } else {
+                            getCurrentFormattedDate() // Fecha actual para contado
+                        },
+                        onValueChange = { },
+                        label = { Text("Fecha de Pago") },
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { 
@@ -1633,45 +1737,8 @@ fun PaymentDialog(
                                     showDatePicker = true
                                 }
                             },
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text(
-                                    text = "Fecha de Pago",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Text(
-                                    text = if (selectedPaymentMethod?.name?.contains("Crédito", ignoreCase = true) == true) {
-                                        paymentDate // Fecha seleccionada para crédito
-                                    } else {
-                                        getCurrentFormattedDate() // Fecha actual para contado
-                                    },
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                // Indicador de tipo de fecha
-                                Text(
-                                    text = if (selectedPaymentMethod?.name?.contains("Crédito", ignoreCase = true) == true) {
-                                        "Fecha futura (click para cambiar)"
-                                    } else {
-                                        "Fecha actual (automática)"
-                                    },
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+                        readOnly = true,
+                        trailingIcon = {
                             Icon(
                                 Icons.Default.DateRange,
                                 contentDescription = "Fecha de pago",
@@ -1681,8 +1748,37 @@ fun PaymentDialog(
                                     MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f) // No clickable para contado
                                 }
                             )
-                        }
-                    }
+                        },
+                        supportingText = {
+                            Text(
+                                text = if (selectedPaymentMethod?.name?.contains("Crédito", ignoreCase = true) == true) {
+                                    "Click para seleccionar fecha futura"
+                                } else {
+                                    "Fecha actual (automática)"
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (selectedPaymentMethod?.name?.contains("Crédito", ignoreCase = true) == true) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                }
+                            )
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = if (selectedPaymentMethod?.name?.contains("Crédito", ignoreCase = true) == true) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.outline
+                            },
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                            focusedLabelColor = if (selectedPaymentMethod?.name?.contains("Crédito", ignoreCase = true) == true) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    )
                 }
             }
         },
@@ -1694,7 +1790,8 @@ fun PaymentDialog(
                 Button(
                     onClick = {
                         val amountValue = amount.toDoubleOrNull() ?: 0.0
-                        if (selectedPaymentMethod != null && amountValue > 0 && amountValue <= paymentSummary.remaining) {
+                        // ✅ Usar tolerancia de 0.01 para manejar errores de precisión decimal
+                        if (selectedPaymentMethod != null && amountValue > 0 && amountValue <= (paymentSummary.remaining + 0.01)) {
                             // ✅ Usar fecha correcta según el tipo de pago
                             val finalPaymentDate = if (selectedPaymentMethod?.name?.contains("Crédito", ignoreCase = true) == true) {
                                 paymentDate // Fecha seleccionada para crédito
@@ -1722,7 +1819,7 @@ fun PaymentDialog(
                     enabled = selectedPaymentMethod != null &&
                             amount.isNotBlank() &&
                             (amount.toDoubleOrNull() ?: 0.0) > 0 &&
-                            (amount.toDoubleOrNull() ?: 0.0) <= paymentSummary.remaining
+                            (amount.toDoubleOrNull() ?: 0.0) <= (paymentSummary.remaining + 0.01)
                 ) {
                     Text("Agregar Pago")
                 }
@@ -1825,67 +1922,35 @@ fun PaymentDialog(
         )
     }
 
-    // ✅ Diálogo para seleccionar fecha de pago (solo para crédito)
+    // ✅ Diálogo para seleccionar fecha de pago (solo para crédito) - USANDO DatePickerDialog
     if (showDatePicker) {
-        AlertDialog(
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = System.currentTimeMillis() + (24 * 60 * 60 * 1000), // Mañana
+            yearRange = IntRange(
+                java.time.LocalDate.now().year,
+                java.time.LocalDate.now().year + 2
+            )
+        )
+        
+        DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
-            title = { 
-                Text(
-                    "Seleccionar Fecha de Pago",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            text = {
-                Column {
-                    // Campo de texto para ingresar fecha manualmente
-                    OutlinedTextField(
-                        value = paymentDate,
-                        onValueChange = { paymentDate = it },
-                        label = { Text("Fecha (dd/MM/yyyy)") },
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("01/01/2025") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // Información sobre fechas de pago
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp)
-                        ) {
-                            Text(
-                                text = "Información:",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "• La fecha debe ser posterior a la fecha actual",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                            Text(
-                                text = "• Formato: dd/MM/yyyy (ej: 15/01/2025)",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { dateMillis ->
+                            val selectedDate = java.time.Instant.ofEpochMilli(dateMillis)
+                                .atZone(java.time.ZoneId.systemDefault())
+                                .toLocalDate()
+                            
+                            // Validar que la fecha sea futura
+                            if (selectedDate.isAfter(java.time.LocalDate.now())) {
+                                paymentDate = selectedDate.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                                showDatePicker = false
+                            }
                         }
                     }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = { showDatePicker = false },
-                    enabled = paymentDate.isNotBlank()
                 ) {
-                    Text("Confirmar Fecha")
+                    Text("Confirmar")
                 }
             },
             dismissButton = {
@@ -1893,7 +1958,30 @@ fun PaymentDialog(
                     Text("Cancelar")
                 }
             }
-        )
+        ) {
+            DatePicker(
+                state = datePickerState,
+                colors = DatePickerDefaults.colors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    headlineContentColor = MaterialTheme.colorScheme.onSurface,
+                    weekdayContentColor = MaterialTheme.colorScheme.onSurface,
+                    subheadContentColor = MaterialTheme.colorScheme.onSurface,
+                    yearContentColor = MaterialTheme.colorScheme.onSurface,
+                    currentYearContentColor = MaterialTheme.colorScheme.primary,
+                    selectedYearContentColor = MaterialTheme.colorScheme.onPrimary,
+                    selectedYearContainerColor = MaterialTheme.colorScheme.primary,
+                    dayContentColor = MaterialTheme.colorScheme.onSurface,
+                    disabledDayContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                    selectedDayContentColor = MaterialTheme.colorScheme.onPrimary,
+                    disabledSelectedDayContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.38f),
+                    selectedDayContainerColor = MaterialTheme.colorScheme.primary,
+                    disabledSelectedDayContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                    todayContentColor = MaterialTheme.colorScheme.primary,
+                    todayDateBorderColor = MaterialTheme.colorScheme.primary
+                )
+            )
+        }
     }
 }
 
