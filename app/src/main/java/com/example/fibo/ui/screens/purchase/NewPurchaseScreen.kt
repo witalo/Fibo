@@ -67,7 +67,7 @@ fun NewPurchaseScreen(
     var showProductDialog by remember { mutableStateOf(false) } // Para buscar productos
     var productSearchQuery by remember { mutableStateOf("") } // Para buscar productos
     var showProductEditDialog by remember { mutableStateOf(false) } // Para editar productos
-    var selectedProductForEdit by remember { mutableStateOf<IProductOperation?>(null) } // Producto seleccionado para editar
+    var selectedProductForEdit by remember { mutableStateOf<ITariff?>(null) } // Producto seleccionado para editar
 
     // ✅ MOVER AQUÍ: Declarar paymentsEnabled y currentPayments al nivel del composable principal
     val paymentsEnabled by viewModel.paymentsEnabled.collectAsState()
@@ -206,11 +206,11 @@ fun NewPurchaseScreen(
                         payments = uiState.payments,
                         onAddPayment = {
                             // ✅ Calcular total de productos
-                            val totalAmount = uiState.products.sumOf { it.priceWithIgv3 ?: 0.0 }
+                            val totalAmount = uiState.products.sumOf { it.priceBuyWithIgv ?: 0.0 }
                             viewModel.showPaymentDialog(totalAmount)
                         },
                         onRemovePayment = { paymentId -> viewModel.removePayment(paymentId) },
-                        totalAmount = uiState.products.sumOf { it.priceWithIgv3 ?: 0.0 }, // ✅ Usar productos
+                        totalAmount = uiState.products.sumOf { it.priceBuyWithIgv ?: 0.0 }, // ✅ Usar productos
                         paymentSummary = viewModel.paymentSummary.collectAsState().value
                     )
                 }
@@ -225,7 +225,7 @@ fun NewPurchaseScreen(
                     onClick = {
                         if (paymentsEnabled) {
                             // ✅ Si los pagos están habilitados, mostrar el diálogo de pagos (igual que NoteOfSale)
-                            val totalAmount = uiState.products.sumOf { it.priceWithIgv3 ?: 0.0 }
+                            val totalAmount = uiState.products.sumOf { it.priceBuyWithIgv ?: 0.0 }
                             viewModel.showPaymentDialog(totalAmount)
                         } else {
                             // ✅ Si los pagos están deshabilitados, proceder directamente con la creación
@@ -270,45 +270,45 @@ fun NewPurchaseScreen(
                                     IOperationDetail(
                                         id = 0,
                                         typeAffectationId = 1, // Por defecto gravada
-                                        description = product.name ?: "Producto",
+                                        description = product.productName ?: "Producto",
                                         tariff = ITariff(
-                                            productId = product.id,
-                                            productCode = product.code,
-                                            productName = product.name,
-                                            unitId = 0,
-                                            unitName = product.minimumUnitName,
+                                            productId = product.productId,
+                                            productCode = product.productCode,
+                                            productName = product.productName,
+                                            unitId = product.unitId,
+                                            unitName = product.unitName,
                                             stock = product.stock,
-                                            priceWithIgv = product.priceWithIgv3 ?: 0.0,
-                                            priceWithoutIgv = product.priceWithoutIgv3 ?: 0.0,
-                                            productTariffId = product.id ?: 0, // ✅ Usar el ID real de la tarifa
-                                            typeAffectationId = 1
+                                            priceWithIgv = product.priceBuyWithIgv ?: 0.0,
+                                            priceWithoutIgv = product.priceBuyWithoutIgv ?: 0.0,
+                                            productTariffId = product.productTariffId ?: 0, // ✅ Usar el ID real de la tarifa
+                                            typeAffectationId = product.typeAffectationId
                                         ),
                                         quantity = 1.0, // TODO: Obtener cantidad del producto
-                                        unitValue = product.priceWithoutIgv3 ?: 0.0,
-                                        unitPrice = product.priceWithIgv3 ?: 0.0,
+                                        unitValue = product.priceBuyWithoutIgv ?: 0.0,
+                                        unitPrice = product.priceBuyWithIgv ?: 0.0,
                                         discountPercentage = 0.0,
                                         totalDiscount = 0.0,
                                         perceptionPercentage = 0.0,
                                         totalPerception = 0.0,
                                         igvPercentage = 18.0,
-                                        totalValue = product.priceWithoutIgv3 ?: 0.0,
-                                        totalIgv = (product.priceWithIgv3 ?: 0.0) - (product.priceWithoutIgv3 ?: 0.0),
-                                        totalAmount = product.priceWithIgv3 ?: 0.0,
-                                        totalToPay = product.priceWithIgv3 ?: 0.0
+                                        totalValue = product.priceBuyWithoutIgv ?: 0.0,
+                                        totalIgv = (product.priceBuyWithIgv ?: 0.0) - (product.priceBuyWithoutIgv ?: 0.0),
+                                        totalAmount = product.priceBuyWithIgv ?: 0.0,
+                                        totalToPay = product.priceBuyWithIgv ?: 0.0
                                     )
                                 },
                                 discountGlobal = 0.0,
                                 discountPercentageGlobal = 0.0,
                                 discountForItem = 0.0,
                                 totalDiscount = 0.0,
-                                totalTaxed = uiState.products.sumOf { it.priceWithoutIgv3 ?: 0.0 },
+                                totalTaxed = uiState.products.sumOf { it.priceBuyWithoutIgv ?: 0.0 },
                                 totalUnaffected = 0.0,
                                 totalExonerated = 0.0,
-                                totalIgv = uiState.products.sumOf { (it.priceWithIgv3 ?: 0.0) - (it.priceWithoutIgv3 ?: 0.0) },
+                                totalIgv = uiState.products.sumOf { (it.priceBuyWithIgv ?: 0.0) - (it.priceBuyWithoutIgv ?: 0.0) },
                                 totalFree = 0.0,
-                                totalAmount = uiState.products.sumOf { it.priceWithIgv3 ?: 0.0 },
-                                totalToPay = uiState.products.sumOf { it.priceWithIgv3 ?: 0.0 },
-                                totalPayed = uiState.products.sumOf { it.priceWithIgv3 ?: 0.0 },
+                                totalAmount = uiState.products.sumOf { it.priceBuyWithIgv ?: 0.0 },
+                                totalToPay = uiState.products.sumOf { it.priceBuyWithIgv ?: 0.0 },
+                                totalPayed = uiState.products.sumOf { it.priceBuyWithIgv ?: 0.0 },
                                 observation = observation
                             )
 
@@ -468,45 +468,45 @@ fun NewPurchaseScreen(
                             IOperationDetail(
                                 id = 0,
                                 typeAffectationId = 1, // Por defecto gravada
-                                description = product.name ?: "Producto",
+                                description = product.productName ?: "Producto",
                                 tariff = ITariff(
-                                    productId = product.id,
-                                    productCode = product.code,
-                                    productName = product.name,
-                                    unitId = 0,
-                                    unitName = product.minimumUnitName,
+                                    productId = product.productId,
+                                    productCode = product.productCode,
+                                    productName = product.productName,
+                                    unitId = product.unitId,
+                                    unitName = product.unitName,
                                     stock = product.stock,
-                                    priceWithIgv = product.priceWithIgv3 ?: 0.0,
-                                    priceWithoutIgv = product.priceWithoutIgv3 ?: 0.0,
-                                    productTariffId = product.id ?: 0, // ✅ Usar el ID real de la tarifa
-                                    typeAffectationId = 1
+                                    priceWithIgv = product.priceBuyWithIgv ?: 0.0,
+                                    priceWithoutIgv = product.priceBuyWithoutIgv ?: 0.0,
+                                    productTariffId = product.productTariffId ?: 0, // ✅ Usar el ID real de la tarifa
+                                    typeAffectationId = product.typeAffectationId
                                 ),
                                 quantity = 1.0, // TODO: Obtener cantidad del producto
-                                unitValue = product.priceWithoutIgv3 ?: 0.0,
-                                unitPrice = product.priceWithIgv3 ?: 0.0,
+                                unitValue = product.priceBuyWithoutIgv ?: 0.0,
+                                unitPrice = product.priceBuyWithIgv ?: 0.0,
                                 discountPercentage = 0.0,
                                 totalDiscount = 0.0,
                                 perceptionPercentage = 0.0,
                                 totalPerception = 0.0,
                                 igvPercentage = 18.0,
-                                totalValue = product.priceWithoutIgv3 ?: 0.0,
-                                totalIgv = (product.priceWithIgv3 ?: 0.0) - (product.priceWithoutIgv3 ?: 0.0),
-                                totalAmount = product.priceWithIgv3 ?: 0.0,
-                                totalToPay = product.priceWithIgv3 ?: 0.0
+                                totalValue = product.priceBuyWithoutIgv ?: 0.0,
+                                totalIgv = (product.priceBuyWithIgv ?: 0.0) - (product.priceBuyWithoutIgv ?: 0.0),
+                                totalAmount = product.priceBuyWithIgv ?: 0.0,
+                                totalToPay = product.priceBuyWithIgv ?: 0.0
                             )
                         },
                         discountGlobal = 0.0,
                         discountPercentageGlobal = 0.0,
                         discountForItem = 0.0,
                         totalDiscount = 0.0,
-                        totalTaxed = uiState.products.sumOf { it.priceWithoutIgv3 ?: 0.0 },
+                        totalTaxed = uiState.products.sumOf { it.priceBuyWithoutIgv ?: 0.0 },
                         totalUnaffected = 0.0,
                         totalExonerated = 0.0,
-                        totalIgv = uiState.products.sumOf { (it.priceWithIgv3 ?: 0.0) - (it.priceWithoutIgv3 ?: 0.0) },
+                        totalIgv = uiState.products.sumOf { (it.priceBuyWithIgv ?: 0.0) - (it.priceBuyWithoutIgv ?: 0.0) },
                         totalFree = 0.0,
-                        totalAmount = uiState.products.sumOf { it.priceWithIgv3 ?: 0.0 },
-                        totalToPay = uiState.products.sumOf { it.priceWithIgv3 ?: 0.0 },
-                        totalPayed = uiState.products.sumOf { it.priceWithIgv3 ?: 0.0 },
+                        totalAmount = uiState.products.sumOf { it.priceBuyWithIgv ?: 0.0 },
+                        totalToPay = uiState.products.sumOf { it.priceBuyWithIgv ?: 0.0 },
+                        totalPayed = uiState.products.sumOf { it.priceBuyWithIgv ?: 0.0 },
                         observation = observation
                     )
 
@@ -1351,10 +1351,10 @@ private fun isValidDate(day: String, month: String, year: String): Boolean {
 
 @Composable
 fun ProductsSection(
-    products: List<IProductOperation>,
+    products: List<ITariff>,
     onAddProduct: () -> Unit,
     viewModel: NewPurchaseViewModel,
-    onEditProduct: (IProductOperation) -> Unit
+    onEditProduct: (ITariff) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -1413,7 +1413,7 @@ fun ProductsSection(
                     items(products) { product ->
                         ProductOperationCard(
                             product = product,
-                            onRemove = { viewModel.removeProduct(product.id) },
+                            onRemove = { viewModel.removeProduct(product.productId) },
                             onEdit = { onEditProduct(product) }
                         )
                     }
@@ -1444,9 +1444,9 @@ fun ProductsSection(
 
 @Composable
 fun ProductOperationCard(
-    product: IProductOperation,
+    product: ITariff,
     onRemove: () -> Unit,
-    onEdit: (IProductOperation) -> Unit
+    onEdit: (ITariff) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -1464,22 +1464,22 @@ fun ProductOperationCard(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = product.name.ifBlank { "Producto sin nombre" },
+                    text = product.productName.ifBlank { "Producto sin nombre" },
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text = "Código: ${product.code} - Stock: ${product.stock}",
+                    text = "Código: ${product.productCode} - Stock: ${product.stock}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "Precio sin IGV: S/. ${String.format("%.2f", product.priceWithoutIgv3)}",
+                    text = "Precio sin IGV: S/. ${String.format("%.2f", product.priceBuyWithoutIgv)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "Total: S/. ${String.format("%.2f", product.priceWithIgv3 ?: 0.0)}",
+                    text = "Total: S/. ${String.format("%.2f", product.priceBuyWithIgv ?: 0.0)}",
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -2460,9 +2460,9 @@ fun formatDateForDisplay(isoDate: String): String {
 }
 @Composable
 fun ProductEditDialog(
-    product: IProductOperation,
+    product: ITariff,
     onDismiss: () -> Unit,
-    onSave: (IProductOperation) -> Unit
+    onSave: (ITariff) -> Unit
 ) {
     // Estados para edición - inicializar con valores del producto
     var quantity by remember { mutableStateOf("1.0") }
@@ -2477,7 +2477,7 @@ fun ProductEditDialog(
 
     // Inicializar precios del producto
     LaunchedEffect(product) {
-        val productPrice = product.priceWithIgv3 ?: 0.0
+        val productPrice = product.priceBuyWithIgv ?: 0.0
         priceWithIgv = String.format("%.2f", productPrice)
         
         // Calcular precio sin IGV inicial
@@ -2565,12 +2565,12 @@ fun ProductEditDialog(
                         modifier = Modifier.padding(12.dp)
                     ) {
                         Text(
-                            text = product.name ?: "Sin nombre",
+                            text = product.productName ?: "Sin nombre",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "Código: ${product.code}",
+                            text = "Código: ${product.productCode}",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -2754,8 +2754,8 @@ fun ProductEditDialog(
                 onClick = {
                     // Crear el producto actualizado con los nuevos valores
                     val updatedProduct = product.copy(
-                        priceWithIgv3 = totalAmount, // Total calculado
-                        priceWithoutIgv3 = subtotal // Subtotal sin descuentos
+                        priceBuyWithIgv = totalAmount, // Total calculado
+                        priceBuyWithoutIgv = subtotal // Subtotal sin descuentos
                     )
                     onSave(updatedProduct)
                 },
@@ -2881,7 +2881,7 @@ fun ProductSearchDialog(
     onSearchQueryChange: (String) -> Unit,
     searchResults: List<IProductOperation>,
     searchState: ProductSearchState,
-    onProductSelected: (IProductOperation) -> Unit
+    onProductSelected: (ITariff) -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,

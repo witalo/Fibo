@@ -57,6 +57,8 @@ query GetTariffByProductId($productId: Int!) {
         stock
         priceWithIgv
         priceWithoutIgv
+        priceBuyWithIgv
+        priceBuyWithoutIgv
         productTariffId
         typeAffectationId
     }

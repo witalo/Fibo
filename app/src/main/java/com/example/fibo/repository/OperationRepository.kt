@@ -320,6 +320,8 @@ class OperationRepository @Inject constructor(
                 stock = tariffData.stock ?: 0.0,
                 priceWithIgv = tariffData.priceWithIgv ?: 0.0,
                 priceWithoutIgv = tariffData.priceWithoutIgv ?: 0.0,
+                priceBuyWithIgv = tariffData.priceBuyWithIgv ?: 0.0,
+                priceBuyWithoutIgv = tariffData.priceBuyWithoutIgv ?: 0.0,
                 productTariffId = tariffData.productTariffId ?: 0,
                 typeAffectationId = tariffData.typeAffectationId ?: 0
             )

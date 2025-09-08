@@ -4368,6 +4368,10 @@ type TariffType {
 
   priceWithoutIgv: Float
 
+  priceBuyWithIgv: Float
+
+  priceBuyWithoutIgv: Float
+
   productTariffId: Int
 
   typeAffectationId: Int
@@ -4763,6 +4767,10 @@ input TariffInput {
   priceWithIgv: Float
 
   priceWithoutIgv: Float
+
+  priceBuyWithIgv: Float
+
+  priceBuyWithoutIgv: Float
 
   productTariffId: Int
 

@@ -188,10 +188,10 @@ class NewPurchaseViewModel @Inject constructor(
         _selectedProduct.value = null
     }
 
-    fun addProduct(product: IProductOperation) {
+    fun addProduct(product: ITariff) {
         val currentProducts = _uiState.value.products.toMutableList()
         // Verificar si el producto ya existe
-        val existingIndex = currentProducts.indexOfFirst { it.id == product.id }
+        val existingIndex = currentProducts.indexOfFirst { it.productId == product.productId }
         if (existingIndex != -1) {
             // Si ya existe, incrementar la cantidad
             val existingProduct = currentProducts[existingIndex]
@@ -211,7 +211,7 @@ class NewPurchaseViewModel @Inject constructor(
 
     fun removeProduct(productId: Int) {
         val currentProducts = _uiState.value.products.toMutableList()
-        currentProducts.removeAll { it.id == productId }
+        currentProducts.removeAll { it.productId == productId }
         
         _uiState.value = _uiState.value.copy(
             products = currentProducts,
@@ -219,9 +219,9 @@ class NewPurchaseViewModel @Inject constructor(
         )
     }
 
-    fun updateProduct(updatedProduct: IProductOperation) {
+    fun updateProduct(updatedProduct: ITariff) {
         val currentProducts = _uiState.value.products.toMutableList()
-        val index = currentProducts.indexOfFirst { it.id == updatedProduct.id }
+        val index = currentProducts.indexOfFirst { it.productId == updatedProduct.productId }
         if (index != -1) {
             currentProducts[index] = updatedProduct
             _uiState.value = _uiState.value.copy(
@@ -394,7 +394,7 @@ sealed class ProductSearchState {
 
 data class NewPurchaseUiState(
     val supplier: ISupplier? = null,
-    val products: List<IProductOperation> = emptyList(),
+    val products: List<ITariff> = emptyList(),
     val supplierSearchResults: List<ISupplier> = emptyList(),
     val payments: List<IPayment> = emptyList(),
     val isLoading: Boolean = false,

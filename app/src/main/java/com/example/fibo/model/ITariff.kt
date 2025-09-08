@@ -9,6 +9,8 @@ data class ITariff(
     val stock: Double = 0.0,
     val priceWithIgv: Double = 0.0,
     val priceWithoutIgv: Double = 0.0,
+    val priceBuyWithIgv: Double = 0.0,
+    val priceBuyWithoutIgv: Double = 0.0,
     val productTariffId: Int,
     val typeAffectationId: Int,
 )
