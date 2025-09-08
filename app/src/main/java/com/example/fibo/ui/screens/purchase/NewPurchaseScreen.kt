@@ -78,6 +78,16 @@ fun NewPurchaseScreen(
         viewModel.loadInitialData(subsidiaryData?.id ?: 0)
     }
 
+    // ✅ Escuchar cuando se obtiene el ITariff y abrir el diálogo de edición
+    LaunchedEffect(viewModel.selectedProduct.collectAsState().value) {
+        val tariff = viewModel.selectedProduct.value
+        if (tariff != null) {
+            selectedProductForEdit = tariff
+            showProductEditDialog = true
+            viewModel.clearProductSelection() // Limpiar para evitar re-apertura
+        }
+    }
+
     // ✅ COMENTAR LaunchedEffect porque usamos callbacks directos
     // LaunchedEffect(uiState.purchaseResult) {
     //     println("DEBUG: LaunchedEffect ejecutándose, purchaseResult = ${uiState.purchaseResult}")
@@ -551,8 +561,8 @@ fun NewPurchaseScreen(
                 searchResults = viewModel.searchResults.collectAsState().value,
                 searchState = viewModel.searchState.collectAsState().value,
                 onProductSelected = { product ->
-                    selectedProductForEdit = product
-                    showProductEditDialog = true
+                    // ✅ Obtener ITariff completo con precios de compra usando getTariffByProductID
+                    viewModel.getTariff(product.id ?: 0)
                     showProductDialog = false
                     productSearchQuery = ""
                 }
@@ -1351,10 +1361,10 @@ private fun isValidDate(day: String, month: String, year: String): Boolean {
 
 @Composable
 fun ProductsSection(
-    products: List<ITariff>,
+    products: List<ITariff>, // ✅ Ya está correcto
     onAddProduct: () -> Unit,
     viewModel: NewPurchaseViewModel,
-    onEditProduct: (ITariff) -> Unit
+    onEditProduct: (ITariff) -> Unit // ✅ Ya está correcto
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -1444,9 +1454,9 @@ fun ProductsSection(
 
 @Composable
 fun ProductOperationCard(
-    product: ITariff,
+    product: ITariff, // ✅ Ya está correcto
     onRemove: () -> Unit,
-    onEdit: (ITariff) -> Unit
+    onEdit: (ITariff) -> Unit // ✅ Ya está correcto
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -1474,12 +1484,12 @@ fun ProductOperationCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "Precio sin IGV: S/. ${String.format("%.2f", product.priceBuyWithoutIgv)}",
+                    text = "Precio sin IGV: S/. ${String.format("%.2f", product.priceBuyWithoutIgv)}", // ✅ Ya está correcto
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "Total: S/. ${String.format("%.2f", product.priceBuyWithIgv ?: 0.0)}",
+                    text = "Total: S/. ${String.format("%.2f", product.priceBuyWithIgv ?: 0.0)}", // ✅ Ya está correcto
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -2477,7 +2487,7 @@ fun ProductEditDialog(
 
     // Inicializar precios del producto
     LaunchedEffect(product) {
-        val productPrice = product.priceBuyWithIgv ?: 0.0
+        val productPrice = product.priceBuyWithIgv ?: 0.0 // ✅ ITariff usa 'priceBuyWithIgv' para compras
         priceWithIgv = String.format("%.2f", productPrice)
         
         // Calcular precio sin IGV inicial
@@ -2754,8 +2764,8 @@ fun ProductEditDialog(
                 onClick = {
                     // Crear el producto actualizado con los nuevos valores
                     val updatedProduct = product.copy(
-                        priceBuyWithIgv = totalAmount, // Total calculado
-                        priceBuyWithoutIgv = subtotal // Subtotal sin descuentos
+                        priceBuyWithIgv = totalAmount, // Total calculado (precio de compra con IGV)
+                        priceBuyWithoutIgv = subtotal // Subtotal sin descuentos (precio de compra sin IGV)
                     )
                     onSave(updatedProduct)
                 },
@@ -2881,7 +2891,7 @@ fun ProductSearchDialog(
     onSearchQueryChange: (String) -> Unit,
     searchResults: List<IProductOperation>,
     searchState: ProductSearchState,
-    onProductSelected: (ITariff) -> Unit
+    onProductSelected: (IProductOperation) -> Unit // ✅ Cambiar a IProductOperation
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -2942,17 +2952,17 @@ fun ProductSearchDialog(
                                             modifier = Modifier.padding(12.dp)
                                         ) {
                                             Text(
-                                                text = product.name ?: "Sin nombre",
+                                                text = product.name ?: "Sin nombre", // ✅ IProductOperation usa 'name'
                                                 style = MaterialTheme.typography.bodyMedium,
                                                 fontWeight = FontWeight.Bold
                                             )
                                             Text(
-                                                text = "Código: ${product.code}",
+                                                text = "Código: ${product.code}", // ✅ IProductOperation usa 'code'
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                             Text(
-                                                text = "Stock: ${product.stock} - Precio: S/. ${String.format("%.2f", product.priceWithIgv3)}",
+                                                text = "Stock: ${product.stock} - Precio: S/. ${String.format("%.2f", product.priceWithIgv3)}", // ✅ IProductOperation usa 'priceWithIgv3'
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
