@@ -1,0 +1,11 @@
+query GetMonthlyPurchasesReport($subsidiaryId: Int!, $year: Int!, $month: Int!) {
+  monthlyPurchasesReport(subsidiaryId: $subsidiaryId, year: $year, month: $month) {
+    currentMonth {
+      documentType
+      documentTypeName
+      count
+      totalAmount
+    }
+    totalCurrentMonth
+  }
+}

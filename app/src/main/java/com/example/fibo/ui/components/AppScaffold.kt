@@ -22,6 +22,10 @@ import androidx.navigation.NavController
 import com.example.fibo.model.ISubsidiary
 import com.example.fibo.navigation.Screen
 import com.example.fibo.utils.ProductSortOrder
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 @Composable
 fun AppScaffold(
@@ -38,6 +42,10 @@ fun AppScaffold(
         onClose = { isMenuOpen = false },
         subsidiaryData = subsidiaryData,
         onMenuItemSelected = { option ->
+            // Cerrar el menú primero
+            isMenuOpen = false
+            
+            // Luego navegar con un pequeño delay para asegurar que el menú se cierre
             when (option) {
                 "Inicio" -> navController.navigate(Screen.Home.route)
                 "Cotizaciones" -> navController.navigate(Screen.Quotation.route)
@@ -57,8 +65,15 @@ fun AppScaffold(
                 "Guías" -> navController.navigate(Screen.Guides.route)
                 "Reporte" -> navController.navigate(Screen.Reports.route)
                 "Reporte Pagos" -> navController.navigate(Screen.ReportPayment.route)
+                "Reporte Mensual" -> {
+                    Log.d("Navigation", "Navegando a Reporte Mensual")
+                    // Usar un coroutine para navegar con delay
+                    CoroutineScope(Dispatchers.Main).launch {
+                        delay(100) // Pequeño delay
+                        navController.navigate(Screen.MonthlyReport.route)
+                    }
+                }
             }
-            isMenuOpen = false
         },
         onLogout = onLogout,
         content = {

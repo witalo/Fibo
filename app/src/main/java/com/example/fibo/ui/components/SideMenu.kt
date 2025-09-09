@@ -191,6 +191,11 @@ fun SideMenu(
                             text = "Reporte Pagos",
                             onClick = { onMenuItemSelected("Reporte Pagos") }
                         )
+                        MenuItem(
+                            icon = Icons.Default.BarChart,
+                            text = "Reporte Mensual",
+                            onClick = { onMenuItemSelected("Reporte Mensual") }
+                        )
                         // Espacio adicional para asegurar que el último item sea visible
                         Spacer(modifier = Modifier.height(80.dp))
                     }

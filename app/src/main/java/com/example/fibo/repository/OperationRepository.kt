@@ -48,6 +48,17 @@ import com.example.fibo.model.ISubsidiary
 import com.example.fibo.model.ICompany
 import com.example.fibo.GetGuideByIdQuery
 import com.example.fibo.model.IGuideData
+import com.example.fibo.model.MonthlyReportData
+import com.example.fibo.model.MonthlySalesData
+import com.example.fibo.model.MonthlyPurchasesData
+import com.example.fibo.model.DocumentTypeSummary
+import com.example.fibo.model.TopProduct
+import com.example.fibo.GetMonthlySalesReportQuery
+import com.example.fibo.GetMonthlyPurchasesReportQuery
+import com.example.fibo.GetTopProductsReportQuery
+import com.example.fibo.utils.Constants
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import com.example.fibo.model.IGuideDetail
 import com.example.fibo.model.IWeightMeasurementUnit
 import com.example.fibo.model.IGuideLocation
@@ -60,6 +71,8 @@ import com.example.fibo.GetSuppliersQuery
 import com.example.fibo.SearchSupplierByParameterQuery
 import com.example.fibo.CancelPurchaseMutation
 import com.example.fibo.CreateMobilePurchaseMutation
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -1701,4 +1714,160 @@ class OperationRepository @Inject constructor(
 //            Result.failure(e)
 //        }
 //    }
+
+    // ===== MÉTODOS PARA REPORTE MENSUAL =====
+    
+    suspend fun getMonthlySalesReport(subsidiaryId: Int, year: Int, month: Int): MonthlySalesData {
+        return try {
+            val response = apolloClient.query(
+                GetMonthlySalesReportQuery(
+                    subsidiaryId = subsidiaryId,
+                    year = year,
+                    month = month
+                )
+            ).execute()
+
+            if (response.hasErrors()) {
+                val errorMessage = response.errors?.joinToString { it.message } ?: "Error desconocido"
+                throw Exception("Error al obtener reporte de ventas: $errorMessage")
+            }
+
+            val data = response.data?.monthlySalesReport
+            if (data == null) {
+                throw Exception("No se encontraron datos de ventas")
+            }
+
+            MonthlySalesData(
+                currentMonth = data.currentMonth?.map { doc ->
+                    DocumentTypeSummary(
+                        documentType = doc?.documentType.toString(),
+                        documentTypeName = doc?.documentTypeName.toString(),
+                        count = doc?.count?:0,
+                        totalAmount = doc?.totalAmount?:0.0
+                    )
+                } ?: emptyList(),
+                previousMonth = data.previousMonth?.map { doc ->
+                    DocumentTypeSummary(
+                        documentType = doc?.documentType.toString(),
+                        documentTypeName = doc?.documentTypeName.toString(),
+                        count = doc?.count?:0,
+                        totalAmount = doc?.totalAmount?:0.0
+                    )
+                } ?: emptyList(),
+                totalCurrentMonth = data.totalCurrentMonth?:0.0,
+                totalPreviousMonth = data.totalPreviousMonth?:0.0,
+                growthPercentage = data.growthPercentage?:0.0
+            )
+        } catch (e: Exception) {
+            Log.e("OperationRepository", "Error en getMonthlySalesReport: ${e.message}")
+            throw e
+        }
+    }
+
+    suspend fun getMonthlyPurchasesReport(subsidiaryId: Int, year: Int, month: Int): MonthlyPurchasesData {
+        return try {
+            val response = apolloClient.query(
+                GetMonthlyPurchasesReportQuery(
+                    subsidiaryId = subsidiaryId,
+                    year = year,
+                    month = month
+                )
+            ).execute()
+
+            if (response.hasErrors()) {
+                val errorMessage = response.errors?.joinToString { it.message } ?: "Error desconocido"
+                throw Exception("Error al obtener reporte de compras: $errorMessage")
+            }
+
+            val data = response.data?.monthlyPurchasesReport
+            if (data == null) {
+                throw Exception("No se encontraron datos de compras")
+            }
+
+            MonthlyPurchasesData(
+                currentMonth = data.currentMonth?.map { doc ->
+                    DocumentTypeSummary(
+                        documentType = doc?.documentType.toString(),
+                        documentTypeName = doc?.documentTypeName.toString(),
+                        count = doc?.count?:0,
+                        totalAmount = doc?.totalAmount?:0.0
+                    )
+                } ?: emptyList(),
+                totalCurrentMonth = data.totalCurrentMonth?:0.0
+            )
+        } catch (e: Exception) {
+            Log.e("OperationRepository", "Error en getMonthlyPurchasesReport: ${e.message}")
+            throw e
+        }
+    }
+
+    suspend fun getTopProductsReport(subsidiaryId: Int, year: Int, month: Int, limit: Int = 10): List<TopProduct> {
+        return try {
+            val response = apolloClient.query(
+                GetTopProductsReportQuery(
+                    subsidiaryId = subsidiaryId,
+                    year = year,
+                    month = month,
+                    limit = Optional.presentIfNotNull(limit)
+                )
+            ).execute()
+
+            if (response.hasErrors()) {
+                val errorMessage = response.errors?.joinToString { it.message } ?: "Error desconocido"
+                throw Exception("Error al obtener top productos: $errorMessage")
+            }
+
+            response.data?.topProductsReport?.map { product ->
+                TopProduct(
+                    productId = product?.productId?:0,
+                    productName = product?.productName?:"",
+                    productCode = product?.productCode?:"",
+                    totalQuantity = product?.totalQuantity?:0.0,
+                    totalAmount = product?.totalAmount?:0.0,
+                    percentage = product?.percentage?:0.0
+                )
+            } ?: emptyList()
+        } catch (e: Exception) {
+            Log.e("OperationRepository", "Error en getTopProductsReport: ${e.message}")
+            throw e
+        }
+    }
+
+    // ===== EXPORTACIÓN A EXCEL =====
+    
+    suspend fun exportMonthlyReportToExcel(subsidiaryId: Int, year: Int, month: Int): ByteArray {
+        return withContext(Dispatchers.IO) {
+            try {
+                val url = "${Constants.BASE_API_URL_PRODUCTION}/logistics/export-monthly-report-excels/?subsidiary_id=$subsidiaryId&year=$year&month=$month"
+                Log.d("OperationRepository", "URL de exportación: $url")
+                
+                val client = okhttp3.OkHttpClient()
+                val request = okhttp3.Request.Builder()
+                    .url(url)
+                    .get()
+                    .build()
+                
+                val response = client.newCall(request).execute()
+                Log.d("OperationRepository", "Código de respuesta: ${response.code}")
+                Log.d("OperationRepository", "Mensaje de respuesta: ${response.message}")
+                
+                if (!response.isSuccessful) {
+                    val errorBody = response.body?.string() ?: "Sin mensaje de error"
+                    Log.e("OperationRepository", "Error del servidor: $errorBody")
+                    throw Exception("Error al descargar Excel: ${response.code} - $errorBody")
+                }
+                
+                val bytes = response.body?.bytes()
+                if (bytes == null || bytes.isEmpty()) {
+                    throw Exception("Respuesta vacía del servidor")
+                }
+                
+                Log.d("OperationRepository", "Archivo descargado exitosamente, tamaño: ${bytes.size} bytes")
+                bytes
+            } catch (e: Exception) {
+                Log.e("OperationRepository", "Error en exportMonthlyReportToExcel: ${e.message}", e)
+                throw e
+            }
+        }
+    }
 }

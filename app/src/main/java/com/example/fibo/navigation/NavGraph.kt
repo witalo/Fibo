@@ -37,6 +37,7 @@ import com.example.fibo.ui.screens.person.NewPersonScreen
 import com.example.fibo.ui.screens.person.PersonScreen
 import com.example.fibo.ui.screens.person.PersonDetailScreen
 import com.example.fibo.ui.screens.product.NewProductScreen
+import com.example.fibo.ui.screens.report.MonthlyReportScreen
 
 @Composable
 @RequiresApi(Build.VERSION_CODES.O)
@@ -380,6 +381,19 @@ fun NavGraph(
         composable(Screen.ReportPayment.route) {
             ReportPaymentScreen(
                 navController = navController,
+                onLogout = {
+                    authViewModel.logout()
+                    navController.navigate(Screen.QrScanner.route) {
+                        popUpTo(navController.graph.id) { inclusive = true }
+                    }
+                }
+            )
+        }
+        
+        composable(Screen.MonthlyReport.route) {
+            MonthlyReportScreen(
+                navController = navController,
+                subsidiaryData = subsidiaryData,
                 onLogout = {
                     authViewModel.logout()
                     navController.navigate(Screen.QrScanner.route) {

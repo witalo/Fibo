@@ -1,0 +1,10 @@
+query GetTopProductsReport($subsidiaryId: Int!, $year: Int!, $month: Int!, $limit: Int = 10) {
+  topProductsReport(subsidiaryId: $subsidiaryId, year: $year, month: $month, limit: $limit) {
+    productId
+    productName
+    productCode
+    totalQuantity
+    totalAmount
+    percentage
+  }
+}

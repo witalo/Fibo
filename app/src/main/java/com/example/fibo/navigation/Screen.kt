@@ -27,6 +27,7 @@ sealed class Screen(
     object NewPurchase : Screen("new_purchase")
     object Reports : Screen("reports")
     object ReportPayment : Screen("report_payment")
+    object MonthlyReport : Screen("monthly_report")
     object NewInvoice : Screen(
         route = "new_invoice",
         routeWithArgs = "new_invoice/{quotationId}",

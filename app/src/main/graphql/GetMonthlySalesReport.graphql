@@ -1,0 +1,19 @@
+query GetMonthlySalesReport($subsidiaryId: Int!, $year: Int!, $month: Int!) {
+  monthlySalesReport(subsidiaryId: $subsidiaryId, year: $year, month: $month) {
+    currentMonth {
+      documentType
+      documentTypeName
+      count
+      totalAmount
+    }
+    previousMonth {
+      documentType
+      documentTypeName
+      count
+      totalAmount
+    }
+    totalCurrentMonth
+    totalPreviousMonth
+    growthPercentage
+  }
+}

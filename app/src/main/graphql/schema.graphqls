@@ -93,6 +93,12 @@ type Query {
 
   operationsByDateRange(startDate: String!, endDate: String!, userId: Int!, types: [String]!): [OperationType]
 
+  monthlySalesReport(subsidiaryId: Int!, year: Int!, month: Int!): MonthlySalesDataType
+
+  monthlyPurchasesReport(subsidiaryId: Int!, year: Int!, month: Int!): MonthlyPurchasesDataType
+
+  topProductsReport(subsidiaryId: Int!, year: Int!, month: Int!, limit: Int = 10): [TopProductType]
+
   allWarehouses(subsidiaryId: Int, category: String): [WarehouseType]
 
   allUnits: [UnitType]
@@ -4293,6 +4299,48 @@ type ProductSoldType {
   quantitySold: Float
 
   totalSold: Float
+}
+
+type MonthlySalesDataType {
+  currentMonth: [DocumentTypeSummaryType]
+
+  previousMonth: [DocumentTypeSummaryType]
+
+  totalCurrentMonth: Float
+
+  totalPreviousMonth: Float
+
+  growthPercentage: Float
+}
+
+type DocumentTypeSummaryType {
+  documentType: String
+
+  documentTypeName: String
+
+  count: Int
+
+  totalAmount: Float
+}
+
+type MonthlyPurchasesDataType {
+  currentMonth: [DocumentTypeSummaryType]
+
+  totalCurrentMonth: Float
+}
+
+type TopProductType {
+  productId: Int
+
+  productName: String
+
+  productCode: String
+
+  totalQuantity: Float
+
+  totalAmount: Float
+
+  percentage: Float
 }
 
 type ProductDetailType {
