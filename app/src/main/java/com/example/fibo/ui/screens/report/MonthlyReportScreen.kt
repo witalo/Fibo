@@ -1,7 +1,10 @@
 package com.example.fibo.ui.screens.report
 
 import android.annotation.SuppressLint
+import android.app.DownloadManager
+import android.net.Uri
 import android.os.Build
+import android.os.Environment
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -34,10 +37,7 @@ import com.example.fibo.viewmodels.MonthlyReportViewModel
 import java.text.NumberFormat
 import java.util.*
 import android.content.Context
-import android.os.Environment
 import kotlinx.coroutines.launch
-import java.io.File
-import java.io.FileOutputStream
 import android.widget.Toast
 
 @SuppressLint("CoroutineCreationDuringComposition")
@@ -59,27 +59,23 @@ fun MonthlyReportScreen(
         if (subsidiaryData?.id != null) {
             coroutineScope.launch {
                 try {
-                    val excelData = viewModel.exportToExcel(subsidiaryData.id)
+                    // Obtener la URL de descarga del ViewModel
+                    val downloadUrl = viewModel.getExcelDownloadUrl(subsidiaryData.id, uiState.selectedYear, uiState.selectedMonth)
                     
-                    if (excelData != null) {
-                        // Guardar archivo en Downloads
-                        val fileName = "REPORTE_MENSUAL_${System.currentTimeMillis()}.xlsx"
-                        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                        val file = File(downloadsDir, fileName)
-                        
-                        FileOutputStream(file).use { fos ->
-                            fos.write(excelData)
-                        }
+                    if (downloadUrl != null) {
+                        // Usar DownloadManager para descargar con notificación
+                        val fileName = "REPORTE_MENSUAL_${uiState.selectedYear}_${uiState.selectedMonth}_${System.currentTimeMillis()}.xlsx"
+                        downloadExcelFile(context, downloadUrl, fileName)
                         
                         Toast.makeText(
                             context,
-                            "Excel descargado en: ${file.absolutePath}",
-                            Toast.LENGTH_LONG
+                            "Descarga iniciada. Revisa las notificaciones.",
+                            Toast.LENGTH_SHORT
                         ).show()
                     } else {
                         Toast.makeText(
                             context,
-                            "Error al descargar el Excel",
+                            "Error al obtener URL de descarga",
                             Toast.LENGTH_SHORT
                         ).show()
                     }
@@ -899,4 +895,17 @@ private fun getMonthName(month: Int): String {
         12 -> "Diciembre"
         else -> "Mes inválido"
     }
+}
+
+private fun downloadExcelFile(context: Context, url: String, fileName: String) {
+    val request = DownloadManager.Request(Uri.parse(url))
+        .setTitle("Descargando reporte mensual")
+        .setDescription(fileName)
+        .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+        .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
+        .setAllowedOverMetered(true)
+        .setAllowedOverRoaming(true)
+
+    val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+    downloadManager.enqueue(request)
 }

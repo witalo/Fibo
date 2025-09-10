@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fibo.model.*
 import com.example.fibo.repository.OperationRepository
+import com.example.fibo.utils.Constants
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -74,6 +75,19 @@ class MonthlyReportViewModel @Inject constructor(
         } catch (e: Exception) {
             _uiState.value = _uiState.value.copy(
                 error = "Error al exportar Excel: ${e.message}"
+            )
+            null
+        }
+    }
+
+    fun getExcelDownloadUrl(subsidiaryId: Int, year: Int, month: Int): String? {
+        return try {
+            // Usar la URL correcta que ya tienes configurada
+            val url = "${Constants.BASE_API_URL_PRODUCTION}/logistics/export-monthly-report-excels/?subsidiary_id=$subsidiaryId&year=$year&month=$month"
+            url
+        } catch (e: Exception) {
+            _uiState.value = _uiState.value.copy(
+                error = "Error al generar URL de descarga: ${e.message}"
             )
             null
         }
