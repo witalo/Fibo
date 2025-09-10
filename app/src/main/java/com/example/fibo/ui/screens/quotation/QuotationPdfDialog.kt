@@ -602,79 +602,83 @@ fun QuotationPdfDialog(
                             // Botón para Bluetooth con gradiente naranja
                             Button(
                                 onClick = {
-                                    when (bluetoothState) {
-                                        BluetoothState.DISABLED -> {
-                                            // Solicitar activación de Bluetooth
-                                            val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-                                            try {
-                                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                                    if (ActivityCompat.checkSelfPermission(
-                                                            context,
-                                                            Manifest.permission.BLUETOOTH_CONNECT
-                                                        ) == PackageManager.PERMISSION_GRANTED) {
-                                                        (context as? Activity)?.startActivityForResult(enableBtIntent, 1)
-                                                    }
-                                                } else {
-                                                    (context as? Activity)?.startActivityForResult(enableBtIntent, 1)
-                                                }
-                                            } catch (e: Exception) {
-                                                // Manejar posibles excepciones
-                                                Toast.makeText(
-                                                    context,
-                                                    "No se pudo activar Bluetooth",
-                                                    Toast.LENGTH_SHORT
-                                                ).show()
-                                            }
-                                        }
-                                        BluetoothState.ENABLED -> {
-                                            // Buscar dispositivos
-                                            devicesList = emptyList()
-                                            bluetoothState = BluetoothState.DISCOVERING
+                                    val activity = context as? Activity
+                                    activity?.let {
+                                        when (bluetoothState) {
+                                            BluetoothState.DISABLED -> {
+                                                // Primero verificar permisos
+                                                checkAndRequestBluetoothPermissions(it)
 
-                                            // Verificar permisos según versión de Android
-                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                                if (ActivityCompat.checkSelfPermission(
+                                                // Luego activar Bluetooth
+                                                val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+                                                try {
+                                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                                        if (ActivityCompat.checkSelfPermission(
+                                                                context,
+                                                                Manifest.permission.BLUETOOTH_CONNECT
+                                                            ) == PackageManager.PERMISSION_GRANTED
+                                                        ) {
+                                                            it.startActivityForResult(enableBtIntent, 1)
+                                                        } else {
+                                                            Toast.makeText(
+                                                                context,
+                                                                "Se requieren permisos de Bluetooth",
+                                                                Toast.LENGTH_SHORT
+                                                            ).show()
+                                                        }
+                                                    } else {
+                                                        it.startActivityForResult(enableBtIntent, 1)
+                                                    }
+                                                } catch (e: Exception) {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "No se pudo activar Bluetooth: ${e.message}",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                }
+                                            }
+                                            BluetoothState.ENABLED -> {
+                                                // Verificar permisos antes de buscar dispositivos
+                                                checkAndRequestBluetoothPermissions(it)
+
+                                                devicesList = emptyList()
+                                                bluetoothState = BluetoothState.DISCOVERING
+
+                                                // Verificar permisos según versión de Android
+                                                val hasPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                                    ActivityCompat.checkSelfPermission(
                                                         context,
                                                         Manifest.permission.BLUETOOTH_SCAN
                                                     ) == PackageManager.PERMISSION_GRANTED &&
-                                                    ActivityCompat.checkSelfPermission(
-                                                        context,
-                                                        Manifest.permission.BLUETOOTH_CONNECT
-                                                    ) == PackageManager.PERMISSION_GRANTED
-                                                ) {
-                                                    bluetoothAdapter?.startDiscovery()
+                                                            ActivityCompat.checkSelfPermission(
+                                                                context,
+                                                                Manifest.permission.BLUETOOTH_CONNECT
+                                                            ) == PackageManager.PERMISSION_GRANTED
                                                 } else {
-                                                    Toast.makeText(
-                                                        context,
-                                                        "Se requieren permisos de Bluetooth",
-                                                        Toast.LENGTH_SHORT
-                                                    ).show()
-                                                    bluetoothState = BluetoothState.ENABLED
-                                                }
-                                            } else {
-                                                if (ActivityCompat.checkSelfPermission(
+                                                    ActivityCompat.checkSelfPermission(
                                                         context,
                                                         Manifest.permission.ACCESS_FINE_LOCATION
                                                     ) == PackageManager.PERMISSION_GRANTED
-                                                ) {
+                                                }
+
+                                                if (hasPermissions) {
                                                     bluetoothAdapter?.startDiscovery()
                                                 } else {
                                                     Toast.makeText(
                                                         context,
-                                                        "Se requiere permiso de ubicación para buscar dispositivos",
+                                                        "Se requieren permisos para buscar dispositivos",
                                                         Toast.LENGTH_SHORT
                                                     ).show()
                                                     bluetoothState = BluetoothState.ENABLED
                                                 }
                                             }
-                                        }
-                                        else -> {
-                                            // Estado no conocido o no soportado
-                                            Toast.makeText(
-                                                context,
-                                                "Bluetooth no disponible",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
+                                            else -> {
+                                                Toast.makeText(
+                                                    context,
+                                                    "Bluetooth no disponible",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                            }
                                         }
                                     }
                                 },
@@ -948,7 +952,48 @@ fun QuotationPdfDialog(
         }
     }
 }
+// Función para verificar y solicitar permisos Bluetooth
+fun checkAndRequestBluetoothPermissions(activity: Activity) {
+    val permissionsNeeded = mutableListOf<String>()
 
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        // Android 12+ requiere permisos específicos
+        if (ActivityCompat.checkSelfPermission(
+                activity,
+                Manifest.permission.BLUETOOTH_SCAN
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            permissionsNeeded.add(Manifest.permission.BLUETOOTH_SCAN)
+        }
+        if (ActivityCompat.checkSelfPermission(
+                activity,
+                Manifest.permission.BLUETOOTH_CONNECT
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            permissionsNeeded.add(Manifest.permission.BLUETOOTH_CONNECT)
+        }
+    } else {
+        // Android 6.0-11 requiere permiso de ubicación para descubrir dispositivos
+        if (ActivityCompat.checkSelfPermission(
+                activity,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            permissionsNeeded.add(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+    }
+
+    if (permissionsNeeded.isNotEmpty()) {
+        ActivityCompat.requestPermissions(
+            activity,
+            permissionsNeeded.toTypedArray(),
+            BLUETOOTH_PERMISSION_REQUEST_CODE
+        )
+    }
+}
+
+// Constante para el código de solicitud
+private const val BLUETOOTH_PERMISSION_REQUEST_CODE = 1001
 // Enumeración para estados de carga del PDF
 enum class PdfLoadingState {
     LOADING, SUCCESS, ERROR
