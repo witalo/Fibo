@@ -362,6 +362,9 @@ fun NavGraph(
                     navController.navigate(Screen.QrScanner.route) {
                         popUpTo(navController.graph.id) { inclusive = true }
                     }
+                },
+                onBack = { // ✅ Agregar onBack
+                    navController.popBackStack()
                 }
             )
         }

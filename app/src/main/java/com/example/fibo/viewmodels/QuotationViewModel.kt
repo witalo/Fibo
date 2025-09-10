@@ -553,4 +553,13 @@ class QuotationViewModel @Inject constructor(
             loadQuotation(date, user.id)
         }
     }
+
+    // Función para recargar las cotizaciones con la fecha actual
+    fun refreshQuotations() {
+        val user = userData.value
+        val date = selectedDate.value
+        if (user != null) {
+            loadQuotation(date, user.id)
+        }
+    }
 }

@@ -47,6 +47,7 @@ fun NewPurchaseScreen(
     navController: NavController,
     subsidiaryData: ISubsidiary?,
     onLogout: () -> Unit,
+    onBack: () -> Unit,
     viewModel: NewPurchaseViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -124,9 +125,9 @@ fun NewPurchaseScreen(
             TopAppBar(
                 title = { Text("Nueva Compra", style = MaterialTheme.typography.titleSmall) },
                 navigationIcon = {
-//                    IconButton(onClick = onBack) {
-//                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
-//                    }
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.Black,
