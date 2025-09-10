@@ -73,6 +73,7 @@ import com.example.fibo.ui.components.ClientFilterChip
 import com.example.fibo.ui.screens.Chip
 import com.example.fibo.ui.screens.cleanDocumentType
 import com.example.fibo.ui.screens.isWithinDays
+import com.example.fibo.ui.screens.purchase.PurchasePdfDialog
 import com.example.fibo.utils.ColorGradients
 import com.example.fibo.utils.PurchaseState
 import com.example.fibo.viewmodels.PurchaseViewModel
@@ -289,6 +290,9 @@ fun PurchaseItem(
     
     val isAnulado = purchase.operationStatus.replace("A_", "") == "06" || purchase.operationStatus.replace("A_", "") == "04"
     
+    // Estado para el PDF
+    var showPdfDialog by remember { mutableStateOf(false) }
+    
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -359,7 +363,7 @@ fun PurchaseItem(
                 
                 IconButton(
                     onClick = {
-                        // PDF para compras - similar funcionalidad
+                        showPdfDialog = true
                     },
                     modifier = Modifier.size(40.dp)
                 ) {
@@ -529,6 +533,15 @@ fun PurchaseItem(
             containerColor = MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp,
             shape = RoundedCornerShape(16.dp)
+        )
+    }
+
+    // Show PDF Dialog if needed
+    if (showPdfDialog) {
+        PurchasePdfDialog(
+            isVisible = true,
+            purchase = purchase,
+            onDismiss = { showPdfDialog = false }
         )
     }
 }

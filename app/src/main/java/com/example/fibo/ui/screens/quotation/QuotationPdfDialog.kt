@@ -248,21 +248,27 @@ fun QuotationPdfDialog(
                 pdfFile
             )
 
-            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            // Crear intent específico para WhatsApp que abra directamente la pantalla de contactos
+            val whatsappIntent = Intent(Intent.ACTION_SEND).apply {
                 type = "application/pdf"
                 putExtra(Intent.EXTRA_STREAM, uri)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                setPackage("com.whatsapp")
             }
 
-            // Primero intentar con WhatsApp Business
+            val whatsappBusinessIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "application/pdf"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                setPackage("com.whatsapp.w4b")
+            }
+
+            // Intentar primero con WhatsApp Business, luego WhatsApp normal
             try {
-                shareIntent.setPackage("com.whatsapp.w4b")
-                context.startActivity(shareIntent)
+                context.startActivity(whatsappBusinessIntent)
             } catch (e: ActivityNotFoundException) {
-                // Si falla WhatsApp Business, intentar con WhatsApp normal
                 try {
-                    shareIntent.setPackage("com.whatsapp")
-                    context.startActivity(shareIntent)
+                    context.startActivity(whatsappIntent)
                 } catch (e2: ActivityNotFoundException) {
                     Toast.makeText(context, "WhatsApp no está instalado", Toast.LENGTH_SHORT).show()
                 }
