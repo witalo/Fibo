@@ -104,7 +104,8 @@ fun ReportPaymentScreen(
                 "Guías" -> navController.navigate(Screen.Guides.route)
                 "Nueva Guía" -> navController.navigate(Screen.NewGuide.route)
                 "Reporte" -> navController.navigate(Screen.Reports.route)
-                "Reporte pagos" -> navController.navigate(Screen.ReportPayment.route)
+                "Reporte Pagos" -> navController.navigate(Screen.ReportPayment.route)
+                "Reporte Mensual" -> navController.navigate(Screen.MonthlyReport.route)
             }
             isMenuOpen = false
         },

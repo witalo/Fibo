@@ -29,6 +29,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.fibo.model.*
 import com.example.fibo.ui.components.AppScaffold
+import com.example.fibo.ui.components.LocalMenuClickHandler
 import com.example.fibo.viewmodels.MonthlyReportViewModel
 import java.text.NumberFormat
 import java.util.*
@@ -110,8 +111,20 @@ fun MonthlyReportScreen(
         subsidiaryData = subsidiaryData,
         onLogout = onLogout,
         topBar = {
+            // Obtener el handler del menú lateral
+            val onMenuClick = LocalMenuClickHandler.current
+            
             TopAppBar(
                 title = { Text("Reporte Mensual", style = MaterialTheme.typography.titleSmall) },
+                navigationIcon = {
+                    IconButton(onClick = onMenuClick) {
+                        Icon(
+                            imageVector = Icons.Default.Menu,
+                            contentDescription = "Menú",
+                            tint = Color.White
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.Black,
                     titleContentColor = Color.White,
