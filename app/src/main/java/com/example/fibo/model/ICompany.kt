@@ -6,7 +6,7 @@ data class ICompany(
     val businessName: String,
     val address: String = "",
     val logo: String = "",
-    val percentageIgv: Double = 0.18,
+    val percentageIgv: Double = 0.105,
     val isEnabled: Boolean = false,
     val withStock: Boolean = false,
     val appMobil: Boolean = false,

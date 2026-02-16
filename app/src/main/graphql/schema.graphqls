@@ -257,7 +257,7 @@ type CompanyType {
 
   includeIgv: Boolean!
 
-  percentageIgv: Int
+  percentageIgv: Float
 
   isEnabled: Boolean!
 
